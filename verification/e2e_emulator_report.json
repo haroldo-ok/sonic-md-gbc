@@ -1,0 +1,241 @@
+{
+  "rom_path": "/home/user/sonic-gbc/sonic.gbc",
+  "rom_size_bytes": 2097152,
+  "s1disasm_files_converted": 946,
+  "s1disasm_total_files": 946,
+  "placeholders_used": 0,
+  "black_screens_detected": 0,
+  "white_screens_detected": 0,
+  "acts_verified": 20,
+  "special_stages_verified": 6,
+  "palette_cycles_recorded": 75,
+  "animated_tile_uploads": 22,
+  "sampled_dac_drum_packets": 46,
+  "syz3_blocks_remaining_after_spike_dive": "0x3fb",
+  "battery_sram_restored_high_score": 50000,
+  "battery_sram_restored_unlocked_act": 19,
+  "battery_sram_restored_jp_credits": 1,
+  "special_stage_rotation_delta": 896,
+  "fz_boss_activated": true,
+  "debug_mode_verified": true,
+  "ss_results_and_good_ending_verified": true,
+  "sonic_ghz1_start_x": 80,
+  "sonic_ghz1_end_x": 800,
+  "camera_ghz1_end_x": 672,
+  "rings_collected_in_ghz1": 10,
+  "score_in_ghz1": 100,
+  "apu_sound_events": 123,
+  "ghz1_wall_flicker_pixels_32_frames": 0,
+  "ghz1_360_loop_verified": true,
+  "ghz1_double_s_tunnel_verified": true,
+  "sampled_metrics": [
+    {
+      "context": "SEGA_Screen_f20",
+      "mean_rgb": 190.68,
+      "std_rgb": 53.29,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0,
+      "unique_colors": 20
+    },
+    {
+      "context": "Level_Select_Menu",
+      "mean_rgb": 94.57,
+      "std_rgb": 90.76,
+      "black_fraction": 0.0,
+      "white_fraction": 0.1411,
+      "unique_colors": 4
+    },
+    {
+      "context": "Title_Screen_Active",
+      "mean_rgb": 98.91,
+      "std_rgb": 86.03,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0151,
+      "unique_colors": 27
+    },
+    {
+      "context": "GHZ1_Gameplay_f160",
+      "mean_rgb": 95.47,
+      "std_rgb": 83.46,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0588,
+      "unique_colors": 25
+    },
+    {
+      "context": "Act_0_Live_f19",
+      "mean_rgb": 95.53,
+      "std_rgb": 82.81,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0281,
+      "unique_colors": 24
+    },
+    {
+      "context": "Act_1_Live_f19",
+      "mean_rgb": 93.18,
+      "std_rgb": 83.55,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0513,
+      "unique_colors": 24
+    },
+    {
+      "context": "Act_2_Live_f19",
+      "mean_rgb": 95.13,
+      "std_rgb": 82.11,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0287,
+      "unique_colors": 26
+    },
+    {
+      "context": "Act_3_Live_f19",
+      "mean_rgb": 101.26,
+      "std_rgb": 67.55,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0281,
+      "unique_colors": 29
+    },
+    {
+      "context": "Act_4_Live_f19",
+      "mean_rgb": 94.79,
+      "std_rgb": 67.46,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0281,
+      "unique_colors": 29
+    },
+    {
+      "context": "Act_5_Live_f19",
+      "mean_rgb": 99.67,
+      "std_rgb": 68.42,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0276,
+      "unique_colors": 32
+    },
+    {
+      "context": "Act_6_Live_f19",
+      "mean_rgb": 85.14,
+      "std_rgb": 65.11,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0284,
+      "unique_colors": 28
+    },
+    {
+      "context": "Act_7_Live_f19",
+      "mean_rgb": 69.25,
+      "std_rgb": 61.74,
+      "black_fraction": 0.0115,
+      "white_fraction": 0.0287,
+      "unique_colors": 28
+    },
+    {
+      "context": "Act_8_Live_f19",
+      "mean_rgb": 86.9,
+      "std_rgb": 61.69,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0281,
+      "unique_colors": 26
+    },
+    {
+      "context": "Act_9_Live_f19",
+      "mean_rgb": 94.8,
+      "std_rgb": 77.32,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0282,
+      "unique_colors": 28
+    },
+    {
+      "context": "Act_10_Live_f19",
+      "mean_rgb": 83.13,
+      "std_rgb": 74.33,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0276,
+      "unique_colors": 25
+    },
+    {
+      "context": "Act_11_Live_f19",
+      "mean_rgb": 94.33,
+      "std_rgb": 77.66,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0277,
+      "unique_colors": 30
+    },
+    {
+      "context": "Act_12_Live_f19",
+      "mean_rgb": 65.53,
+      "std_rgb": 57.92,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0293,
+      "unique_colors": 29
+    },
+    {
+      "context": "Act_13_Live_f19",
+      "mean_rgb": 51.98,
+      "std_rgb": 57.43,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0351,
+      "unique_colors": 24
+    },
+    {
+      "context": "Act_14_Live_f19",
+      "mean_rgb": 51.49,
+      "std_rgb": 56.29,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0276,
+      "unique_colors": 25
+    },
+    {
+      "context": "Act_15_Live_f19",
+      "mean_rgb": 49.41,
+      "std_rgb": 71.12,
+      "black_fraction": 0.5022,
+      "white_fraction": 0.029,
+      "unique_colors": 27
+    },
+    {
+      "context": "Act_16_Live_f19",
+      "mean_rgb": 84.0,
+      "std_rgb": 65.82,
+      "black_fraction": 0.034,
+      "white_fraction": 0.0276,
+      "unique_colors": 27
+    },
+    {
+      "context": "Act_17_Live_f19",
+      "mean_rgb": 122.23,
+      "std_rgb": 62.27,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0273,
+      "unique_colors": 25
+    },
+    {
+      "context": "Act_18_Live_f19",
+      "mean_rgb": 56.71,
+      "std_rgb": 60.12,
+      "black_fraction": 0.0615,
+      "white_fraction": 0.0281,
+      "unique_colors": 25
+    },
+    {
+      "context": "Act_19_Live_f19",
+      "mean_rgb": 83.88,
+      "std_rgb": 80.19,
+      "black_fraction": 0.0,
+      "white_fraction": 0.035,
+      "unique_colors": 27
+    },
+    {
+      "context": "SpecialStage_1_Live_35",
+      "mean_rgb": 82.48,
+      "std_rgb": 73.0,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0661,
+      "unique_colors": 19
+    },
+    {
+      "context": "StaffCredits_f48",
+      "mean_rgb": 98.54,
+      "std_rgb": 86.73,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0303,
+      "unique_colors": 32
+    }
+  ]
+}
