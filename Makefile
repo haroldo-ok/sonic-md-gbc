@@ -38,9 +38,10 @@ $(OBJ_DIR)/gen_%.o: generated/%.c generated/assets.h
 rom: $(ALL_OBJS)
 	@mkdir -p $(ROM_DIR)
 	$(LCC) $(LDFLAGS) -o $(ROM_OUT) $(ALL_OBJS)
+	@cp -f sonic.gbc $(ROM_DIR)/sonic.gbc 2>/dev/null || true
 	@cp -f sonic.map $(ROM_DIR)/sonic.map 2>/dev/null || true
 	@cp -f sonic.noi $(ROM_DIR)/sonic.noi 2>/dev/null || true
-	@rm -f $(OBJ_DIR)/*.lst $(OBJ_DIR)/*.asm $(OBJ_DIR)/*.sym sonic.ihx $(ROM_DIR)/sonic.gbc
+	@rm -f $(OBJ_DIR)/*.lst $(OBJ_DIR)/*.asm $(OBJ_DIR)/*.sym sonic.ihx
 	@ls -lh $(ROM_OUT)
 
 test: rom

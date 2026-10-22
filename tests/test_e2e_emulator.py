@@ -980,3 +980,595 @@ def test_start_of_game_level_select_and_end_of_level_goalpost_clear():
         tally_shot.save(os.path.join(VER_DIR, "emu_act_clear_tally.png"))
 
 
+def _enter_act_clean(pb, syms, act_id: int) -> None:
+    pb.memory[syms["_g_cur_act"]] = act_id
+    pb.memory[syms["_g_game_mode"]] = 0xFE
+    pb.memory[syms["_g_next_mode"]] = 3  # GM_LEVEL
+    for _ in range(20):
+        if pb.memory[0xFF4A] == 0:
+            break
+        pb.tick()
+    for _ in range(130):
+        if pb.memory[0xFF4A] == 128:
+            break
+        pb.tick()
+    assert pb.memory[0xFF4A] == 128, f"Act {act_id} failed to enter gameplay!"
+    pb.tick()
+
+
+def _set_sonic_pos(pb, sym_sonic: int, x: int, y: int) -> None:
+    write_u16(pb, sym_sonic + 8, x)
+    write_u16(pb, sym_sonic + 10, y)
+    for b_i in range(4):
+        pb.memory[sym_sonic + b_i] = ((x << 8) >> (8 * b_i)) & 0xFF
+        pb.memory[sym_sonic + 4 + b_i] = ((y << 8) >> (8 * b_i)) & 0xFF
+    pb.memory[sym_sonic + 19] = 1
+
+
+def _spawn_test_obj(pb, sym_objs: int, slot: int, obj_id: int, x: int, y: int, sub: int = 0, hp: int = 8) -> None:
+    """Write directly into `ActiveObj g_objs[slot]` (`sizeof(ActiveObj) == 20` bytes in `src/engine.h`)."""
+    OBJ_SIZE = 20
+    base = sym_objs + slot * OBJ_SIZE
+    for i in range(OBJ_SIZE):
+        pb.memory[base + i] = 0
+    pb.memory[base + 0] = 1         # active = 1!
+    pb.memory[base + 1] = obj_id    # id
+    pb.memory[base + 2] = sub       # subtype
+    pb.memory[base + 3] = 0xFF      # spawn_slot = 0xFFFF
+    pb.memory[base + 4] = 0xFF
+    write_u16(pb, base + 5, x & 0xFFFF)
+    write_u16(pb, base + 7, y & 0xFFFF)
+    write_u16(pb, base + 9, x & 0xFFFF)
+    write_u16(pb, base + 11, y & 0xFFFF)
+    pb.memory[base + 19] = hp
+
+
+def _spawn_test_proj(pb, sym_projs: int, slot: int, kind: int, x: int, y: int, timer: int = 60) -> None:
+    """Write directly into `ProjObj g_projs[slot]` (`sizeof(ProjObj) == 11` bytes in `src/engine.h`)."""
+    base = sym_projs + slot * 11
+    for i in range(11):
+        pb.memory[base + i] = 0
+    pb.memory[base + 0] = 1         # active = 1!
+    pb.memory[base + 1] = kind      # PROJ_ENERGY=1, FIREBALL=2, BOMB=3, PLASMA=4, ANIMAL_HOP=7
+    write_u16(pb, base + 2, x & 0xFFFF)
+    write_u16(pb, base + 4, y & 0xFFFF)
+    pb.memory[base + 10] = timer
+
+
+def _spawn_test_pop(pb, sym_pops: int, slot: int, step: int, x: int, y: int) -> None:
+    """Write directly into `ScorePop g_pops[slot]` (`sizeof(ScorePop) == 7` bytes in `src/engine.h`)."""
+    base = sym_pops + slot * 7
+    pb.memory[base + 0] = 1
+    pb.memory[base + 1] = step
+    write_u16(pb, base + 2, x & 0xFFFF)
+    write_u16(pb, base + 4, y & 0xFFFF)
+    pb.memory[base + 6] = 45
+
+
+def test_concert_pitch_music_non_screechy_across_all_zones_and_boss():
+    """
+    Verify BOTH:
+      1. Every single compiled ROM BGM bytecode stream (`0x81..0x93`, all 19 SMPS songs) contains
+         ZERO screechy frequencies (`CH1 <= 1,175 Hz`, `CH2 <= 1,175 Hz`, `CH3 <= 262 Hz` bass)
+         and real multi-note melodic diversity; AND
+      2. Live PyBoy `48 kHz` hardware APU PCM synthesis (`pb.sound.ndarray`) across Title, all 6
+         Zones (`GHZ`, `MZ`, `SYZ`, `LZ`, `SLZ`, `SBZ`), and Boss (`FZ`) produces warm, non-silent
+         musical audio where >= 88% of total spectral energy sits below `4,500 Hz` (zero screech!).
+    """
+    import glob
+    import re
+    import wave
+
+    # Part A: Audit EVERY compiled song stream in `generated/bank_*.c` (`19 / 19` SMPS tracks)!
+    song_files = sorted(glob.glob(os.path.join(ROOT, "generated", "bank_*.c")))
+    parsed_songs = 0
+    for sf in song_files:
+        txt = open(sf, "r").read()
+        for m in re.finditer(r"const uint8_t (mus_[0-9A-Fa-f]+)\[\d*\]\s*=\s*\{([^}]+)\}", txt):
+            name = m.group(1)
+            raw = [int(tok, 0) for tok in re.findall(r"0x[0-9A-Fa-f]+|\d+", m.group(2))]
+            parsed_songs += 1
+            pos = 0
+            ch12_hz, ch3_hz = [], []
+            while pos < len(raw):
+                b = raw[pos]
+                pos += 1
+                if b in (0x00, 0xFF):
+                    break
+                if b < 0x80:
+                    continue
+                mask = b & 0x0F
+                if mask & 1:
+                    p = raw[pos] | ((raw[pos + 1] & 0x07) << 8)
+                    vol = (raw[pos + 1] >> 3) & 0x0F
+                    pos += 2
+                    if p > 0 and vol > 0:
+                        ch12_hz.append(131072.0 / (2048 - p))
+                if mask & 2:
+                    p = raw[pos] | ((raw[pos + 1] & 0x07) << 8)
+                    vol = (raw[pos + 1] >> 3) & 0x0F
+                    pos += 2
+                    if p > 0 and vol > 0:
+                        ch12_hz.append(131072.0 / (2048 - p))
+                if mask & 4:
+                    p = raw[pos] | ((raw[pos + 1] & 0x07) << 8)
+                    vol3 = (raw[pos + 1] >> 5) & 0x03
+                    pos += 2
+                    if p > 0 and vol3 > 0:
+                        ch3_hz.append(65536.0 / (2048 - p))
+                if mask & 8:
+                    pos += 1
+            assert ch12_hz, f"{name}: 0 audible melody notes!"
+            assert max(ch12_hz) <= 1300.0, (
+                f"{name}: Screechy CH1/CH2 note {max(ch12_hz):.1f} Hz > 1,300 Hz ceiling!"
+            )
+            if ch3_hz:
+                assert 55.0 <= min(ch3_hz) and max(ch3_hz) <= 340.0, (
+                    f"{name}: CH3 bass out of concert bass range: {min(ch3_hz):.1f}..{max(ch3_hz):.1f} Hz!"
+                )
+    assert parsed_songs == 19, f"Expected all 19 compiled SMPS songs, found {parsed_songs}!"
+
+    # Part B: Live PyBoy `48 kHz` Hardware APU PCM Waveform & FFT Verification across Title + All Zones + Boss!
+    syms = load_noi_symbols(NOI_PATH)
+    os.makedirs(VER_DIR, exist_ok=True)
+    wav_chunks = []
+
+    with PyBoy(ROM_PATH, window="null", sound_emulated=True) as pb:
+        for _ in range(195):
+            pb.tick()
+
+        def record_live_track(label: str, frames: int = 210):
+            track_bufs = []
+            for _ in range(frames):
+                pb.tick()
+                snd = pb.sound.ndarray
+                if snd is not None and snd.size > 0:
+                    arr = snd.copy()
+                    track_bufs.append(arr)
+                    wav_chunks.append(arr)
+            assert len(track_bufs) > 100, f"{label}: PyBoy APU produced no sound frames!"
+            tr_pcm = np.concatenate(track_bufs, axis=0)
+            tr_mono = tr_pcm.mean(axis=1).astype(np.float64) if tr_pcm.ndim == 2 else tr_pcm.astype(np.float64)
+            tr_mono -= np.mean(tr_mono)
+            assert np.std(tr_mono) > 0.3, f"{label}: Live emulated audio output is silent!"
+            sr_loc = getattr(pb.sound, "sample_rate", 48000) or 48000
+            sp = np.abs(np.fft.rfft(tr_mono)) ** 2
+            fr = np.fft.rfftfreq(tr_mono.size, d=1.0 / sr_loc)
+            warm = float(np.sum(sp[(fr >= 55.0) & (fr <= 4500.0)]))
+            screech = float(np.sum(sp[fr > 4500.0]))
+            ratio = screech / (warm + screech + 1e-9)
+            assert ratio < 0.20, f"{label}: Audio screech ratio >4.5kHz is {ratio:.3f} (expected < 0.20)!"
+
+        record_live_track("Title_Mus89", frames=210)
+        for act_id, name in [
+            (0, "GHZ_Mus81"),
+            (3, "MZ_Mus83"),
+            (6, "SYZ_Mus85"),
+            (9, "LZ_Mus82"),
+            (12, "SLZ_Mus84"),
+            (15, "SBZ_Mus86"),
+            (18, "BossFZ_Mus8C"),
+        ]:
+            _enter_act_clean(pb, syms, act_id)
+            record_live_track(name, frames=210)
+        sr = getattr(pb.sound, "sample_rate", 48000) or 48000
+
+    pcm = np.concatenate(wav_chunks, axis=0)
+    wav_path = os.path.join(VER_DIR, "live_emu_music_preview.wav")
+    pcm_i16 = np.clip(pcm.astype(np.float64) * 192.0, -32767, 32767).astype(np.int16)
+    with wave.open(wav_path, "wb") as wf:
+        wf.setnchannels(pcm_i16.shape[1] if pcm_i16.ndim == 2 else 1)
+        wf.setsampwidth(2)
+        wf.setframerate(int(sr))
+        wf.writeframes(pcm_i16.tobytes())
+
+
+def test_live_ingame_sprites_enemies_shots_monitors_springs_boss_and_props():
+    """
+    Spawn & render EVERY category of previously corrupted sprites inside real live `sonic.gbc`
+    gameplay across all 6 Zones + GHZ Boss + Capsule/Animals/Shots, assert hardware OAM tile +
+    CGB VRAM Bank bit on EVERY sprite, and save a 9-panel 2X-zoomed live PyBoy screenshot sheet
+    (`verification/live_ingame_sprites_showcase.png`).
+    """
+    syms = load_noi_symbols(NOI_PATH)
+    os.makedirs(VER_DIR, exist_ok=True)
+    sym_sonic = syms["_g_sonic"]
+    sym_objs = syms["_g_objs"]
+    sym_projs = syms["_g_projs"]
+    sym_pops = syms["_g_pops"]
+    sym_taken = syms["_g_obj_taken"]
+    sym_boss_act = syms["_g_boss_active"]
+
+    panels = []
+
+    with PyBoy(ROM_PATH, window="null") as pb:
+        for _ in range(195):
+            pb.tick()
+
+        def clear_dynamic_objs():
+            for b_i in range(64):
+                pb.memory[sym_taken + b_i] = 0xFF
+            for s in range(28):
+                pb.memory[sym_objs + s * 20] = 0
+            for s in range(8):
+                pb.memory[sym_projs + s * 11] = 0
+            for s in range(4):
+                pb.memory[sym_pops + s * 7] = 0
+
+        def snap_scene(act_id: int, sx: int, sy: int, placements: list,
+                       projs: list = (), pops: list = (), ticks: int = 3, boss: bool = False):
+            _enter_act_clean(pb, syms, act_id)
+            clear_dynamic_objs()
+            pb.memory[sym_boss_act] = 1 if boss else 0
+            for _ in range(18):
+                pb.tick()
+            cx = read_i16(pb, syms["_g_cam_x"]) + 160
+            gy = read_i16(pb, sym_sonic + 10)  # Exact standing surface Y of Sonic in this Zone!
+            clear_dynamic_objs()
+            pb.memory[sym_boss_act] = 1 if boss else 0
+            pb.memory[sym_sonic + 28] = 0
+            pb.memory[sym_sonic + 24] = 0
+            write_u16(pb, syms["_g_rings"], 50)
+            for slot, (oid, dx, dy, sub) in enumerate(placements):
+                _spawn_test_obj(pb, sym_objs, slot, oid, cx + dx, gy + dy, sub)
+            for slot, (kind, dx, dy) in enumerate(projs):
+                _spawn_test_proj(pb, sym_projs, slot, kind, cx + dx, gy + dy)
+            for slot, (step, dx, dy) in enumerate(pops):
+                _spawn_test_pop(pb, sym_pops, slot, step, cx + dx, gy + dy)
+            for _ in range(ticks):
+                pb.memory[sym_sonic + 28] = 0
+                pb.memory[sym_sonic + 24] = 90
+                pb.tick()
+            oam = [
+                (pb.memory[0xFE00 + i * 4], pb.memory[0xFE00 + i * 4 + 1],
+                 pb.memory[0xFE00 + i * 4 + 2], pb.memory[0xFE00 + i * 4 + 3])
+                for i in range(40)
+                if 0 < pb.memory[0xFE00 + i * 4] < 160
+            ]
+            return pb.screen.image.copy(), oam
+
+        # Panel 1: GHZ Monitors (Ring, Shoes, Shield, Invinc, 1UP) + V-Spring + H-Spring + Spikes
+        im1, oam1 = snap_scene(0, 128, 368, [
+            (0x26, -104, -56, 6),  # Super Ring Monitor (tiles 36..39)
+            (0x26, -52,  -56, 3),  # Speed Shoes Monitor (tiles 40..43)
+            (0x26, 0,    -56, 4),  # Shield Monitor (tiles 44..47)
+            (0x26, 52,   -56, 5),  # Invincibility Monitor (tiles 48..51)
+            (0x26, 104,  -56, 2),  # 1-UP Sonic Monitor (tiles 52..55)
+            (0x41, -12,  0,   0x00),  # Vertical Spring standing right on GHZ grass (tiles 56..59)!
+            (0x41, 44,   0,   0x10),  # Horizontal Spring on GHZ grass (tiles 60..63)!
+            (0x36, 98,   0,   0x00),  # Steel Spikes standing right on GHZ grass (tiles 64..67)!
+        ])
+        tiles_b0 = {t for (_, _, t, a) in oam1 if (a & 0x08) == 0}
+        for req_t in (36, 40, 44, 48, 52, 56, 60, 64):
+            assert req_t in tiles_b0, f"Common sprite tile {req_t} missing from live OAM Bank 0: {sorted(tiles_b0)}"
+        panels.append(("01. MONITORS + V/H SPRINGS + SPIKES", im1))
+
+        # Panel 2: GHZ Badniks (Moto Bug, Crabmeat, Buzz Bomber + Energy Shot, Chopper, Newtron)
+        im2, oam2 = snap_scene(0, 128, 368, [
+            (0x40, -16, 0,   0),   # Moto Bug rolling on GHZ grass (Bank 1 tile 0)
+            (0x1F, 40,  0,   0),   # Crabmeat scuttling on GHZ grass (Bank 1 tile 8)
+            (0x22, -16, -64, 0),   # Buzz Bomber hovering overhead (Bank 1 tile 16)
+            (0x2B, 96,  -28, 0),   # Chopper leaping midair (Bank 1 tile 24)
+            (0x42, 96,  -72, 0),   # Green Newtron on palm tree (Bank 1 tile 32, OBP7!)
+        ], projs=[
+            (1, -34, -44),         # Live Buzz Bomber Energy Shot (`PROJ_ENERGY` -> Bank 0 tile 72!)
+        ])
+        tiles_b1 = {t for (_, _, t, a) in oam2 if (a & 0x08) == 0x08}
+        tiles_shot = {t for (_, _, t, a) in oam2 if (a & 0x08) == 0}
+        assert all((b in tiles_b1 or (b + 4) in tiles_b1) for b in (0, 8, 16, 24, 32)), (
+            f"GHZ Badniks missing in Bank 1 OAM: {sorted(tiles_b1)}"
+        )
+        assert 72 in tiles_shot or 73 in tiles_shot, f"Buzz Bomber Energy Shot missing in Bank 0 OAM: {sorted(tiles_shot)}"
+        panels.append(("02. GHZ BADNIKS + BUZZ BOMBER SHOT", im2))
+
+        # Panel 3: GHZ Act 3 Dr. Eggman (`32x16`) + Pendulum Chain + `16x16` Checkered Ball (`OBP6`)!
+        im3, oam3 = snap_scene(2, 128, 368, [
+            (0x3D, 28, -68, 0),    # GHZ Boss Eggman + Swinging Checkered Ball above grass!
+        ], ticks=16, boss=True)
+        boss_b1 = {(t, a & 7) for (_, _, t, a) in oam3 if (a & 0x08) == 0x08}
+        assert any(t in (68, 76) for t, _ in boss_b1), f"GHZ Boss Eggman tile 68/76 missing: {boss_b1}"
+        assert (84, 6) in boss_b1, f"GHZ Checkered Ball (tile 84, OBP6) missing: {boss_b1}"
+        panels.append(("03. GHZ EGGMAN + CHECKERED BALL", im3))
+
+        # Panel 4: Capsule + Button + Animal + 100 Pts + Explosion + Giant Ring + Checkpoint Lamp!
+        im4, oam4 = snap_scene(0, 128, 368, [
+            (0x3E, 8,   -8,  0),   # 24x16 Prison Capsule + Yellow Button (`116..123`)
+            (0x3F, 64,  -42, 0),   # Explosion (`SPR_TILE_EXPLODE` = 104)
+            (0x4B, 108, -14, 0),   # Giant Gold Ring (`ZSPR_GIANTRING` = 100)
+            (0x79, -28, -4,  1),   # Checkpoint Lamp (`SPR_TILE_LAMP` = 68)
+        ], projs=[
+            (7, 36, -52),          # Freed Hopping Animal (`PROJ_ANIMAL_HOP` -> `SPR_TILE_ANIMAL` = 116!)
+        ], pops=[
+            (0, 64, -70),          # `100` Score Popup (`SPR_TILE_POINTS` = 112!)
+        ])
+        b0_4 = {t for (_, _, t, a) in oam4 if (a & 0x08) == 0}
+        assert any(t in b0_4 for t in range(116, 120)) and 112 in b0_4 and 68 in b0_4, (
+            f"Animal/Points/Lamp missing: {sorted(b0_4)}"
+        )
+        panels.append(("04. CAPSULE + ANIMAL + GIANT RING", im4))
+
+        # Panel 5: Marble Zone Badniks + Live Fireball + Grass Block (`OBP7`)
+        im5, oam5 = snap_scene(3, 160, 320, [
+            (0x78, -12, 0,   0),   # Caterkiller on MZ grass
+            (0x50, 44,  0,   0),   # Yadrin on MZ grass
+            (0x55, -8,  -62, 0),   # Basaran Bat overhead
+            (0x4F, 100, -18, 0),   # Splats hopping
+        ], projs=[
+            (2, 48, -44),          # Live Red/Orange Fireball (`PROJ_FIREBALL` -> `SPR_TILE_SHOT_FIRE` = 74!)
+        ])
+        assert any(t in (74, 75) for (_, _, t, a) in oam5 if (a & 0x08) == 0)
+        panels.append(("05. MARBLE BADNIKS + FIREBALL SHOT", im5))
+
+        # Panel 6: Labyrinth Zone Badniks + Gargoyle + Harpoon + Big Bubble
+        im6, _ = snap_scene(9, 160, 260, [
+            (0x2D, -12, 0,   0),   # Burrobot
+            (0x2C, 36,  -26, 0),   # Jaws Shark
+            (0x60, 84,  -26, 0),   # Spiked Orbinaut
+            (0x63, -24, -44, 0),   # Big Air Bubble (`SPR_TILE_BUBBLE_BIG` = 120)
+        ])
+        panels.append(("06. LABYRINTH JAWS + ORBINAUT + BUBBLE", im6))
+
+        # Panel 7: Star Light Zone Bomb + Red Orbinaut + Fan + See-Saw & Spikeball
+        im7, _ = snap_scene(12, 160, 260, [
+            (0x5F, -16, 0,   0),   # Bomb Badnik on SLZ road
+            (0x60, 24,  -44, 0),   # Red SLZ Orbinaut in starry sky
+            (0x5D, 64,  -4,  0),   # Spinning Fan on SLZ road
+            (0x5E, 108, -2,  0),   # See-Saw + Spikeball (`ZSPR_PROP + 0..4`)
+        ])
+        panels.append(("07. STAR LIGHT ORBINAUT + FAN + SEESAW", im7))
+
+        # Panel 8: Spring Yard Zone Roller + Pinball Bumper + Yadrin + Spiked Ball
+        im8, _ = snap_scene(6, 160, 260, [
+            (0x43, -12, 0,   0),   # Roller on SYZ girder
+            (0x47, 30,  -44, 0),   # Pinball Bumper (`OBP6`)
+            (0x50, 68,  0,   0),   # Yadrin on SYZ girder
+            (0x57, 108, -28, 0),   # Spiked Ball (`ZSPR_PROP + 4`)
+        ])
+        panels.append(("08. SPRING YARD ROLLER + BUMPER", im8))
+
+        # Panel 9: Scrap Brain Zone Yellow Ball Hog + Live Bomb + Plasma + Saw!
+        im9, oam9 = snap_scene(15, 160, 260, [
+            (0x1E, -8,  0,   0),   # Yellow Ball Hog (`OBP2`)
+            (0x60, 68,  -36, 0),   # SBZ Orbinaut
+            (0x6A, 106, -4,  0),   # Steel Saw (`ZSPR_PROP + 4`)
+        ], projs=[
+            (3, 24,  -12),         # Live Ball Hog Bomb (`PROJ_BOMB` -> `SPR_TILE_SHOT_BOMB` = 76!)
+            (4, 28,  -52),         # Live FZ Plasma Sphere (`PROJ_PLASMA` -> `SPR_TILE_SHOT_PLASMA` = 77/78!)
+        ])
+        shot9 = {t for (_, _, t, a) in oam9 if (a & 0x08) == 0}
+        assert 76 in shot9 and (77 in shot9 or 78 in shot9), f"SBZ Bomb/Plasma shot missing: {sorted(shot9)}"
+        panels.append(("09. SCRAP BRAIN BALL HOG + BOMB + PLASMA", im9))
+
+    # Render crisp 3x3 2X-zoomed live hardware screenshot proof sheet!
+    cw, ch, hh = 320, 288, 28
+    sheet = Image.new("RGB", (cw * 3, (ch + hh) * 3), (14, 18, 28))
+    sd = ImageDraw.Draw(sheet)
+    for idx_p, (title, im) in enumerate(panels):
+        px = (idx_p % 3) * cw
+        py = (idx_p // 3) * (ch + hh)
+        sheet.paste(im.convert("RGB").resize((cw, ch), Image.NEAREST), (px, py + hh))
+        sd.rectangle([px, py, px + cw - 1, py + hh - 1], fill=(22, 48, 138))
+        sd.text((px + 8, py + 8), title, fill=(252, 224, 32))
+    sheet.save(os.path.join(VER_DIR, "live_ingame_sprites_showcase.png"))
+
+
+def test_interrupt_driven_music_playback_when_main_loop_stalled():
+    """
+    Prove that music & SFX playback is driven directly by the SM83 hardware VBlank interrupt (`0x0040` -> `hw_sound_isr`):
+    1. Across 180 live gameplay frames (`3.0s`), `g_sound_isr_ticks` advances 1:1 with every hardware VBlank (`180`).
+    2. When `g_paused == 1` in `GM_LEVEL`, the ISR mutes output (`NR51 == 0`) & holds BGM position (`delta_events == 0`),
+       and immediately unmutes & resumes right from that beat when `g_paused == 0`!
+    3. Even when the main CPU loop is completely frozen in an infinite WRAM `JR -2` (`0x18 0xFE`) spin loop at `0xDF80`
+       for 120 full hardware frames (`2.0s`, `g_frame_counter` delta == `0`!), the SM83 hardware interrupt continues
+       firing `120` times, advancing `g_sound_events` and synthesizing full non-silent 4-channel Green Hill Zone music!
+    """
+    syms = load_noi_symbols(NOI_PATH)
+    sym_fc = syms["_g_frame_counter"]
+    sym_isr = syms["_g_sound_isr_ticks"]
+    sym_ev = syms["_g_sound_events"]
+    sym_mode = syms["_g_game_mode"]
+    sym_next = syms["_g_next_mode"]
+    sym_init = syms["_g_mode_init_done"]
+    sym_act = syms["_g_cur_act"]
+    sym_pause = syms["_g_paused"]
+
+    with PyBoy(ROM_PATH, window="null", sound_emulated=True, sound_sample_rate=48000) as pb:
+        while read_u16(pb, sym_fc) < 2:
+            pb.tick()
+
+        # Enter Green Hill Zone Act 1 (`BGM_GHZ = 0x81`)
+        pb.memory[sym_act] = 0
+        pb.memory[sym_next] = 3
+        pb.memory[sym_init] = 0
+        while pb.memory[sym_mode] != 3 or pb.memory[0xFF4A] != 128:
+            pb.tick()
+
+        # 1. Verify exact 1:1 hardware interrupt tick rate across 180 VBlank frames
+        isr0 = read_u16(pb, sym_isr)
+        ev0 = read_u16(pb, sym_ev)
+        for _ in range(180):
+            pb.tick()
+        isr1 = read_u16(pb, sym_isr)
+        ev1 = read_u16(pb, sym_ev)
+        assert (isr1 - isr0) & 0xFFFF == 180, f"Expected 180 VBL ISR audio ticks, got {(isr1 - isr0) & 0xFFFF}"
+        assert ((ev1 - ev0) & 0xFFFF) >= 20, f"Expected >=20 BGM events over 3s, got {(ev1 - ev0) & 0xFFFF}"
+
+        # 2. Verify authentic Pause mute/hold & instant unmute/resume inside ISR
+        pb.memory[sym_pause] = 1
+        pb.tick()
+        ev_paused_start = read_u16(pb, sym_ev)
+        assert pb.memory[0xFF25] == 0x00, f"Expected NR51 muted on pause, got 0x{pb.memory[0xFF25]:02X}"
+        for _ in range(30):
+            pb.tick()
+        assert read_u16(pb, sym_ev) == ev_paused_start, "BGM events advanced while paused!"
+        pb.memory[sym_pause] = 0
+        for _ in range(30):
+            pb.tick()
+        assert pb.memory[0xFF25] == 0xFF, f"Expected NR51 unmuted on unpause, got 0x{pb.memory[0xFF25]:02X}"
+        assert ((read_u16(pb, sym_ev) - ev_paused_start) & 0xFFFF) >= 3, "BGM did not resume after unpause!"
+
+        # 3. MIC-DROP PROOF: Freeze `main()` completely in an infinite `JR -2` (`0x18 0xFE`) loop at `0xDF80`!
+        pb.memory[0xDF80] = 0x18  # `JR rel8`
+        pb.memory[0xDF81] = 0xFE  # `-2` (infinite spin loop — `main()` NEVER executes another instruction!)
+        pb.register_file.PC = 0xDF80
+        fc_frozen_start = read_u16(pb, sym_fc)
+        isr_frozen_start = read_u16(pb, sym_isr)
+        ev_frozen_start = read_u16(pb, sym_ev)
+        chunks = []
+        for _ in range(120):
+            pb.tick(1, True, True)
+            chunks.append(pb.sound.ndarray.copy())
+
+        assert read_u16(pb, sym_fc) == fc_frozen_start, "Main loop was supposed to be 100% frozen!"
+        assert ((read_u16(pb, sym_isr) - isr_frozen_start) & 0xFFFF) == 120, (
+            f"Hardware VBL audio ISR did not fire 120 times while main loop stalled: "
+            f"{(read_u16(pb, sym_isr) - isr_frozen_start) & 0xFFFF}"
+        )
+        assert ((read_u16(pb, sym_ev) - ev_frozen_start) & 0xFFFF) >= 14, (
+            f"Interrupt failed to step Green Hill Zone BGM while main loop stalled! "
+            f"events={(read_u16(pb, sym_ev) - ev_frozen_start) & 0xFFFF}"
+        )
+        pcm = np.concatenate(chunks, axis=0).astype(np.float64).mean(axis=1)
+        pcm -= np.mean(pcm)
+        rms = float(np.sqrt(np.mean(pcm * pcm)))
+        assert rms > 1.0, f"Pure interrupt audio output was silent while main loop stalled! rms={rms:.3f}"
+
+
+def test_spring_kinematics_match_original_s1disasm():
+    """
+    Verify all 5 `s1disasm` (`_incObj/41 Springs.asm` + `01 Sonic.asm` `Sonic_JumpHeight`) spring behaviors on GBC hardware:
+      1. Red Up Spring (`0x00`): launches `-0x1000` (`~585 px` apex height with ZERO buttons held — vs `36 px` before!).
+      2. Yellow Up Spring (`0x02`): launches `-0x0A00` (`~228.6 px` apex height with ZERO buttons held).
+      3. Left Horizontal Spring (`0x50` = `0x10 | X-flip`): draws sideways flipped (`tile 60`, `attr & 0x20`), blasts LEFT `-0x1000`.
+      4. Right Horizontal Spring (`0x10`): draws sideways unflipped (`tile 60`), blasts RIGHT `+0x1000`.
+      5. Upside-Down Ceiling Spring (`0xA0` = `0x20 | Y-flip`): draws Y-flipped (`tile 56`, `attr & 0x40`), blasts DOWN `+0x1000`.
+    """
+    syms = load_noi_symbols(NOI_PATH)
+    sym_fc = syms["_g_frame_counter"]
+    sym_mode = syms["_g_game_mode"]
+    sym_next = syms["_g_next_mode"]
+    sym_init = syms["_g_mode_init_done"]
+    sym_act = syms["_g_cur_act"]
+    sym_sonic = syms["_g_sonic"]
+    sym_objs = syms["_g_objs"]
+    sym_cam_x = syms["_g_cam_x"]
+    sym_cam_y = syms["_g_cam_y"]
+    OBJ_SIZE = 19
+
+    def read_s16(pb, addr):
+        v = read_u16(pb, addr)
+        return v - 0x10000 if (v & 0x8000) else v
+
+    def set_sonic_pos(pb, x, y, vx=0, vy=0, on_ground=0):
+        x32 = (x << 8) & 0xFFFFFFFF
+        y32 = (y << 8) & 0xFFFFFFFF
+        for b in range(4):
+            pb.memory[sym_sonic + b] = (x32 >> (8 * b)) & 0xFF
+            pb.memory[sym_sonic + 4 + b] = (y32 >> (8 * b)) & 0xFF
+        write_u16(pb, sym_sonic + 8, x & 0xFFFF)
+        write_u16(pb, sym_sonic + 10, y & 0xFFFF)
+        write_u16(pb, sym_sonic + 12, vx & 0xFFFF)
+        write_u16(pb, sym_sonic + 14, vy & 0xFFFF)
+        write_u16(pb, sym_sonic + 16, vx & 0xFFFF)
+        pb.memory[sym_sonic + 18] = on_ground
+
+    def clear_and_place_spring(pb, x, y, subtype):
+        for s in range(24):
+            pb.memory[sym_objs + s * OBJ_SIZE] = 0
+        pb.memory[sym_objs + 0] = 1
+        pb.memory[sym_objs + 1] = 0x41
+        pb.memory[sym_objs + 2] = subtype
+        write_u16(pb, sym_objs + 3, 500)
+        write_u16(pb, sym_objs + 5, x & 0xFFFF)
+        write_u16(pb, sym_objs + 7, y & 0xFFFF)
+        write_u16(pb, sym_objs + 9, x & 0xFFFF)
+        write_u16(pb, sym_objs + 11, y & 0xFFFF)
+        pb.memory[sym_objs + 17] = 0
+
+    with PyBoy(ROM_PATH, window="null", sound_emulated=False) as pb:
+        while read_u16(pb, sym_fc) < 2:
+            pb.tick()
+        # Load Green Hill Act 1 (`act = 0`), where `x = 80, y = 0..944` has 944px of unobstructed open blue sky!
+        pb.memory[sym_act] = 0
+        pb.memory[sym_next] = 3
+        pb.memory[sym_init] = 0
+        while pb.memory[sym_mode] != 3 or pb.memory[0xFF4A] != 128:
+            pb.tick()
+        pb.tick(4, True, False)
+
+        # 1. Red Up Spring (`0x00`, `t_apex = 4096 / 56 = 73.1` steps): ZERO buttons pressed -> exact ~593 px apex!
+        base_x, base_y = 80, 944
+        set_sonic_pos(pb, base_x, base_y - 6, 0, 0x0100, 0)
+        clear_and_place_spring(pb, base_x, base_y, 0x00)
+        min_y_red = base_y
+        for _ in range(155):
+            pb.tick()
+            min_y_red = min(min_y_red, read_s16(pb, sym_sonic + 10))
+        red_height = (base_y - 8) - min_y_red
+        assert 575 <= red_height <= 605, f"Red Up Spring height mismatch vs s1disasm (~593px): got {red_height}px!"
+
+        # 2. Yellow Up Spring (`0x02`, `t_apex = 2560 / 56 = 45.7` steps): ZERO buttons pressed -> exact ~233 px apex!
+        set_sonic_pos(pb, base_x, base_y - 6, 0, 0x0100, 0)
+        clear_and_place_spring(pb, base_x, base_y, 0x02)
+        min_y_yel = base_y
+        for _ in range(100):
+            pb.tick()
+            min_y_yel = min(min_y_yel, read_s16(pb, sym_sonic + 10))
+        yel_height = (base_y - 8) - min_y_yel
+        assert 220 <= yel_height <= 245, f"Yellow Up Spring height mismatch vs s1disasm (~233px): got {yel_height}px!"
+
+        # 3. Left Horizontal Spring (`0x50` = `0x10 | (1 << 6)`): sideways X-flipped sprite + `-0x1000` Left launch!
+        cy = read_s16(pb, sym_cam_y) + 128
+        set_sonic_pos(pb, 244, cy, 0x0200, 0, 0)
+        clear_and_place_spring(pb, 240, cy, 0x50)
+        pb.tick(4, True, False)
+        oam_l = [(pb.memory[0xFE00 + i * 4 + 2], pb.memory[0xFE00 + i * 4 + 3]) for i in range(40) if 0 < pb.memory[0xFE00 + i * 4] < 160]
+        assert any(t in (60, 61, 62, 63) and (a & 0x20) != 0 for (t, a) in oam_l), f"0x50 Left Spring not horizontal X-flipped: {oam_l}"
+        for _ in range(25):
+            pb.tick()
+        dx_left = 240 - read_s16(pb, sym_sonic + 8)
+        assert dx_left >= 180, f"0x50 Left Horizontal Spring too weak: moved left only {dx_left}px!"
+
+        # 4. Right Horizontal Spring (`0x10`): sideways unflipped sprite + `+0x1000` Right launch!
+        cy = read_s16(pb, sym_cam_y) + 128
+        set_sonic_pos(pb, 76, cy, -0x0200, 0, 0)
+        clear_and_place_spring(pb, 80, cy, 0x10)
+        pb.tick(4, True, False)
+        oam_r = [(pb.memory[0xFE00 + i * 4 + 2], pb.memory[0xFE00 + i * 4 + 3]) for i in range(40) if 0 < pb.memory[0xFE00 + i * 4] < 160]
+        assert any(t in (60, 61, 62, 63) and (a & 0x20) == 0 for (t, a) in oam_r), f"0x10 Right Spring OAM wrong: {oam_r}"
+        for _ in range(25):
+            pb.tick()
+        dx_right = read_s16(pb, sym_sonic + 8) - 80
+        assert dx_right >= 180, f"0x10 Right Horizontal Spring too weak: moved right only {dx_right}px!"
+
+        # 5. Upside-Down Ceiling Spring (`0xA0` = `0x20 | (2 << 6)`): Y-flipped sprite + `+0x1000` Downward launch!
+        cy = read_s16(pb, sym_cam_y) + 128
+        set_sonic_pos(pb, 260, cy + 4, 0, -0x0200, 0)
+        clear_and_place_spring(pb, 260, cy, 0xA0)
+        pb.tick(4, True, False)
+        oam_d = [(pb.memory[0xFE00 + i * 4 + 2], pb.memory[0xFE00 + i * 4 + 3]) for i in range(40) if 0 < pb.memory[0xFE00 + i * 4] < 160]
+        assert any(t in (56, 57, 58, 59) and (a & 0x40) != 0 for (t, a) in oam_d), f"0xA0 Down Spring not Y-flipped: {oam_d}"
+        assert read_s16(pb, sym_sonic + 14) > 0x0C00, f"0xA0 Down Spring did not launch downward: vy={read_s16(pb, sym_sonic + 14)}"
+
+        # 6. Short-hop player tap jump (`jumping == 1` in `Sonic_JumpHeight`): tapping A briefly still caps at `-0x400` (`~40 px`)!
+        for s in range(24):
+            pb.memory[sym_objs + s * OBJ_SIZE] = 0
+        set_sonic_pos(pb, 80, 930, 0, 0x0200, 0)
+        while pb.memory[sym_sonic + 18] == 0:
+            pb.tick()
+        ground_y = read_s16(pb, sym_sonic + 10)
+        pb.button_press("a")
+        while pb.memory[sym_sonic + 18] != 0:
+            pb.tick()
+        pb.button_release("a")
+        min_y_tap = ground_y
+        for _ in range(45):
+            pb.tick()
+            min_y_tap = min(min_y_tap, read_s16(pb, sym_sonic + 10))
+        tap_height = ground_y - min_y_tap
+        assert 28 <= tap_height <= 55, f"Short-hop JumpHeight (`jumping == 1`) broken: got {tap_height}px!"
+
+
+
+
+

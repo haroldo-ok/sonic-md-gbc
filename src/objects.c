@@ -28,14 +28,55 @@ static uint8_t is_badnik_id(uint8_t id) {
             id == 0x78);
 }
 
-static uint8_t badnik_sprite_base(uint8_t id) {
-    if (id == 0x22 || id == 0x42 || id == 0x2D || id == 0x55 || id == 0x60) return ZSPR_ENEMY2;
-    if (id == 0x1F || id == 0x2B || id == 0x43 || id == 0x4F || id == 0x50 || id == 0x78) return ZSPR_ENEMY3;
-    return ZSPR_ENEMY1;
+static uint8_t badnik_sprite_and_pal(uint8_t id, uint8_t *out_pal) {
+    uint8_t v = g_ram_act.vset_idx;
+    /* Exact 1-to-1 VisualSet sprite bank mapping (`vset_idx` 0..8 matching loaded VRAM Bank 1!) */
+    if (v == 0 || v == 8) { /* GHZ / Ending */
+        if (id == 0x40) { *out_pal = 3; return ZSPR_ENEMY1; } /* Moto Bug (Red/White/Black) */
+        if (id == 0x1F) { *out_pal = 3; return ZSPR_ENEMY2; } /* Crabmeat */
+        if (id == 0x22) { *out_pal = 4; return ZSPR_ENEMY3; } /* Buzz Bomber (Cobalt Blue) */
+        if (id == 0x2B) { *out_pal = 3; return ZSPR_ENEMY4; } /* Chopper */
+        *out_pal = 7; return ZSPR_ENEMY5;                     /* Newtron (Vivid Emerald Green!) */
+    }
+    if (v == 1 || v == 7) { /* LZ / SBZ Act 3 */
+        if (id == 0x2D) { *out_pal = 4; return ZSPR_ENEMY1; } /* Burrobot */
+        if (id == 0x2C) { *out_pal = 3; return ZSPR_ENEMY2; } /* Jaws */
+        if (id == 0x60) { *out_pal = 5; return ZSPR_ENEMY3; } /* Orbinaut */
+        if (id == 0x62) { *out_pal = 5; return ZSPR_ENEMY4; } /* Gargoyle */
+        *out_pal = 7; return ZSPR_ENEMY5;
+    }
+    if (v == 2) { /* MZ */
+        if (id == 0x78) { *out_pal = 3; return ZSPR_ENEMY1; } /* Caterkiller */
+        if (id == 0x50) { *out_pal = 3; return ZSPR_ENEMY2; } /* Yadrin */
+        if (id == 0x55) { *out_pal = 5; return ZSPR_ENEMY3; } /* Basaran */
+        if (id == 0x22) { *out_pal = 4; return ZSPR_ENEMY4; } /* Buzz Bomber */
+        *out_pal = 3; return ZSPR_ENEMY5;                     /* Splats */
+    }
+    if (v == 3) { /* SLZ */
+        if (id == 0x5F) { *out_pal = 5; return ZSPR_ENEMY1; } /* Bomb */
+        if (id == 0x60) { *out_pal = 3; return ZSPR_ENEMY2; } /* SLZ Red Orbinaut */
+        if (id == 0x5D) { *out_pal = 5; return ZSPR_ENEMY3; } /* Fan */
+        if (id == 0x22) { *out_pal = 4; return ZSPR_ENEMY4; } /* Buzz Bomber */
+        *out_pal = 3; return ZSPR_ENEMY5;                     /* Crabmeat */
+    }
+    if (v == 4) { /* SYZ */
+        if (id == 0x43) { *out_pal = 4; return ZSPR_ENEMY1; } /* Roller */
+        if (id == 0x1F) { *out_pal = 3; return ZSPR_ENEMY2; } /* Crabmeat */
+        if (id == 0x50) { *out_pal = 3; return ZSPR_ENEMY3; } /* Yadrin */
+        if (id == 0x22) { *out_pal = 4; return ZSPR_ENEMY4; } /* Buzz Bomber */
+        *out_pal = 7; return ZSPR_ENEMY5;
+    }
+    /* SBZ1 / SBZ2 / FZ */
+    if (id == 0x1E) { *out_pal = 2; return ZSPR_ENEMY1; }     /* Ball Hog (Yellow/Gold) */
+    if (id == 0x78) { *out_pal = 3; return ZSPR_ENEMY2; }     /* Caterkiller */
+    if (id == 0x5F) { *out_pal = 5; return ZSPR_ENEMY3; }     /* Bomb */
+    if (id == 0x60) { *out_pal = 5; return ZSPR_ENEMY4; }     /* Orbinaut */
+    *out_pal = 4; return ZSPR_ENEMY5;                         /* Burrobot */
 }
 
 static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinning) {
-    uint8_t spr = badnik_sprite_base(id);
+    uint8_t pal = 3;
+    uint8_t spr = badnik_sprite_and_pal(id, &pal);
     uint8_t spike_top = (id == 0x50 || id == 0x5F || id == 0x60);
     uint8_t anim_off = ((g_frame_counter >> 3) & 1) ? 4 : 0;
     int16_t sx, sy;
@@ -66,8 +107,8 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
             o->x += (o->vx >> 8);
             if (o->x < o->base_x - 36 || o->x > o->base_x + 36) o->vx = -o->vx;
         } else if (cyc == 100) {
-            spawn_enemy_projectile(o->x - 10, o->y - 4, -0x180, -0x280, PROJ_BOMB);
-            spawn_enemy_projectile(o->x + 10, o->y - 4,  0x180, -0x280, PROJ_BOMB);
+            spawn_enemy_projectile(o->x - 10, o->y - 4, -0x180, -0x280, PROJ_ENERGY);
+            spawn_enemy_projectile(o->x + 10, o->y - 4,  0x180, -0x280, PROJ_ENERGY);
         }
     } else if (id == 0x42) {
         /* Newtron: Materialize when Sonic approaches -> Fire Horizontal Shot! */
@@ -152,14 +193,9 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
         }
         if (o->x < o->base_x - 64 || o->x > o->base_x + 64) o->vx = -o->vx;
     } else if (id == 0x60) {
-        /* Orbinaut: Orbiting spiked satellites around central core! */
-        uint8_t orb_a = (uint8_t)(g_frame_counter << 2);
+        /* Orbinaut: 4 orbiting spikeballs composited directly in frames 0 & 1 (`ZSPR_ENEMY`)! */
         o->x += (o->vx >> 8);
         if (o->x < o->base_x - 48 || o->x > o->base_x + 48) o->vx = -o->vx;
-        sx = (o->x - g_cam_x) >> 1;
-        sy = (o->y - g_cam_y) >> 1;
-        hw_put_sprite8(sx + ((hw_cos(orb_a) * 8) >> 8) - 2, sy + ((hw_sin(orb_a) * 8) >> 8) - 2, SPR_TILE_STARS, 4);
-        hw_put_sprite8(sx - ((hw_cos(orb_a) * 8) >> 8) - 2, sy - ((hw_sin(orb_a) * 8) >> 8) - 2, SPR_TILE_STARS, 4);
     } else {
         int16_t step = (id == 0x43) ? ((o->vx >> 8) * 3) : (o->vx >> 8);
         o->x += step;
@@ -199,11 +235,7 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
         }
     }
 
-    hw_put_sprite16(sx, sy, spr + anim_off, 0x08 | 4 | (o->vx > 0 ? 0x20 : 0));
-    if (id == 0x78) {
-        int8_t dir = (o->vx > 0) ? -6 : 6;
-        hw_put_sprite8(sx + dir - 2, sy + (hw_sin((uint8_t)(g_frame_counter << 3)) >> 6), SPR_TILE_STARS, 4);
-    }
+    hw_put_sprite16(sx, sy, spr + anim_off, 0x08 | pal | (o->vx > 0 ? 0x20 : 0));
 }
 
 void objects_update_and_draw(void) BANKED {
@@ -285,11 +317,12 @@ void objects_update_and_draw(void) BANKED {
         if (o->state == 99) {
             if (o->timer > 12) {
                 uint8_t ex_frame = (o->timer > 18) ? SPR_TILE_EXPLODE : (SPR_TILE_EXPLODE + 4);
-                hw_put_sprite16(sx, sy, ex_frame, 1);
+                hw_put_sprite16(sx, sy, ex_frame, (o->timer > 18) ? 1 : 2);
             } else {
                 o->y -= 3;
                 o->x += (o->vx >= 0) ? 2 : -2;
-                hw_put_sprite16((o->x - g_cam_x) >> 1, (o->y - g_cam_y) >> 1, SPR_TILE_ANIMAL, 4);
+                hw_put_sprite8(((o->x - g_cam_x) >> 1) - 4, ((o->y - g_cam_y) >> 1) - 4,
+                               SPR_TILE_ANIMAL + ((g_frame_counter >> 2) & 3), 4 | (o->vx >= 0 ? 0x20 : 0));
             }
             if (--o->timer == 0) o->active = 0;
             continue;
@@ -306,17 +339,17 @@ void objects_update_and_draw(void) BANKED {
                 o->active = 0;
                 continue;
             }
-            hw_put_sprite8(sx - 2, sy - 2, SPR_TILE_RING + ((g_frame_counter >> 3) & 3), 2);
+            hw_put_sprite8(sx - 4, sy - 4, SPR_TILE_RING + ((g_frame_counter >> 3) & 3), 2);
             continue;
         }
 
-        /* --- ITEM MONITOR (`0x26` — `26 Monitor.asm` including Eggman Trap & S-Monitor!) --- */
+        /* --- ITEM MONITOR (`0x26` — `26 Monitor.asm` with true icon per subtype!) --- */
         if (id == 0x26) {
+            uint8_t sub = o->subtype & 0x0F;
+            uint8_t mon_tile, mon_pal;
             if (sonic_spinning && box_overlap(g_sonic.x, g_sonic.y, 12, 18, o->x, o->y, 14, 14)) {
-                uint8_t sub = o->subtype & 0x0F;
                 if (g_sonic.ysp > 0) g_sonic.ysp = -g_sonic.ysp;
                 if (sub == 0x01) {
-                    /* Eggman Trap Monitor hurts Sonic! */
                     sonic_hurt_or_kill(0);
                 } else if (sub == 0x02) {
                     g_lives++;
@@ -332,7 +365,6 @@ void objects_update_and_draw(void) BANKED {
                     g_sonic.invinc = 1200;
                     hw_play_bgm(BGM_INVINC);
                 } else if (sub == 0x07) {
-                    /* 'S' Super / All-Power Monitor (`50` rings + Shield + Shoes + Invincibility) */
                     g_rings += 50;
                     g_sonic.shield = 1;
                     g_sonic.shoes = 1200;
@@ -340,7 +372,6 @@ void objects_update_and_draw(void) BANKED {
                     g_hud_dirty = 1;
                     hw_play_bgm(BGM_INVINC);
                 } else {
-                    /* Super Ring (+10 Rings) */
                     g_rings += 10;
                     g_score += 100;
                     g_hud_dirty = 1;
@@ -359,38 +390,93 @@ void objects_update_and_draw(void) BANKED {
                 g_sonic.ysp = 0;
                 g_sonic.on_ground = 1;
             }
-            hw_put_sprite16(sx, sy, SPR_TILE_MONITOR, 3);
+            if (sub == 0x03)      { mon_tile = SPR_TILE_MONITOR + 4;  mon_pal = 1; } /* Speed Shoes (Red) */
+            else if (sub == 0x04) { mon_tile = SPR_TILE_MONITOR + 8;  mon_pal = 4; } /* Shield (Cyan-Blue) */
+            else if (sub == 0x05 || sub == 0x07) { mon_tile = SPR_TILE_MONITOR + 12; mon_pal = 2; } /* Invincibility (Gold) */
+            else if (sub == 0x01 || sub == 0x02) { mon_tile = SPR_TILE_MONITOR + 16; mon_pal = (sub == 0x01) ? 1 : 0; } /* 1UP Sonic / Eggman */
+            else                  { mon_tile = SPR_TILE_MONITOR;      mon_pal = 2; } /* Super 10-Ring (Gold) */
+            hw_put_sprite16(sx, sy, mon_tile, mon_pal);
             continue;
         }
 
-        /* --- BOUNCE SPRING (`0x41` — Vertical & Horizontal Red/Yellow Springs) --- */
+        /* --- BOUNCE SPRING (`0x41` — Exact `s1disasm/_incObj/41 Springs.asm` Up, LR, & Down in Red/Yellow!) --- */
         if (id == 0x41) {
-            uint8_t horiz = (o->subtype & 0xF0) == 0x10;
-            int16_t power = (o->subtype & 0x02) ? 0x0A00 : 0x1000;
-            if (!g_sonic.dead && box_overlap(g_sonic.x, g_sonic.y, 12, 18, o->x, o->y, 14, 12)) {
+            uint8_t raw_sub = o->subtype & 0x3F;              /* Mask out `objpos` HV-flip bits (`0x40`/`0x80`)! */
+            uint8_t xflip = (o->subtype & 0x40) ? 1 : 0;      /* `status_xflip_bit`: 1 = faces Left, 0 = faces Right */
+            uint8_t horiz = (raw_sub & 0x10) ? 1 : 0;         /* `btst #4, d0` -> `Spring_LR` */
+            uint8_t upside_down = (!horiz && ((raw_sub & 0x20) || (o->subtype & 0x80))) ? 1 : 0; /* `Spring_Down` */
+            uint8_t sp_pal = (raw_sub & 0x02) ? 2 : 1;        /* `btst #1, d0`: Yellow (`OBP2`) vs Red (`OBP1`) */
+            int16_t power = (raw_sub & 0x02) ? 0x0A00 : 0x1000; /* Exact `Spring_Powers`: Red `-$1000`, Yellow `-$0A00` */
+            if (o->timer > 0) o->timer--;
+
+            if (!g_sonic.dead) {
                 if (horiz) {
-                    g_sonic.xsp = (g_sonic.x < o->x) ? -power : power;
-                    g_sonic.gsp = g_sonic.xsp;
-                    g_sonic.lock_ctrl = 16;
+                    /* `Spring_LR` (`41 Springs.asm:129-165`): `d1 = 19, d2 = 14`, launch `-power` if `xflip` else `+power`,
+                     * push clear of wall, copy to `gsp`, `locktime = 15`, flip facing, `id_Walk` if unrolled! */
+                    if (o->timer == 0 && box_overlap(g_sonic.x, g_sonic.y, 10, 14, o->x, o->y, 10, 14)) {
+                        if (xflip) {
+                            g_sonic.xsp = -power;
+                            g_sonic.x = o->x - 16;
+                            g_sonic.facing_left = 1;
+                        } else {
+                            g_sonic.xsp = power;
+                            g_sonic.x = o->x + 16;
+                            g_sonic.facing_left = 0;
+                        }
+                        g_sonic.x_sub = (int32_t)g_sonic.x << 8;
+                        g_sonic.gsp = g_sonic.xsp;
+                        g_sonic.lock_ctrl = 15;
+                        if (!g_sonic.rolling) g_sonic.anim = ANI_WALK;
+                        o->timer = 8;
+                        hw_play_sfx(SFX_SPRING);
+                    }
+                } else if (upside_down) {
+                    /* `Spring_Down` (`41 Springs.asm:179-215`): ceiling spring launches downward at `+power`! */
+                    if (o->timer == 0 && g_sonic.y >= o->y - 4 &&
+                        box_overlap(g_sonic.x, g_sonic.y, 11, 19, o->x, o->y, 16, 10)) {
+                        g_sonic.y = o->y + 16;
+                        g_sonic.y_sub = (int32_t)g_sonic.y << 8;
+                        g_sonic.ysp = power;
+                        g_sonic.on_ground = 0;
+                        g_sonic.jumping = 0;
+                        g_sonic.rolling = 0;
+                        o->timer = 8;
+                        hw_play_sfx(SFX_SPRING);
+                    }
                 } else {
-                    g_sonic.ysp = -power;
-                    g_sonic.on_ground = 0;
-                    g_sonic.rolling = 0;
-                    g_sonic.anim = ANI_SPRING;
+                    /* `Spring_Up` (`41 Springs.asm:88-115`): `d1 = 27, d2 = 8`; launch upward at `-power` (`jumping = 0`!) */
+                    if (g_sonic.ysp >= -0x100 && g_sonic.y <= o->y + 10 &&
+                        box_overlap(g_sonic.x, g_sonic.y, 11, 19, o->x, o->y, 16, 10)) {
+                        g_sonic.y = o->y - 8;
+                        g_sonic.y_sub = (int32_t)g_sonic.y << 8;
+                        g_sonic.ysp = -power;
+                        g_sonic.on_ground = 0;
+                        g_sonic.jumping = 0;
+                        g_sonic.rolling = 0;
+                        g_sonic.angle = 0;
+                        g_sonic.anim = ANI_SPRING;
+                        o->timer = 8;
+                        hw_play_sfx(SFX_SPRING);
+                    }
                 }
-                hw_play_sfx(SFX_SPRING);
             }
-            hw_put_sprite16(sx, sy, SPR_TILE_SPRING, 1);
+            if (horiz) {
+                hw_put_sprite16(sx + (o->timer ? (xflip ? -2 : 2) : 0), sy,
+                                SPR_TILE_SPRING + 4, sp_pal | (xflip ? 0x20 : 0));
+            } else {
+                hw_put_sprite16(sx, sy + (o->timer ? (upside_down ? 2 : -2) : 0),
+                                SPR_TILE_SPRING, sp_pal | (upside_down ? 0x40 : 0));
+            }
             continue;
         }
 
-        /* --- SPIKES (`0x36` — `36 Spikes.asm` including moving retractable spikes!) --- */
+        /* --- SPIKES (`0x36` — `36 Spikes.asm` including moving retractable & ceiling spikes!) --- */
         if (id == 0x36) {
             int16_t off_y = ((o->subtype & 0x0F) == 1 && ((g_frame_counter & 63) >= 32)) ? 16 : 0;
             if (!g_sonic.dead && box_overlap(g_sonic.x, g_sonic.y, 10, 16, o->x, o->y + off_y, 14, 14)) {
                 sonic_hurt_or_kill(0);
             }
-            hw_put_sprite16(sx, sy + (off_y >> 1), SPR_TILE_SPIKES, 3);
+            hw_put_sprite16(sx, sy + (off_y >> 1), SPR_TILE_SPIKES, 5);
             continue;
         }
 
@@ -404,7 +490,7 @@ void objects_update_and_draw(void) BANKED {
                 g_checkpoint_y = o->y;
                 hw_play_sfx(SFX_LAMPPOST);
             }
-            hw_put_sprite16(sx, sy, SPR_TILE_LAMP, o->state ? 1 : 3);
+            hw_put_sprite16(sx, sy, SPR_TILE_LAMP, o->state ? 1 : 4);
             continue;
         }
 
@@ -498,8 +584,8 @@ void objects_update_and_draw(void) BANKED {
         /* --- GIANT SPECIAL STAGE RING (`0x4B`) & STARBURST FLASH (`0x7C` — `7C Giant Ring Flash.asm`) --- */
         if (id == 0x7C) {
             uint8_t ang = (uint8_t)(o->timer << 4);
-            hw_put_sprite16(sx - ((hw_cos(ang) * 4) >> 8), sy, SPR_TILE_STARS, 2);
-            hw_put_sprite16(sx + ((hw_cos(ang) * 4) >> 8), sy, SPR_TILE_STARS, 1);
+            hw_put_sprite8(sx - ((hw_cos(ang) * 4) >> 8) - 4, sy - 4, SPR_TILE_STARS + (o->timer & 3), 2);
+            hw_put_sprite8(sx + ((hw_cos(ang) * 4) >> 8) - 4, sy - 4, SPR_TILE_STARS + ((o->timer + 2) & 3), 1);
             if (--o->timer == 0) {
                 o->active = 0;
                 g_next_mode = GM_SPECIAL_STAGE;
@@ -519,13 +605,12 @@ void objects_update_and_draw(void) BANKED {
                     o->timer = 14;
                     continue;
                 }
-                hw_put_sprite16(sx - 2, sy, ZSPR_GIANTRING, 0x08 | 2);
-                hw_put_sprite16(sx + 2, sy, ZSPR_GIANTRING, 0x08 | 2);
+                hw_put_sprite16(sx, sy, ZSPR_GIANTRING + (((g_frame_counter >> 2) & 3) << 2), 0x08 | 2);
             }
             continue;
         }
 
-        /* --- EGG PRISON CAPSULE (`0x3E` — Releases Hopping Animal Friends on Act 3 Boss Clear!) --- */
+        /* --- EGG PRISON CAPSULE (`0x3E` — Golden 24x16 Capsule + Separate Red Release Button `122`!) --- */
         if (id == 0x3E) {
             if (!o->state && g_boss_defeated &&
                 box_overlap(g_sonic.x, g_sonic.y, 16, 24, o->x, o->y, 24, 28)) {
@@ -545,11 +630,16 @@ void objects_update_and_draw(void) BANKED {
                 }
             }
             if (o->subtype != 0) {
-                /* Top yellow switch button on top of the Egg Prison Capsule */
-                hw_put_sprite8(sx - 4, sy - 2 + (o->state ? 2 : 0), SPR_TILE_SPRING, 2);
+                hw_put_sprite8(sx - 8, sy - 4 + (o->state ? 2 : 0), ZSPR_CAPSULE + 6, 0x08 | 1);
+                hw_put_sprite8(sx,     sy - 4 + (o->state ? 2 : 0), ZSPR_CAPSULE + 7, 0x08 | 1);
             } else {
-                hw_put_sprite16(sx - 4, sy, ZSPR_CAPSULE, 0x08 | 6);
-                hw_put_sprite16(sx + 4, sy, ZSPR_CAPSULE, 0x08 | 6 | 0x20);
+                hw_put_sprite8(sx - 8, sy - 14 + (o->state ? 3 : 0), ZSPR_CAPSULE + 6, 0x08 | 1);
+                hw_put_sprite8(sx,     sy - 14 + (o->state ? 3 : 0), ZSPR_CAPSULE + 7, 0x08 | 1);
+                if (o->state) {
+                    hw_put_sprite16(sx, sy, ZSPR_CAPSULE + 8, 0x08 | 2);
+                } else {
+                    hw_put_sprite_cols2rows(sx - 12, sy - 8, ZSPR_CAPSULE, 3u, 0x08 | 2);
+                }
             }
             continue;
         }

@@ -930,16 +930,16 @@ const SpecialStageDesc g_special_stages[NUM_SPECIAL_STAGES] = {
 };
 
 const SongDesc g_songs[NUM_SONGS] = {
-    { 75, mus_81 },
+    { 76, mus_81 },
     { 76, mus_82 },
     { 76, mus_83 },
     { 76, mus_84 },
     { 76, mus_85 },
     { 76, mus_86 },
-    { 76, mus_87 },
-    { 76, mus_88 },
-    { 76, mus_89 },
-    { 76, mus_8A },
+    { 77, mus_87 },
+    { 77, mus_88 },
+    { 77, mus_89 },
+    { 77, mus_8A },
     { 77, mus_8B },
     { 77, mus_8C },
     { 77, mus_8D },
@@ -948,5 +948,5 @@ const SongDesc g_songs[NUM_SONGS] = {
     { 77, mus_90 },
     { 77, mus_91 },
     { 77, mus_92 },
-    { 77, mus_93 },
+    { 78, mus_93 },
 };

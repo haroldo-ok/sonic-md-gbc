@@ -611,6 +611,7 @@ void physics_update_level(void) BANKED {
     /* Ground vs Airborne Movement & Full 360° Slope Physics (`01 Sonic.asm`) */
     if (g_sonic.on_ground) {
         int16_t sin_a = hw_sin(g_sonic.angle);
+        g_sonic.jumping = 0;
         if (!g_sonic.rolling) {
             g_sonic.gsp += (sin_a * 32) >> 8;
         } else {
@@ -730,35 +731,49 @@ void physics_update_level(void) BANKED {
                 g_sonic.xsp = (int16_t)(((int32_t)g_sonic.gsp * hw_cos(g_sonic.angle) - (int32_t)j * hw_sin(g_sonic.angle)) >> 8);
                 g_sonic.ysp = (int16_t)(((int32_t)g_sonic.gsp * hw_sin(g_sonic.angle) - (int32_t)j * hw_cos(g_sonic.angle)) >> 8);
                 g_sonic.on_ground = 0;
+                g_sonic.jumping = 1;
                 sonic_enter_roll(0);
                 g_sonic.angle = 0;
                 hw_play_sfx(SFX_JUMP);
             }
         }
     } else {
-        /* Airborne Control + Variable Jump Cut + Air Drag + Gravity */
-        if (pad & J_LEFT) {
-            g_sonic.facing_left = 1;
-            if (g_sonic.xsp > -top_spd) g_sonic.xsp -= (acc << 1);
-        } else if (pad & J_RIGHT) {
-            g_sonic.facing_left = 0;
-            if (g_sonic.xsp < top_spd) g_sonic.xsp += (acc << 1);
+        /* Airborne Control (`Sonic_ChgJumpDir`) + Exact `Sonic_JumpHeight` (`01 Sonic.asm:1273-1303`) + Air Drag + Gravity */
+        if (g_sonic.lock_ctrl == 0) {
+            if (pad & J_LEFT) {
+                g_sonic.facing_left = 1;
+                if (g_sonic.xsp > -top_spd) g_sonic.xsp -= (acc << 1);
+            } else if (pad & J_RIGHT) {
+                g_sonic.facing_left = 0;
+                if (g_sonic.xsp < top_spd) g_sonic.xsp += (acc << 1);
+            }
         }
-        if (!(pad & (J_A | J_B)) && g_sonic.ysp < -0x400) {
-            g_sonic.ysp = -0x400;
+        if (g_sonic.jumping) {
+            int16_t min_jmp = g_sonic.underwater ? -0x200 : -0x400;
+            if (!(pad & (J_A | J_B)) && g_sonic.ysp < min_jmp) {
+                g_sonic.ysp = min_jmp;
+            }
+        } else if (g_sonic.ysp < -0x1000) {
+            g_sonic.ysp = -0x1000;
         }
         if (g_sonic.ysp < 0 && g_sonic.ysp > -0x400) {
             g_sonic.xsp -= (g_sonic.xsp >> 5);
         }
-        g_sonic.ysp += grv;
-        if (g_sonic.ysp > 0x1000) g_sonic.ysp = 0x1000;
     }
 
-    /* Integrate Fixed-Point 24.8 World Position */
+    /* Integrate Fixed-Point 24.8 World Position FIRST, then apply `addi.w #$38, obVelY(a0)` (`ObjectFall`, `01 Sonic.asm:1264-1267`)! */
     g_sonic.x_sub += g_sonic.xsp;
     g_sonic.y_sub += g_sonic.ysp;
     g_sonic.x = (int16_t)(g_sonic.x_sub >> 8);
     g_sonic.y = (int16_t)(g_sonic.y_sub >> 8);
+    if (!g_sonic.on_ground) {
+        g_sonic.ysp += grv;
+        if (g_sonic.ysp > 0x1000) g_sonic.ysp = 0x1000;
+        /* `Spring_ResetAni`: switch from `id_Spring` to `id_Walk` once `obVelY >= 0` at apex! */
+        if (g_sonic.anim == ANI_SPRING && g_sonic.ysp >= 0) {
+            g_sonic.anim = ANI_WALK;
+        }
+    }
 
     /* Horizontal Level Boundaries */
     if (g_sonic.x < g_dyn_left_bound + 12) {

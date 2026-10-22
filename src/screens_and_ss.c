@@ -719,7 +719,7 @@ void screens_update_mode(uint8_t mode) BANKED {
             g_sonic.anim = ANI_WAIT;
             if ((g_emeralds & 0x3F) != 0x3F) {
                 /* Eggman juggling uncollected Chaos Emeralds (`8B Try Again & End Eggman.asm`)! */
-                hw_put_sprite16(126, 68 - ((s_mode_timer >> 2) & 3), ZSPR_BOSS, 0x08 | 5);
+                hw_put_sprite_cols2rows(110, 60 - ((s_mode_timer >> 2) & 3), ZSPR_BOSS, 4u, 0x08 | 1);
             }
         }
         hw_step_palette_cycle();
@@ -757,7 +757,7 @@ void screens_update_mode(uint8_t mode) BANKED {
         if ((g_emeralds & 0x3F) != 0x3F) {
             /* Dr. Eggman juggling missing Chaos Emeralds! */
             uint8_t ang = (uint8_t)(s_mode_timer << 2);
-            hw_put_sprite16(80, 96, ZSPR_BOSS, 0x08 | 5);
+            hw_put_sprite_cols2rows(64, 88, ZSPR_BOSS, 4u, 0x08 | 1);
             hw_put_sprite8(76 + ((hw_cos(ang) * 14) >> 8), 80 - ((hw_sin(ang) > 0) ? (hw_sin(ang) >> 4) : 0),
                            SPR_TILE_STARS, 2);
             hw_put_sprite8(76 - ((hw_cos(ang) * 14) >> 8), 80 - ((hw_sin((uint8_t)(ang + 128)) > 0) ? (hw_sin((uint8_t)(ang + 128)) >> 4) : 0),

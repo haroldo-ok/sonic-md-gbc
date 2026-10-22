@@ -8,9 +8,9 @@
   "white_screens_detected": 0,
   "acts_verified": 20,
   "special_stages_verified": 6,
-  "palette_cycles_recorded": 75,
-  "animated_tile_uploads": 22,
-  "sampled_dac_drum_packets": 46,
+  "palette_cycles_recorded": 78,
+  "animated_tile_uploads": 25,
+  "sampled_dac_drum_packets": 29,
   "syz3_blocks_remaining_after_spike_dive": "0x3fb",
   "battery_sram_restored_high_score": 50000,
   "battery_sram_restored_unlocked_act": 19,
@@ -20,11 +20,11 @@
   "debug_mode_verified": true,
   "ss_results_and_good_ending_verified": true,
   "sonic_ghz1_start_x": 80,
-  "sonic_ghz1_end_x": 800,
-  "camera_ghz1_end_x": 672,
-  "rings_collected_in_ghz1": 10,
-  "score_in_ghz1": 100,
-  "apu_sound_events": 123,
+  "sonic_ghz1_end_x": 895,
+  "camera_ghz1_end_x": 767,
+  "rings_collected_in_ghz1": 11,
+  "score_in_ghz1": 110,
+  "apu_sound_events": 149,
   "ghz1_wall_flicker_pixels_32_frames": 0,
   "ghz1_360_loop_verified": true,
   "ghz1_double_s_tunnel_verified": true,
@@ -55,178 +55,178 @@
     },
     {
       "context": "GHZ1_Gameplay_f160",
-      "mean_rgb": 95.47,
-      "std_rgb": 83.46,
+      "mean_rgb": 98.19,
+      "std_rgb": 83.51,
       "black_fraction": 0.0,
-      "white_fraction": 0.0588,
-      "unique_colors": 25
+      "white_fraction": 0.0326,
+      "unique_colors": 28
     },
     {
       "context": "Act_0_Live_f19",
-      "mean_rgb": 95.53,
-      "std_rgb": 82.81,
+      "mean_rgb": 94.79,
+      "std_rgb": 81.92,
       "black_fraction": 0.0,
-      "white_fraction": 0.0281,
-      "unique_colors": 24
+      "white_fraction": 0.0279,
+      "unique_colors": 26
     },
     {
       "context": "Act_1_Live_f19",
-      "mean_rgb": 93.18,
-      "std_rgb": 83.55,
+      "mean_rgb": 92.68,
+      "std_rgb": 83.22,
       "black_fraction": 0.0,
-      "white_fraction": 0.0513,
-      "unique_colors": 24
+      "white_fraction": 0.0497,
+      "unique_colors": 25
     },
     {
       "context": "Act_2_Live_f19",
-      "mean_rgb": 95.13,
-      "std_rgb": 82.11,
+      "mean_rgb": 95.75,
+      "std_rgb": 82.39,
       "black_fraction": 0.0,
-      "white_fraction": 0.0287,
+      "white_fraction": 0.0352,
       "unique_colors": 26
     },
     {
       "context": "Act_3_Live_f19",
-      "mean_rgb": 101.26,
-      "std_rgb": 67.55,
+      "mean_rgb": 100.93,
+      "std_rgb": 67.58,
       "black_fraction": 0.0,
-      "white_fraction": 0.0281,
-      "unique_colors": 29
+      "white_fraction": 0.0282,
+      "unique_colors": 31
     },
     {
       "context": "Act_4_Live_f19",
-      "mean_rgb": 94.79,
-      "std_rgb": 67.46,
+      "mean_rgb": 94.86,
+      "std_rgb": 67.44,
       "black_fraction": 0.0,
-      "white_fraction": 0.0281,
-      "unique_colors": 29
+      "white_fraction": 0.0268,
+      "unique_colors": 32
     },
     {
       "context": "Act_5_Live_f19",
-      "mean_rgb": 99.67,
-      "std_rgb": 68.42,
+      "mean_rgb": 99.98,
+      "std_rgb": 68.71,
       "black_fraction": 0.0,
-      "white_fraction": 0.0276,
+      "white_fraction": 0.0271,
       "unique_colors": 32
     },
     {
       "context": "Act_6_Live_f19",
-      "mean_rgb": 85.14,
-      "std_rgb": 65.11,
+      "mean_rgb": 85.47,
+      "std_rgb": 65.8,
       "black_fraction": 0.0,
-      "white_fraction": 0.0284,
-      "unique_colors": 28
+      "white_fraction": 0.0291,
+      "unique_colors": 30
     },
     {
       "context": "Act_7_Live_f19",
-      "mean_rgb": 69.25,
-      "std_rgb": 61.74,
+      "mean_rgb": 69.46,
+      "std_rgb": 62.06,
       "black_fraction": 0.0115,
-      "white_fraction": 0.0287,
+      "white_fraction": 0.0298,
       "unique_colors": 28
     },
     {
       "context": "Act_8_Live_f19",
-      "mean_rgb": 86.9,
-      "std_rgb": 61.69,
+      "mean_rgb": 86.8,
+      "std_rgb": 61.59,
       "black_fraction": 0.0,
-      "white_fraction": 0.0281,
+      "white_fraction": 0.0276,
       "unique_colors": 26
     },
     {
       "context": "Act_9_Live_f19",
-      "mean_rgb": 94.8,
-      "std_rgb": 77.32,
-      "black_fraction": 0.0,
-      "white_fraction": 0.0282,
-      "unique_colors": 28
-    },
-    {
-      "context": "Act_10_Live_f19",
-      "mean_rgb": 83.13,
-      "std_rgb": 74.33,
+      "mean_rgb": 94.61,
+      "std_rgb": 77.23,
       "black_fraction": 0.0,
       "white_fraction": 0.0276,
-      "unique_colors": 25
-    },
-    {
-      "context": "Act_11_Live_f19",
-      "mean_rgb": 94.33,
-      "std_rgb": 77.66,
-      "black_fraction": 0.0,
-      "white_fraction": 0.0277,
       "unique_colors": 30
     },
     {
-      "context": "Act_12_Live_f19",
-      "mean_rgb": 65.53,
-      "std_rgb": 57.92,
+      "context": "Act_10_Live_f19",
+      "mean_rgb": 83.27,
+      "std_rgb": 74.44,
       "black_fraction": 0.0,
-      "white_fraction": 0.0293,
-      "unique_colors": 29
+      "white_fraction": 0.0276,
+      "unique_colors": 27
+    },
+    {
+      "context": "Act_11_Live_f19",
+      "mean_rgb": 94.71,
+      "std_rgb": 78.04,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0306,
+      "unique_colors": 32
+    },
+    {
+      "context": "Act_12_Live_f19",
+      "mean_rgb": 65.16,
+      "std_rgb": 57.33,
+      "black_fraction": 0.0,
+      "white_fraction": 0.0276,
+      "unique_colors": 30
     },
     {
       "context": "Act_13_Live_f19",
-      "mean_rgb": 51.98,
-      "std_rgb": 57.43,
+      "mean_rgb": 52.56,
+      "std_rgb": 57.94,
       "black_fraction": 0.0,
-      "white_fraction": 0.0351,
-      "unique_colors": 24
+      "white_fraction": 0.0298,
+      "unique_colors": 27
     },
     {
       "context": "Act_14_Live_f19",
-      "mean_rgb": 51.49,
-      "std_rgb": 56.29,
+      "mean_rgb": 52.04,
+      "std_rgb": 57.41,
       "black_fraction": 0.0,
-      "white_fraction": 0.0276,
-      "unique_colors": 25
+      "white_fraction": 0.0348,
+      "unique_colors": 26
     },
     {
       "context": "Act_15_Live_f19",
-      "mean_rgb": 49.41,
-      "std_rgb": 71.12,
-      "black_fraction": 0.5022,
-      "white_fraction": 0.029,
-      "unique_colors": 27
+      "mean_rgb": 49.38,
+      "std_rgb": 71.31,
+      "black_fraction": 0.5013,
+      "white_fraction": 0.0295,
+      "unique_colors": 28
     },
     {
       "context": "Act_16_Live_f19",
-      "mean_rgb": 84.0,
-      "std_rgb": 65.82,
-      "black_fraction": 0.034,
-      "white_fraction": 0.0276,
-      "unique_colors": 27
+      "mean_rgb": 83.04,
+      "std_rgb": 64.93,
+      "black_fraction": 0.0336,
+      "white_fraction": 0.0285,
+      "unique_colors": 29
     },
     {
       "context": "Act_17_Live_f19",
-      "mean_rgb": 122.23,
-      "std_rgb": 62.27,
+      "mean_rgb": 125.04,
+      "std_rgb": 64.6,
       "black_fraction": 0.0,
-      "white_fraction": 0.0273,
+      "white_fraction": 0.0294,
       "unique_colors": 25
     },
     {
       "context": "Act_18_Live_f19",
-      "mean_rgb": 56.71,
-      "std_rgb": 60.12,
+      "mean_rgb": 56.8,
+      "std_rgb": 60.3,
       "black_fraction": 0.0615,
-      "white_fraction": 0.0281,
+      "white_fraction": 0.0276,
       "unique_colors": 25
     },
     {
       "context": "Act_19_Live_f19",
-      "mean_rgb": 83.88,
-      "std_rgb": 80.19,
+      "mean_rgb": 83.83,
+      "std_rgb": 80.03,
       "black_fraction": 0.0,
-      "white_fraction": 0.035,
-      "unique_colors": 27
+      "white_fraction": 0.0271,
+      "unique_colors": 28
     },
     {
       "context": "SpecialStage_1_Live_35",
-      "mean_rgb": 82.48,
-      "std_rgb": 73.0,
+      "mean_rgb": 82.38,
+      "std_rgb": 72.9,
       "black_fraction": 0.0,
-      "white_fraction": 0.0661,
+      "white_fraction": 0.0656,
       "unique_colors": 19
     },
     {

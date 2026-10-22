@@ -95,29 +95,36 @@
 #define ANI_HURT         0x1A
 #define ANI_SLIDE        0x1B
 
-/* Verified Common Sprite Tile Slots in VRAM Bank 0 (`32..127`) */
-#define SPR_TILE_RING     32
-#define SPR_TILE_MONITOR  48
-#define SPR_TILE_SPRING   64
-#define SPR_TILE_SPIKES   76
-#define SPR_TILE_SIGNPOST 79
-#define SPR_TILE_SHIELD   96
-#define SPR_TILE_STARS    100
-#define SPR_TILE_EXPLODE  104
-#define SPR_TILE_POINTS   112
-#define SPR_TILE_LAMP     116
-#define SPR_TILE_ANIMAL   120
-#define SPR_TILE_BUBBLE   124
+/* Verified Common Sprite Tile Slots in VRAM Bank 0 (`32..127` — 96 tiles, 0 padding!) */
+#define SPR_TILE_RING        32   /* 32..35  (4 x 8x8 spinning ring frames 0..3) */
+#define SPR_TILE_MONITOR     36   /* 36..55  (5 x 16x16 2x2 monitors: +0 Ring, +4 Shoes, +8 Shield, +12 Invinc, +16 1UP) */
+#define SPR_TILE_SPRING      56   /* 56..63  (2 x 16x16 2x2 springs: +0 Vertical, +4 Horizontal) */
+#define SPR_TILE_SPIKES      64   /* 64..67  (1 x 16x16 2x2 3-spike steel cluster) */
+#define SPR_TILE_LAMP        68   /* 68..71  (1 x 16x16 2x2 checkered Starpost) */
+#define SPR_TILE_SHOT_ENERGY 72   /* 72..73  (2 x 8x8 Buzz Bomber / Crabmeat glowing shot) */
+#define SPR_TILE_SHOT_FIRE   74   /* 74..75  (2 x 8x8 blazing comet fireball) */
+#define SPR_TILE_SHOT_BOMB   76   /* 76      (1 x 8x8 fuse bomb) */
+#define SPR_TILE_SHOT_PLASMA 77   /* 77..78  (2 x 8x8 FZ electric plasma orb) */
+#define SPR_TILE_SIGNPOST    79   /* 79..95  (17 tiles: 24x24 5-frame Signpost + Pole 95) */
+#define SPR_TILE_SHIELD      96   /* 96..99  (1 x 16x16 2x2 glowing blue aura shield) */
+#define SPR_TILE_STARS       100  /* 100..103 (4 x 8x8 4-point invincibility / ring sparkles) */
+#define SPR_TILE_EXPLODE     104  /* 104..111 (2 x 16x16 2x2 fiery badnik explosions: +0 burst, +4 cloud) */
+#define SPR_TILE_POINTS      112  /* 112..115 (4 x 8x8 pixel-crisp 100, 200, 500, 1000 popups) */
+#define SPR_TILE_ANIMAL      116  /* 116..119 (4 x 8x8 hopping Flicky & Rabbit animals) */
+#define SPR_TILE_BUBBLE_BIG  120  /* 120..123 (1 x 16x16 2x2 big breathable air bubble) */
+#define SPR_TILE_BUBBLE      124  /* 124..127 (4 x 8x8 small rising bubbles) */
 
-/* Verified Zone Sprite Tile Slots in VRAM Bank 1 (`0..127`) */
-#define ZSPR_ENEMY1       0
-#define ZSPR_ENEMY2       24
-#define ZSPR_ENEMY3       48
-#define ZSPR_PROP         68
-#define ZSPR_BOSS         88
-#define ZSPR_BOSS_WPN     104
-#define ZSPR_GIANTRING    116
-#define ZSPR_CAPSULE      122
+/* Verified Zone Sprite Tile Slots in VRAM Bank 1 (`0..127` — 128 tiles per Zone!) */
+#define ZSPR_ENEMY1       0       /* 0..7    (2 x 16x16 2x2 Badnik #1) */
+#define ZSPR_ENEMY2       8       /* 8..15   (2 x 16x16 2x2 Badnik #2) */
+#define ZSPR_ENEMY3       16      /* 16..23  (2 x 16x16 2x2 Badnik #3) */
+#define ZSPR_ENEMY4       24      /* 24..31  (2 x 16x16 2x2 Badnik #4) */
+#define ZSPR_ENEMY5       32      /* 32..39  (2 x 16x16 2x2 Badnik #5) */
+#define ZSPR_PROP         40      /* 40..67  (7 x 16x16 2x2 Zone Props & Hazards: +0..+24) */
+#define ZSPR_BOSS         68      /* 68..83  (2 x 32x16 4x2 Composite Dr. Eggman Pod + Head / FZ Cylinder) */
+#define ZSPR_BOSS_WPN     84      /* 84..99  (4 x 16x16 2x2 Boss Weapons: +0 Ball, +4 Spike/Pipe, +8 Cyl, +12 Chain) */
+#define ZSPR_GIANTRING    100     /* 100..115 (4 x 16x16 2x2 Spinning Golden Giant Ring frames 0..3) */
+#define ZSPR_CAPSULE      116     /* 116..127 (116..121 24x16 Capsule, 122..123 16x8 Red Button, 124..127 Open) */
 
 /* Verified Half-Scale Special Stage Tile Slots in VRAM Bank 0 (`0..64`) */
 #define SS_TILE_BG        0
@@ -172,6 +179,7 @@ typedef struct {
     uint16_t air_frames;
     uint8_t underwater;
     uint8_t air_combo;
+    uint8_t jumping;     /* 1 ONLY when airborne via player Jump button (`Sonic_JumpHeight`, `01 Sonic.asm:1274`) */
 } SonicState;
 
 typedef struct {
@@ -296,17 +304,20 @@ extern const uint16_t g_default_obj_pals[32];
 extern volatile uint8_t g_cur_bgm;
 extern volatile uint8_t g_cur_sfx;
 extern volatile uint16_t g_sound_events;
+extern volatile uint16_t g_sound_isr_ticks;
 
 /* NONBANKED Bank-0 Hardware & Asset Streaming Services (`src/main.c`) */
 void hw_play_bgm(uint8_t bgm_id);
 void hw_play_sfx(uint8_t sfx_id);
 void hw_sound_tick(void);
+void hw_sound_isr(void);
 void hw_play_sega_chant_step(uint16_t pkt_idx);
 void hw_fill_win_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t fill_tile);
 void hw_print_win(uint8_t x, uint8_t y, const char *str);
 void hw_clear_remaining_oam(void);
 void hw_put_sprite8(int16_t sx, int16_t sy, uint8_t tile, uint8_t attr);
 void hw_put_sprite16(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t attr);
+void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr);
 void hw_show_transition_card(const char *line1, const char *line2, uint8_t act_num);
 void hw_update_hud(void);
 void hw_load_fullscreen_screen(uint8_t scr_idx);

@@ -7,8 +7,8 @@
 #define NUM_SPECIAL_STAGES 6
 #define NUM_SONGS 19
 #define NUM_SFX 49
-#define SFX_DATA_BANK 78
-#define PCM_SEGA_BANK 79
+#define SFX_DATA_BANK 79
+#define PCM_SEGA_BANK 80
 #define PCM_SEGA_PACKETS 160
 #define SS_TILES_BANK 74
 
