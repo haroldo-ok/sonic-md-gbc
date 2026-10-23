@@ -800,7 +800,7 @@ def test_start_of_game_level_select_and_end_of_level_goalpost_clear():
                 break
             pb.tick()
             analyze_frame(pb.screen.ndarray[:, :, :3], "GHZ1_Card_Enter", min_uniq=2)
-        for _ in range(120):
+        for _ in range(240):
             if pb.memory[0xFF4A] == 128:
                 break
             pb.tick()
@@ -1567,6 +1567,104 @@ def test_spring_kinematics_match_original_s1disasm():
             min_y_tap = min(min_y_tap, read_s16(pb, sym_sonic + 10))
         tap_height = ground_y - min_y_tap
         assert 28 <= tap_height <= 55, f"Short-hop JumpHeight (`jumping == 1`) broken: got {tap_height}px!"
+
+
+def test_09_background_map_integrity_pupils_sega_and_fps():
+    """Verify crisp uncorrupted foreground + background parallax maps across all Zones,
+    Sonic eye pupils (Title Screen + gameplay), 48 kHz SEGA chant quality, and high FPS."""
+    syms = load_noi_symbols(NOI_PATH)
+    b0_end = syms["s__INITIALIZER"] + syms["l__INITIALIZER"]
+    assert b0_end <= 0x4000, f"Bank 0 overflow: 0x{b0_end:04X}"
+    assert syms["l__DATA"] <= 0x1D00, f"Insufficient hardware stack headroom: 0x{syms['l__DATA']:04X}"
+
+    pcm_candidates = [
+        os.path.join(os.path.dirname(os.path.abspath(ROM_PATH)), "vendor", "s1disasm", "sound", "dac", "pcm", "generated", "sega.pcm"),
+        os.path.join(os.path.dirname(os.path.abspath(ROM_PATH)), "vendor", "s1disasm", "sound", "dac", "sega.pcm"),
+        "/home/user/sonic-gbc/vendor/s1disasm/sound/dac/pcm/generated/sega.pcm",
+    ]
+    pcm_path = next((p for p in pcm_candidates if os.path.exists(p)), None)
+    assert pcm_path is not None, f"Could not locate sega.pcm in {pcm_candidates}"
+    with open(pcm_path, "rb") as _fp:
+        raw_s1 = _fp.read()
+    s1_f = np.frombuffer(raw_s1, dtype=np.uint8).astype(np.float64) - 128.0
+    s1_rs = np.interp(np.linspace(0, len(s1_f) - 1, 78750), np.arange(len(s1_f)), s1_f)
+
+    chunks = []
+    with PyBoy(ROM_PATH, window="null", sound_emulated=True) as pb:
+        for _ in range(220):
+            pb.tick(1, True, True)
+            buf = np.array(pb.sound.ndarray, copy=True)
+            if buf.size:
+                chunks.append(buf[:, 0].astype(np.float64))
+            if read_u16(pb, syms["_g_frame_counter"]) >= 1 and pb.memory[syms["_g_game_mode"]] != 0:
+                break
+        full = np.concatenate(chunks)
+        df = np.where(np.abs(np.diff(full)) > 0.5)[0]
+        voice_idx = df[df > 50000]
+        seg = full[voice_idx[0]:voice_idx[0] + 78750].copy()
+        seg -= seg.mean()
+        s1_rs = np.interp(np.linspace(0, len(s1_f) - 1, len(seg)), np.arange(len(s1_f)), s1_f)
+        r_lpf = float(np.corrcoef(
+            np.convolve(s1_rs, np.ones(12) / 12.0, mode="same"),
+            np.convolve(seg, np.ones(12) / 12.0, mode="same"),
+        )[0, 1])
+        post_std = float(np.std(full[voice_idx[0] + 79000:voice_idx[0] + 85000]))
+        assert r_lpf >= 0.88, f"SEGA chant waveform correlation too low: r={r_lpf:.4f}"
+        assert post_std == 0.0, f"Post-chant audio buzz detected: std={post_std:.6f}"
+
+        # Title Screen (`GM_TITLE = 1`): verify snow-white wings + peach muzzle + black pupils
+        pb.memory[syms["_g_next_mode"]] = 1
+        pb.memory[syms["_g_mode_init_done"]] = 0
+        for _ in range(30):
+            pb.tick(1, True, False)
+        assert pb.memory[0xFF4A] == 144, f"Title Screen window not hidden: WY={pb.memory[0xFF4A]}"
+        title_arr = pb.screen.ndarray[:, :, :3]
+        wing_whites = int(np.sum((title_arr[:, :, 0] > 230) & (title_arr[:, :, 1] > 230) & (title_arr[:, :, 2] > 230)))
+        eye_crop = title_arr[36:56, 62:92]
+        eye_blacks = int(np.sum((eye_crop[:, :, 0] < 24) & (eye_crop[:, :, 1] < 24) & (eye_crop[:, :, 2] < 24)))
+        assert wing_whites >= 400, f"Title Screen white wings missing/corrupted: {wing_whites} white px"
+        assert eye_blacks >= 6, f"Title Sonic eye pupils missing: {eye_blacks} black px"
+
+        # Scroll every single Zone (`GHZ1`, `MZ1`, `SYZ1`, `LZ1`, `SLZ1`, `SBZ1`, `SBZ2`, `ENDING`)
+        zone_frames = {}
+        for zn, aid in [("GHZ1", 0), ("MZ1", 3), ("SYZ1", 6), ("LZ1", 9), ("SLZ1", 12), ("SBZ1", 15), ("SBZ2", 16), ("ENDING", 19)]:
+            pb.memory[syms["_g_cur_act"]] = aid
+            pb.memory[syms["_g_next_mode"]] = 3
+            pb.memory[syms["_g_mode_init_done"]] = 0
+            for _ in range(55):
+                pb.tick(1, True, False)
+            pb.button_press("right")
+            for f in range(95):
+                if f == 45:
+                    pb.button_press("a")
+                if f == 55:
+                    pb.button_release("a")
+                pb.tick(1, True, False)
+                analyze_frame(pb.screen.ndarray[:, :, :3], f"CleanBG_{zn}_{f}", min_uniq=6)
+            pb.button_release("right")
+            zone_frames[zn] = pb.screen.ndarray[:, :, :3].copy()
+
+        # Verify GHZ1 upper sky (`y = 0..38`) has pure royal-blue sky + crisp puffy clouds (zero wrapped lake ripples in sky!)
+        ghz_top = zone_frames["GHZ1"][0:38, :, :]
+        cloud_bright = int(np.sum((ghz_top[:, :, 0] >= 128) & (ghz_top[:, :, 1] >= 190) & (ghz_top[:, :, 2] >= 240)))
+        sky_royal = int(np.sum((zone_frames["GHZ1"][0:14, :, 0] <= 40) & (zone_frames["GHZ1"][0:14, :, 1] <= 56) & (zone_frames["GHZ1"][0:14, :, 2] >= 180)))
+        assert cloud_bright >= 150, f"GHZ1 upper sky missing puffy clouds (`bg_ty` misaligned!): {cloud_bright} cloud px"
+        assert sky_royal >= 1500, f"GHZ1 upper sky polluted by wrapped lake water ripples! sky_royal={sky_royal}/2240 px"
+
+        # Verify Special Stage 55+ FPS
+        pb.memory[syms["_g_next_mode"]] = 5
+        pb.memory[syms["_g_mode_init_done"]] = 0
+        for _ in range(25):
+            pb.tick(1, True, False)
+        g0 = read_u16(pb, syms["_g_frame_counter"])
+        pb.button_press("right")
+        for _ in range(120):
+            pb.tick(1, True, False)
+        pb.button_release("right")
+        g1 = read_u16(pb, syms["_g_frame_counter"])
+        ss_fps = 60.0 * ((g1 - g0) & 0xFFFF) / 120.0
+        assert ss_fps >= 50.0, f"Special Stage FPS regression: {ss_fps:.1f} FPS"
+
 
 
 

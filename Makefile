@@ -7,7 +7,7 @@ OBJ_DIR  := obj
 ROM_DIR  := rom
 ROM_OUT  := sonic.gbc
 
-CFLAGS   := -msm83:gb -Iinclude -Isrc -Igenerated
+CFLAGS   := -msm83:gb -Wf--max-allocs-per-node -Wf1500 -Iinclude -Isrc -Igenerated
 LDFLAGS  := -msm83:gb -Wm-yC -Wm-ynSONIC1GBC -Wl-yt0x1B -Wl-yo128 -Wl-ya4 -Wl-j -Wl-m
 
 ENGINE_SRCS := src/main.c src/physics.c src/objects.c src/screens_and_ss.c src/bosses_and_gimmicks.c src/dle_osc_sram.c

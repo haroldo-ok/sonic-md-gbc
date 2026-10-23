@@ -50,7 +50,7 @@ static const char *const s_cred_jp_name[9] = {
     "SONIC TEAM 1991 JP! "
 };
 
-/* Live 4KB RAM copy of active `64x64` Special Stage Maze (`sslayout/1..6.eni`) */
+/* Live 4KB internal WRAM copy of active `64x64` Special Stage Maze (`l__DATA = 0x1ACD < 0x1F60`, 1.1KB stack free!) */
 static uint8_t s_ss_ram[4096];
 static int16_t s_ss_px = 0;
 static int16_t s_ss_py = 0;
@@ -101,57 +101,127 @@ static uint8_t ss_is_solid(uint8_t c) {
     return (c >= 0x01 && c <= 0x28) || (c >= 0x29 && c <= 0x30) || (c >= 0x41 && c <= 0x4B);
 }
 
-static uint8_t ss_cell_tile(uint8_t c) {
-    if (c == 0) return SS_TILE_BG;
-    if (c >= 0x01 && c <= 0x24) return (uint8_t)(SS_TILE_WALL + ((c - 1) & 3));
-    if (c == 0x25) return SS_TILE_RING;      /* Pinball Bumper */
-    if (c == 0x27) return SS_TILE_GOAL;      /* GOAL Sphere */
-    if (c == 0x28) return SS_TILE_EMERALD;   /* 1UP Sphere */
-    if (c == 0x29 || c == 0x2A) return SS_TILE_UPDOWN;
-    if (c == 0x2B) return SS_TILE_RBLOCK;
-    if (c >= 0x2D && c <= 0x30) return SS_TILE_GLASS;
-    if (c == 0x3A) return SS_TILE_RING;
-    if (c >= 0x3B && c <= 0x40) return SS_TILE_EMERALD;
-    return SS_TILE_WALL;
+/* Zero-branch `76`-entry LUTs replacing `640` function calls per frame in `ss_render_rotating_viewport`! */
+static const uint8_t s_ss_tile_lut[76] = {
+    SS_TILE_BG,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_WALL+0, SS_TILE_WALL+1, SS_TILE_WALL+2, SS_TILE_WALL+3,
+    SS_TILE_RING,   SS_TILE_WALL,   SS_TILE_GOAL,   SS_TILE_EMERALD, /* 0x25..0x28 */
+    SS_TILE_UPDOWN, SS_TILE_UPDOWN, SS_TILE_RBLOCK, SS_TILE_WALL,    /* 0x29..0x2C */
+    SS_TILE_GLASS,  SS_TILE_GLASS,  SS_TILE_GLASS,  SS_TILE_GLASS,   /* 0x2D..0x30 */
+    SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL,
+    SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL,
+    SS_TILE_RING,                                                    /* 0x3A */
+    SS_TILE_EMERALD, SS_TILE_EMERALD, SS_TILE_EMERALD,               /* 0x3B..0x3D */
+    SS_TILE_EMERALD, SS_TILE_EMERALD, SS_TILE_EMERALD,               /* 0x3E..0x40 */
+    SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL,
+    SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL, SS_TILE_WALL
+};
+
+static const uint8_t s_ss_pal_lut[76] = {
+    0,
+    1,2,1,2, 1,2,1,2, 1,2,1,2, 1,2,1,2, 1,2,1,2, 1,2,1,2, 1,2,1,2, 1,2,1,2, 1,2,1,2,
+    3, 2, 4, 2, /* 0x25..0x28 */
+    4, 4, 5, 2, /* 0x29..0x2C */
+    5, 5, 5, 5, /* 0x2D..0x30 */
+    1,2,1,2,1,2,1,2,1,
+    3,          /* 0x3A */
+    6,6,6,6,6,6,/* 0x3B..0x40 */
+    1,2,1,2,1,2,1,2,1,2,1
+};
+
+extern const uint8_t *g_ss_dma_ptr;
+static uint8_t *s_ss_rows[64];
+static uint8_t s_ss_dma_raw[1040];
+
+/* Crisp `OBP0` + `OBP3` Title-Screen Sonic Eye Pupils, Glossy Bean Nose & Muzzle Overlay (`0E Title Screen Sonic`) */
+static const uint16_t s_tson_face_pals[8] = {
+    RGB8(0, 0, 0), RGB8(0, 0, 8),    RGB8(36, 76, 248), RGB8(252, 248, 244), /* OBP0: Jet-Black Pupil/Nose + Cobalt + Pure White Sclera */
+    RGB8(0, 0, 0), RGB8(148, 72, 40),RGB8(232, 148, 96),RGB8(252, 196, 148)  /* OBP1: Warm Peach Muzzle + Soft Smile Shadow */
+};
+static const uint8_t s_tson_face_tiles[48] = {
+    /* Tile 0 (`x=72..79, y=47..54` on OBP0): Two bright white arched eyes + `1x3` jet-black vertical pupils!
+     * Row0: .333.33. -> lo=0x76, hi=0x76
+     * Row1: 33333333 -> lo=0xFF, hi=0xFF
+     * Row2: 33313313 -> lo=0xFF, hi=0xED (col1 `1` = ink-black pupils at x=75 & x=78!)
+     * Row3: 33313313 -> lo=0xFF, hi=0xED
+     * Row4: 33313313 -> lo=0xFF, hi=0xED
+     * Row5: .333333. -> lo=0x7E, hi=0x7E
+     * Row6: ........ -> 0x00, 0x00
+     * Row7: ........ -> 0x00, 0x00 */
+    0x76,0x76, 0xFF,0xFF, 0xFF,0xED, 0xFF,0xED, 0xFF,0xED, 0x7E,0x7E, 0x00,0x00, 0x00,0x00,
+    /* Tile 1 (`x=80..87, y=49..56` on OBP0): Glossy jet-black bean nose (`1`) + white glint (`3`)!
+     * Row0..2: ........
+     * Row3: .1311... -> lo=0x78, hi=0x20
+     * Row4: .1111... -> lo=0x78, hi=0x00
+     * Row5..7: ........ */
+    0x00,0x00, 0x00,0x00, 0x00,0x00, 0x78,0x20, 0x78,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00,
+    /* Tile 2 (`x=73..80, y=52..59` on OBP1): Clean warm peach muzzle (`3`/`2`) replacing dark red BG shadow! */
+    0x00,0x00, 0x7F,0x7F, 0xFF,0xDF, 0xFF,0xFF, 0x7E,0x7E, 0x00,0x00, 0x00,0x00, 0x00,0x00
+};
+
+static void draw_title_sonic_face_oam(void) {
+    g_oam_next = 0;
+    hw_put_sprite8(72, 47, 0, 0); /* Crisp white eyes + 1x3 jet-black vertical pupils (highest OAM priority!) */
+    hw_put_sprite8(80, 49, 1, 0); /* Glossy jet-black bean nose + specular glint */
+    hw_put_sprite8(73, 52, 2, 1); /* Warm peach muzzle underneath eyes & nose */
+    hw_put_sprite8(77, 52, 2, 1);
+    hw_clear_remaining_oam();
 }
 
-static uint8_t ss_cell_pal(uint8_t c) {
-    if (c == 0) return 0;
-    if (c >= 0x3B && c <= 0x40) return 6; /* Prismatic Chaos Emerald */
-    if (c == 0x3A || c == 0x25) return 3; /* Gold Ring / Bumper */
-    if (c == 0x27 || c == 0x29 || c == 0x2A) return 4; /* Crimson GOAL / UP-DOWN */
-    if (c == 0x2B || (c >= 0x2D && c <= 0x30)) return 5; /* Cyan Crystal Glass / R */
-    return (c & 1) ? 1 : 2; /* Alternating Pink / Emerald Maze Walls! */
-}
+static uint8_t s_ss_field = 0;
 
-static void ss_render_rotating_viewport(void) {
+static void ss_render_rotating_viewport_field(uint8_t par) {
     uint8_t rot_b = (uint8_t)(g_ss_rot_angle >> 8);
     int16_t cos_a = hw_cos(rot_b);
     int16_t sin_a = hw_sin(rot_b);
-    /* `s_ss_px, s_ss_py` are `.4` cell units (`16` px per cell -> `cell << 8 = px << 4`)! */
-    int16_t center_u = s_ss_px << 4;
-    int16_t center_v = s_ss_py << 4;
+    uint16_t step_ru = (uint16_t)(sin_a << 2);
+    uint16_t step_rv = (uint16_t)(cos_a << 2);
+    uint16_t row_u = (uint16_t)((s_ss_px << 4) - (cos_a << 3) - (cos_a << 1) - (sin_a << 3) + sin_a * par);
+    uint16_t row_v = (uint16_t)((s_ss_py << 4) + (sin_a << 3) + (sin_a << 1) - (cos_a << 3) + cos_a * par);
+    uint8_t *base_t = (uint8_t *)(((uint16_t)s_ss_dma_raw + 15U) & 0xFFF0U);
+    uint8_t *pt = base_t + ((uint16_t)par << 5);
+    uint8_t *pa = pt + 512U;
     uint8_t rx, ry;
-    static uint8_t row_t[20];
-    static uint8_t row_a[20];
 
-    for (ry = 0; ry < 16; ry++) {
-        int8_t dy = (int8_t)ry - 8;
-        int16_t u = center_u - (cos_a * 10) + (sin_a * dy);
-        int16_t v = center_v + (sin_a * 10) + (cos_a * dy);
-
-        for (rx = 0; rx < 20; rx++) {
-            uint8_t c = s_ss_ram[(((uint16_t)((uint8_t)(v >> 8) & 63)) << 6) | ((uint8_t)(u >> 8) & 63)];
-            row_t[rx] = ss_cell_tile(c);
-            row_a[rx] = ss_cell_pal(c);
-            u += cos_a;
-            v -= sin_a;
+    for (ry = 4; ry != 0; ry--) {
+        uint16_t u = row_u;
+        uint16_t v = row_v;
+        uint8_t *t = pt;
+        uint8_t *a = pa;
+        for (rx = 5; rx != 0; rx--) {
+            uint8_t c;
+            c = s_ss_ram[(((uint16_t)(v >> 2)) & 0x0FC0U) | ((uint8_t)(u >> 8) & 63U)];
+            *t++ = s_ss_tile_lut[c]; *a++ = s_ss_pal_lut[c];
+            u += (uint16_t)cos_a; v -= (uint16_t)sin_a;
+            c = s_ss_ram[(((uint16_t)(v >> 2)) & 0x0FC0U) | ((uint8_t)(u >> 8) & 63U)];
+            *t++ = s_ss_tile_lut[c]; *a++ = s_ss_pal_lut[c];
+            u += (uint16_t)cos_a; v -= (uint16_t)sin_a;
+            c = s_ss_ram[(((uint16_t)(v >> 2)) & 0x0FC0U) | ((uint8_t)(u >> 8) & 63U)];
+            *t++ = s_ss_tile_lut[c]; *a++ = s_ss_pal_lut[c];
+            u += (uint16_t)cos_a; v -= (uint16_t)sin_a;
+            c = s_ss_ram[(((uint16_t)(v >> 2)) & 0x0FC0U) | ((uint8_t)(u >> 8) & 63U)];
+            *t++ = s_ss_tile_lut[c]; *a++ = s_ss_pal_lut[c];
+            u += (uint16_t)cos_a; v -= (uint16_t)sin_a;
         }
-        VBK_REG = 1;
-        set_bkg_tiles(0, ry, 20, 1, row_a);
-        VBK_REG = 0;
-        set_bkg_tiles(0, ry, 20, 1, row_t);
+        pt += 128;
+        pa += 128;
+        row_u += step_ru;
+        row_v += step_rv;
     }
+    g_ss_dma_ptr = base_t;
+}
+
+static void ss_render_rotating_viewport(void) {
+    s_ss_field = (s_ss_field + 1U) & 3U;
+    ss_render_rotating_viewport_field(s_ss_field);
 }
 
 /* ============================================================================================
@@ -162,15 +232,26 @@ void screens_init_mode(uint8_t mode) BANKED {
     g_oam_next = 0;
     hw_clear_remaining_oam();
 
+    if (mode != GM_SEGA) {
+        hw_stop_sega_chant();
+    }
+
     if (mode == GM_SEGA) {
         if (g_frame_counter > 0) {
             hw_load_fullscreen_screen(0);
+        }
+        if (!g_sega_pcm_playing) {
+            hw_start_sega_chant();
         }
     } else if (mode == GM_TITLE) {
         s_cheat_ls = 0;
         s_cheat_dbg = 0;
         s_cheat_jp = 0;
         hw_load_fullscreen_screen(1);
+        VBK_REG = 0;
+        set_sprite_data(0, 3, s_tson_face_tiles);
+        set_sprite_palette(0, 2, s_tson_face_pals);
+        draw_title_sonic_face_oam();
         hw_play_bgm(BGM_TITLE);
     } else if (mode == GM_LEVEL_SELECT) {
         s_ls_sel = g_cur_act < 19 ? g_cur_act : 0;
@@ -207,8 +288,12 @@ void screens_init_mode(uint8_t mode) BANKED {
         hw_print_win(2, 15, "RING BONUS");
         hw_play_bgm(BGM_ACTCLEAR);
     } else if (mode == GM_SPECIAL_STAGE) {
+        uint16_t mi;
         hw_load_special_stage_vram(g_cur_ss, &s_ss_px, &s_ss_py);
         hw_copy_ss_maze(g_cur_ss, s_ss_ram);
+        for (mi = 0; mi < 4096U; mi++) {
+            if (s_ss_ram[mi] >= 76U) s_ss_ram[mi] = 1U;
+        }
         g_rings = 0;
         g_ss_got_emerald = 0;
         g_ss_rot_angle = 0;
@@ -216,7 +301,10 @@ void screens_init_mode(uint8_t mode) BANKED {
         s_ss_vx = 0;
         s_ss_vy = 0;
         hw_play_bgm(BGM_SS);
-        ss_render_rotating_viewport();
+        ss_render_rotating_viewport_field(0);
+        ss_render_rotating_viewport_field(1);
+        ss_render_rotating_viewport_field(2);
+        ss_render_rotating_viewport_field(3);
     } else if (mode == GM_SS_RESULTS) {
         uint8_t e, cnt = 0;
         char em_buf[21];
@@ -288,13 +376,11 @@ void screens_update_mode(uint8_t mode) BANKED {
     static const uint8_t s_dbg_code[8] = { J_UP, J_B, J_DOWN, J_B, J_LEFT, J_B, J_RIGHT, J_B };
     static const uint8_t s_jp_code[5]  = { J_DOWN, J_DOWN, J_DOWN, J_LEFT, J_RIGHT };
 
-    /* 1. SEGA Boot Screen + Real Wave-RAM Voice Chant -> Opens Directly into Level Select at Start of Game! */
+    /* 1. SEGA Boot Screen + Hardware 15 kHz Wave-RAM Choir Voice (`sega.wav`) -> Level Select! */
     if (mode == GM_SEGA) {
-        if (s_mode_timer < PCM_SEGA_PACKETS) {
-            hw_play_sega_chant_step(s_mode_timer);
-        }
         s_mode_timer++;
-        if ((g_joy_pressed & (J_START | J_A | J_SELECT)) || s_mode_timer >= (PCM_SEGA_PACKETS + 24)) {
+        if ((g_joy_pressed & (J_START | J_A | J_SELECT)) || (!g_sega_pcm_playing && s_mode_timer >= 98)) {
+            hw_stop_sega_chant();
             g_cur_act = 0;
             g_next_mode = GM_LEVEL_SELECT;
         }

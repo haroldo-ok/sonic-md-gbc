@@ -1060,7 +1060,7 @@ def convert_sonic_complete(s1: S1DisasmROM) -> dict:
     sonic_pal = load_md_palette_bytes(open(os.path.join(s1.root, "palette", "Sonic.bin"), "rb").read())
     num_src_tiles = len(sonic_unc) // 32  # 1,289 source MD tiles
 
-    obp0_rgb = np.array([[0, 0, 0], [16, 16, 56], [36, 72, 248], [252, 228, 196]], dtype=np.float32)
+    obp0_rgb = np.array([[0, 0, 0], [8, 8, 24], [36, 76, 248], [252, 240, 212]], dtype=np.float32)
     obp1_rgb = np.array([[0, 0, 0], [16, 16, 24], [248, 32, 24], [252, 252, 252]], dtype=np.float32)
 
     map_frames = s1.parse_sprite_mapping_table(s1.sym("Map_Sonic"), 89)
@@ -1082,12 +1082,15 @@ def convert_sonic_complete(s1: S1DisasmROM) -> dict:
             for k in range(cnt):
                 expanded_src_tiles.append(min(num_src_tiles - 1, st + k))
 
-        # 1. Composite full Mega Drive Sonic frame onto centered `(96, 96)` canvas around origin `(48, 48)`!
+        # 1. Composite full Mega Drive Sonic frame onto centered `(96, 96)` canvas around origin `(48, 48)`
+        #    INCLUDING exact 4-bit `Sonic.bin` palette indices `ci96` (`1 = jet-black pupil/nose`, `6 = pure white sclera`)!
         rgb96 = np.zeros((96, 96, 3), dtype=np.float32)
         mask96 = np.zeros((96, 96), dtype=bool)
         red96 = np.zeros((96, 96), dtype=bool)
+        ci96 = np.zeros((96, 96), dtype=np.uint8)
 
-        for p in map_frames[f_i]:
+        # Draw pieces in reverse VDP order so Piece 0 (highest Mega Drive front priority) wins overlaps!
+        for p in reversed(map_frames[f_i]):
             for cx in range(p.width):
                 for cy in range(p.height):
                     sub_idx = p.tile + cx * p.height + cy
@@ -1115,8 +1118,9 @@ def convert_sonic_complete(s1: S1DisasmROM) -> dict:
                                 rgb96[py, px_x] = (r, g, b)
                                 mask96[py, px_x] = True
                                 red96[py, px_x] = (r > b + 60 and r > g + 50)
+                                ci96[py, px_x] = ci
 
-        # 2. Crisp alpha-aware `2x` downsample `(96, 96) -> (48, 48)` centered at `(24, 24)` (`0.5x` half size!)
+        # 2. Crisp `2x` downsample `(96, 96) -> (48, 48)` centered at `(24, 24)` (`0.5x` half size!)
         rgb48 = np.zeros((48, 48, 3), dtype=np.float32)
         mask48 = np.zeros((48, 48), dtype=bool)
         red48 = np.zeros((48, 48), dtype=bool)
@@ -1126,16 +1130,67 @@ def convert_sonic_complete(s1: S1DisasmROM) -> dict:
                 cnt = int(np.sum(sub_m))
                 if cnt >= 2:
                     mask48[sy, sx] = True
+                    sub_ci = ci96[sy * 2:sy * 2 + 2, sx * 2:sx * 2 + 2]
                     pts = rgb96[sy * 2:sy * 2 + 2, sx * 2:sx * 2 + 2][sub_m]
-                    # Preserve bright eye sclera / peach muzzle / white glove highlight cleanly!
                     lums = 0.299 * pts[:, 0] + 0.587 * pts[:, 1] + 0.114 * pts[:, 2]
-                    if float(np.max(lums)) >= 185.0:
+                    # Preserve crisp black bean nose (`>= 2` black pixels `ci == 1` with no white `6` in cell)
+                    if int(np.sum(sub_ci == 1)) >= 2 and int(np.sum(sub_ci == 6)) == 0:
+                        rgb48[sy, sx] = (8.0, 8.0, 24.0)
+                    elif float(np.max(lums)) >= 185.0:
                         rgb48[sy, sx] = pts[int(np.argmax(lums))]
                     elif cnt == 2 and float(np.min(lums)) < 48.0:
                         rgb48[sy, sx] = pts[int(np.argmin(lums))]
                     else:
                         rgb48[sy, sx] = np.mean(pts, axis=0)
                     red48[sy, sx] = int(np.sum(red96[sy * 2:sy * 2 + 2, sx * 2:sx * 2 + 2])) >= 1
+
+        # 2b. Extract EVERY authentic Mega Drive Sonic eye pupil (`ci == 1` horizontally adjacent to pure white
+        #     eye sclera `ci == 6`) and stamp a razor-sharp `1x2` jet-black vertical pupil (`RGB(8, 8, 24)`)
+        #     flanked by bright white sclera (`RGB(252, 240, 212)`) onto `rgb48`!
+        visited_p = np.zeros((96, 96), dtype=bool)
+        pupil_coords_48: set[tuple[int, int]] = set()
+        for py0 in range(1, 95):
+            for px0 in range(1, 95):
+                if ci96[py0, px0] == 1 and not visited_p[py0, px0]:
+                    # Flood-fill connected `ci == 1` component
+                    stack = [(py0, px0)]
+                    visited_p[py0, px0] = True
+                    comp: list[tuple[int, int]] = []
+                    left_w = 0
+                    right_w = 0
+                    while stack:
+                        cy_i, cx_i = stack.pop()
+                        comp.append((cy_i, cx_i))
+                        if cx_i > 0 and ci96[cy_i, cx_i - 1] == 6:
+                            left_w += 1
+                        if cx_i < 95 and ci96[cy_i, cx_i + 1] == 6:
+                            right_w += 1
+                        for ny_i in (cy_i - 1, cy_i, cy_i + 1):
+                            for nx_i in (cx_i - 1, cx_i, cx_i + 1):
+                                if 0 <= ny_i < 96 and 0 <= nx_i < 96 and not visited_p[ny_i, nx_i] and ci96[ny_i, nx_i] == 1:
+                                    visited_p[ny_i, nx_i] = True
+                                    stack.append((ny_i, nx_i))
+                    # True eye pupil components touch white sclera `ci == 6` laterally (`>= 2` rows or small `1..12` px eye dot)!
+                    ys_c = [p[0] for p in comp]
+                    xs_c = [p[1] for p in comp]
+                    h_c = max(ys_c) - min(ys_c) + 1
+                    w_c = max(xs_c) - min(xs_c) + 1
+                    if (left_w + right_w) >= 2 and h_c >= 2 and w_c <= 4 and len(comp) <= 14:
+                        hx = int(round((sum(xs_c) / float(len(xs_c)) - 0.25) / 2.0))
+                        hy_top = int(min(ys_c) // 2)
+                        hy_bot = max(hy_top, min(hy_top + 1, int(max(ys_c) // 2)))
+                        scl_dx = -1 if left_w >= right_w else 1
+                        for hy in range(hy_top, hy_bot + 1):
+                            if 0 <= hy < 48 and 0 <= hx < 48:
+                                mask48[hy, hx] = True
+                                red48[hy, hx] = False
+                                rgb48[hy, hx] = (8.0, 8.0, 24.0)
+                                pupil_coords_48.add((hy, hx))
+                                sx_w = hx + scl_dx
+                                if 0 <= sx_w < 48 and (hy, sx_w) not in pupil_coords_48:
+                                    mask48[hy, sx_w] = True
+                                    red48[hy, sx_w] = False
+                                    rgb48[hy, sx_w] = (252.0, 240.0, 212.0)
 
         # 3. Slice `(48, 48)` around hotspot `(24, 24)` into 8x8 GBC dynamic sprite tiles (`ty=0..5, tx=0..5`)
         frame_src_tiles: list[int] = []
@@ -1222,16 +1277,69 @@ def build_fullscreen_scene(
     Convert a rendered `160x144` full-color scene (e.g. SEGA Screen, Title Screen, Credits/Ending)
     from genuine `s1disasm` assets into native CGB hardware tiles + attributes + 7 BG palettes (`20x18` grid = 360 tiles,
     100% fitting inside our 464-slot dual-bank CGB VRAM with ZERO loss!).
+    All 4 slots `(0, 1, 2, 3)` in every CGB BG palette are independent opaque RGB555 colors (`BGP2` pinned to water/sky
+    shimmer so `PalCycle_Title` animates ONLY water/sky tiles cleanly without touching emblem, mountains, or text!).
     Returns `(tiles_bank0_4096, tiles_bank1_3328, map_20x18, attr_20x18, bg_pals_28_u16)`.
     """
     import numpy as np
     arr = np.array(img_rgb.convert("RGB"), dtype=np.float32)  # (144, 160, 3)
-    samples = []
-    for ty in range(18):
-        for tx in range(20):
-            patch = arr[ty * 8:(ty + 1) * 8, tx * 8:(tx + 1) * 8]
-            samples.append((patch, 10))
+    patches = np.array(
+        [arr[ty * 8:(ty + 1) * 8, tx * 8:(tx + 1) * 8].reshape(64, 3) for ty in range(18) for tx in range(20)],
+        dtype=np.float32,
+    )  # (360, 64, 3)
+
+    # Seed initial 7 palettes, keeping `BGP2` strictly for sky/water shimmer (`PalCycle_Title` targets `BGP2`!)
+    samples = [(patches[k].reshape(8, 8, 3), 10) for k in range(360)]
     bg_pals = solve_zone_bg_palettes(samples, backdrop_rgb555, num_pals=7)
+    pal_rgb8 = np.array([[rgb555_to_rgb8(c) for c in p] for p in bg_pals], dtype=np.float32)  # (7, 4, 3)
+    bdrop_rgb = np.array(rgb555_to_rgb8(backdrop_rgb555), dtype=np.float32)
+    pal_rgb8[2] = np.array([bdrop_rgb, [56.0, 112.0, 248.0], [136.0, 188.0, 252.0], [236.0, 248.0, 252.0]], dtype=np.float32)
+
+    # 28 rounds of alternating tile-to-palette assignment + full 4-color per-palette pixel k-means on `p != 2`!
+    rng = np.random.default_rng(19910623)
+    for it_round in range(28):
+        errs = np.zeros((360, 7), dtype=np.float64)
+        qs = np.zeros((360, 7, 64), dtype=np.int32)
+        for p_i in range(7):
+            d2 = np.sum((patches[:, :, None, :] - pal_rgb8[p_i][None, None, :, :]) ** 2, axis=3)  # (360, 64, 4)
+            q = np.argmin(d2, axis=2)
+            qs[:, p_i, :] = q
+            errs[:, p_i] = np.sum(np.take_along_axis(d2, q[:, :, None], axis=2)[:, :, 0], axis=1)
+
+        best_p_all = np.argmin(errs, axis=1)
+        tile_best_err = errs[np.arange(360), best_p_all]
+
+        for p_i in range(7):
+            if p_i == 2:
+                continue  # Keep `BGP2` strictly pinned for `PalCycle_Title` water shimmer!
+            sel = np.where(best_p_all == p_i)[0]
+            if len(sel) == 0:
+                # Re-seed unused palette directly from the highest-error tile on screen!
+                worst_t = int(np.argmax(tile_best_err))
+                pts = patches[worst_t]
+                idx4 = rng.choice(64, size=4, replace=False)
+                pal_rgb8[p_i] = pts[idx4]
+                tile_best_err[worst_t] = 0.0
+                continue
+            pts = patches[sel].reshape(-1, 3)  # (N*64, 3)
+            q_flat = qs[sel, p_i, :].reshape(-1)
+            for c_k in range(4):
+                m_c = (q_flat == c_k)
+                if np.any(m_c):
+                    c_mean = np.mean(pts[m_c], axis=0)
+                    c555 = rgb8_to_rgb555(int(round(c_mean[0])), int(round(c_mean[1])), int(round(c_mean[2])))
+                    pal_rgb8[p_i, c_k] = rgb555_to_rgb8(c555)
+                else:
+                    # Split highest-error pixel inside `sel` into unused color slot `c_k`!
+                    cur_d2 = np.sum((pts - pal_rgb8[p_i, q_flat]) ** 2, axis=1)
+                    w_px = pts[int(np.argmax(cur_d2))]
+                    c555 = rgb8_to_rgb555(int(round(w_px[0])), int(round(w_px[1])), int(round(w_px[2])))
+                    pal_rgb8[p_i, c_k] = rgb555_to_rgb8(c555)
+
+    bg_pals = [
+        [rgb8_to_rgb555(int(round(pal_rgb8[p_i, c_k, 0])), int(round(pal_rgb8[p_i, c_k, 1])), int(round(pal_rgb8[p_i, c_k, 2]))) for c_k in range(4)]
+        for p_i in range(7)
+    ]
     pal_rgb8 = np.array([[rgb555_to_rgb8(c) for c in p] for p in bg_pals], dtype=np.float32)
 
     slot_tiles: list[bytes] = []
@@ -1441,7 +1549,7 @@ def render_sega_and_title_from_s1disasm(s1: S1DisasmROM) -> tuple[Image.Image, I
                             if ci > 0 and 0 <= dy + yy < 224 and 0 <= dx + xx < 320:
                                 title_canvas[dy + yy, dx + xx] = rgb555_to_rgb8(title_cram[pl * 16 + ci])
 
-    # Draw low-priority emblem back first, then Title Sonic inside the ring, then high-priority front ribbon, then PRESS START + TM!
+    # Draw low-priority emblem back first, then Title Sonic inside the ring (`Map_TSon` `p.pal == 0` + `pal_add = 1` -> `Title line 1`: royal blue + white sclera + jet-black pupils/nose + warm peach muzzle!), then high-priority front ribbon, then PRESS START + TM!
     for pass_prio in (False, True):
         if pass_prio:
             blit_title_sprite("Map_TSon", 8, 6, 0x300, 1, 0x70, 0x16)
@@ -1469,6 +1577,15 @@ def render_sega_and_title_from_s1disasm(s1: S1DisasmROM) -> tuple[Image.Image, I
     blit_title_sprite("Map_PSB", 4, 3, 0x510, 1, 0xF0, 0x78)
 
     title_half = np.array(Image.fromarray(title_canvas).resize((160, 112), Image.Resampling.BILINEAR))
+    # Preserve crisp jet-black eye pupils inside white sclera on Title Screen Sonic (`Map_TSon`) across `2x` bilinear shrink!
+    t_lum = 0.299 * title_canvas[:, :, 0] + 0.587 * title_canvas[:, :, 1] + 0.114 * title_canvas[:, :, 2]
+    for hy in range(30, 47):
+        for hx in range(56, 86):
+            blk = t_lum[hy * 2:hy * 2 + 2, hx * 2:hx * 2 + 2]
+            if float(np.min(blk)) < 20.0:
+                nb = t_lum[max(0, hy * 2 - 1):min(224, hy * 2 + 3), max(0, hx * 2 - 2):min(320, hx * 2 + 4)]
+                if float(np.max(nb)) > 215.0 and int(np.sum(nb > 215.0)) >= 4:
+                    title_half[hy, hx] = (12, 16, 32)
     title_frame = np.zeros((144, 160, 3), dtype=np.uint8)
     title_frame[:16, :, :] = rgb555_to_rgb8(title_cram[32])
     title_frame[16:128, :, :] = title_half

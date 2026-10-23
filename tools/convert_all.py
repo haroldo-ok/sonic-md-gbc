@@ -553,7 +553,12 @@ def main() -> None:
         sfx_blob.extend(xb)
     sfx_bank = packer.add_array("all_sfx_blob", bytes(sfx_blob), "All 49 SMPS Sound Effects (0xA0..0xD0)", force_new_bank=True)
 
-    sega_pcm, sega_pcm_meta = convert_wav_to_4bit_wave_packets(os.path.join(S1_DIR, "sound", "dac", "pcm", "sega.wav"), max_packets=160)
+    sega_pcm, sega_pcm_meta = convert_wav_to_4bit_wave_packets(
+        os.path.join(S1_DIR, "sound", "dac", "pcm", "sega.wav"),
+        max_packets=286,
+        target_sr=5600,
+    )
+    sega_pcm = sega_pcm + (b"\x88" * max(16, (418 * 16) - len(sega_pcm)))
     kick_pcm, _ = convert_wav_to_4bit_wave_packets(os.path.join(S1_DIR, "sound", "dac", "dpcm", "kick.wav"), max_packets=24)
     snare_pcm, _ = convert_wav_to_4bit_wave_packets(os.path.join(S1_DIR, "sound", "dac", "dpcm", "snare.wav"), max_packets=24)
     timp_pcm, _ = convert_wav_to_4bit_wave_packets(os.path.join(S1_DIR, "sound", "dac", "dpcm", "timpani.wav"), max_packets=64)
@@ -611,8 +616,8 @@ def main() -> None:
             else:
                 payload = raw[:14000]
 
-            # Pack in <= 12,000-byte chunks into remaining ROM banks up to bank 254!
-            if packer.cur_bank < 252 and len(payload) <= 12000:
+            # Pack in <= 12,000-byte chunks into remaining ROM banks up to bank 121 (Banks 123..127 belong to engine/supplement)!
+            if packer.cur_bank < 122 and len(payload) <= 12000:
                 b_assigned = packer.add_array(f"s1_asset_{archive_id}", payload, f"Converted {rel}")
                 archive_id += 1
             else:

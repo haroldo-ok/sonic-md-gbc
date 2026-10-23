@@ -1,5 +1,39 @@
 #include "engine.h"
-#include <string.h>
+
+/* Interrupt-safe `memcpy` replacement: GBDK's default `___memcpy` loads
+ * hardware `SP = src` without disabling `IME`, which corrupts `SP` and RAM if
+ * our `60 Hz` `hw_sound_isr` or `5,461 Hz` `hw_sega_pcm_tim_isr` fires mid-copy! */
+void *safe_copy_bytes(void *dst, const void *src, uint16_t n) {
+    uint8_t *d = (uint8_t *)dst;
+    const uint8_t *s = (const uint8_t *)src;
+    while (n >= 8U) {
+        d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
+        d[4] = s[4]; d[5] = s[5]; d[6] = s[6]; d[7] = s[7];
+        d += 8;
+        s += 8;
+        n -= 8U;
+    }
+    while (n != 0U) {
+        *d++ = *s++;
+        n--;
+    }
+    return dst;
+}
+
+void *safe_set_bytes(void *dst, uint8_t val, uint16_t n) {
+    uint8_t *d = (uint8_t *)dst;
+    while (n >= 8U) {
+        d[0] = val; d[1] = val; d[2] = val; d[3] = val;
+        d[4] = val; d[5] = val; d[6] = val; d[7] = val;
+        d += 8;
+        n -= 8U;
+    }
+    while (n != 0U) {
+        *d++ = val;
+        n--;
+    }
+    return dst;
+}
 
 /* Global Engine State in WRAM Bank 0 */
 volatile uint8_t g_game_mode = GM_SEGA;
@@ -76,7 +110,6 @@ VisualSetDesc g_ram_vset;
 ActDesc g_ram_act;
 uint8_t g_oam_next = 0;
 static uint8_t s_loaded_sonic_frame = 0xFF;
-static uint8_t s_underwater_pal_active = 0;
 
 volatile uint8_t g_cur_bgm = 0;
 volatile uint8_t g_cur_sfx = 0;
@@ -351,8 +384,8 @@ void hw_sound_tick(void) {
 
 /* 8 Crisp Simultaneous CGB Hardware Sprite Palettes (OBP0..OBP7) */
 const uint16_t g_default_obj_pals[32] = {
-    /* OBP0: Sonic Royal Cobalt Blue + Peach Skin / White Glove */
-    0x0000, RGB8(16, 16, 56),   RGB8(36, 72, 248),  RGB8(252, 228, 196),
+    /* OBP0: Sonic Ink-Black Eye Pupils (`1`) + Royal Cobalt Blue (`2`) + Bright Cream-White Sclera/Gloves (`3`) */
+    0x0000, RGB8(8, 8, 24),     RGB8(36, 76, 248),  RGB8(252, 240, 212),
     /* OBP1: Crimson + Pure White + Black Outline (Sonic Shoes, Springs, Lamp, Eggman, Fireballs) */
     0x0000, RGB8(16, 16, 24),   RGB8(244, 28, 24),  RGB8(252, 252, 252),
     /* OBP2: Gleaming Gold + White + Dark Bronze (Rings, Monitors, Giant Ring, Capsule, Sparkles) */
@@ -384,8 +417,87 @@ void hw_install_bass_wave(void) {
     NR30_REG = 0x80;
 }
 
+volatile uint8_t g_sega_pcm_playing = 0;
+static volatile uint16_t s_sega_idx = 0;
+static uint8_t s_sega_prev_b = 0xFF;
+
+static const uint8_t s_sega_nr32_lut[4] = { 0x00U, 0x60U, 0x40U, 0x20U };
+static uint8_t s_sega_shift = 0;
+static uint8_t s_sega_sub = 0;
+
+void hw_stop_sega_chant(void) {
+    if (!g_sega_pcm_playing) return;
+    g_sega_pcm_playing = 0;
+    s_sega_sub = 0;
+    s_sega_prev_b = 0xFF;
+    TAC_REG = 0x00;
+    NR32_REG = 0x00;
+    hw_install_bass_wave();
+    NR30_REG = 0x00;
+    NR51_REG = 0xFF;
+}
+
+void hw_start_sega_chant(void) {
+    volatile uint8_t *w = (volatile uint8_t *)0xFF30U;
+    uint8_t i;
+    s_sega_idx = 0;
+    s_sega_sub = 0;
+    s_sega_shift = 0;
+    s_sega_prev_b = 0xFF;
+    g_sega_pcm_playing = 1;
+    s_bgm_ptr = 0;
+    s_sfx_active = 0;
+    NR12_REG = 0x00;
+    NR22_REG = 0x00;
+    NR42_REG = 0x00;
+    NR50_REG = 0x77;
+    NR51_REG = 0x44;
+    NR30_REG = 0x00;
+    for (i = 0; i < 16U; i++) w[i] = 0xFFU;
+    NR32_REG = 0x00;
+    NR30_REG = 0x80;
+    NR33_REG = 0x00U;
+    NR34_REG = 0x87U;
+    /* Hardware `8,738 Hz` 1st-order Delta-Sigma DAC over CH3 `[0, 3, 7, 15]` (`TMA = 241`, `TAC = 0x06`) —
+     * below the `9,257 Hz` ISR ceiling so `main()` never starves and runs at full `60 FPS` from frame 1! */
+    TMA_REG = 241U;
+    TIMA_REG = 254U;
+    TAC_REG = 0x06U;
+}
+
+void hw_sega_pcm_tim_isr(void) {
+    uint8_t prev;
+    if (!g_sega_pcm_playing || g_game_mode != GM_SEGA) {
+        hw_stop_sega_chant();
+        return;
+    }
+    if (s_sega_sub == 0U) {
+        uint16_t idx = s_sega_idx;
+        if (idx >= 3610U) {
+            hw_stop_sega_chant();
+            return;
+        }
+        s_sega_idx = idx + 1U;
+        prev = CURRENT_BANK;
+        SWITCH_ROM(PCM_SEGA_BANK);
+        s_sega_shift = sega_wave_pcm[idx];
+        SWITCH_ROM(prev);
+        s_sega_sub = 4U;
+        g_sound_events++;
+    }
+    NR32_REG = s_sega_nr32_lut[s_sega_shift & 3U];
+    s_sega_shift >>= 2;
+    s_sega_sub--;
+}
+
+static volatile uint8_t s_vbl_joy_latch = 0;
+
 void hw_sound_isr(void) {
     g_sound_isr_ticks++;
+    if (g_sega_pcm_playing) return;
+    if (g_game_mode == GM_LEVEL && !g_paused) {
+        s_vbl_joy_latch |= (joypad() & J_SELECT);
+    }
     if (s_audio_lock) return;
     if (g_paused && g_game_mode == GM_LEVEL) {
         if (!s_paused_muted) {
@@ -401,95 +513,42 @@ void hw_sound_isr(void) {
     hw_sound_tick();
 }
 
-void hw_play_sega_chant_step(uint16_t pkt_idx) {
-    uint8_t prev;
-    uint8_t i;
-    const uint8_t *p;
-    if (pkt_idx >= PCM_SEGA_PACKETS) return;
-    s_audio_lock = 1;
-    prev = CURRENT_BANK;
-    SWITCH_ROM(PCM_SEGA_BANK);
-    p = &sega_wave_pcm[pkt_idx << 4];
-    NR30_REG = 0x00;
-    for (i = 0; i < 16; i++) {
-        ((volatile uint8_t *)0xFF30)[i] = p[i];
-    }
-    NR30_REG = 0x80;
-    NR32_REG = 0x20; /* 100% output level */
-    /* Play 32 samples at ~1920 Hz (1 packet per 60Hz frame -> period = 2048 - 65536/60 = 956 -> seamless voice!) */
-    NR33_REG = (uint8_t)(1994 & 0xFF);
-    NR34_REG = 0x80 | ((1994 >> 8) & 0x07);
-    g_sound_events++;
-    SWITCH_ROM(prev);
-    s_audio_lock = 0;
-}
-
-/* Convert ASCII character to Bank 1 HUD/Font tile index (80..127) */
-static uint8_t ascii_to_font_tile(char c) {
-    if (c >= '0' && c <= '9') return (uint8_t)(84 + (c - '0'));
-    if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
-    if (c >= 'A' && c <= 'X') return (uint8_t)(96 + (c - 'A'));
-    if (c == 'Y') return 94;
-    if (c == 'Z') return 95;
-    if (c == ':' || c == '-' || c == '/') return 120;
-    if (c == '*') return 121; /* Gold Ring icon */
-    if (c == '@') return 122; /* Sonic Life L */
-    if (c == '#') return 123; /* Sonic Life R */
-    if (c == '$') return 124; /* Chaos Emerald */
-    if (c == '>') return 125; /* Cursor '>' */
-    if (c == '%') return 126; /* Checker border */
-    if (c == '!') return 127; /* Stripe accent */
-    return 80; /* Space (solid navy backdrop slot 0) */
-}
-
-void hw_fill_win_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t fill_tile) {
-    uint8_t row_t[20];
-    uint8_t row_a[20];
-    uint8_t i, ry;
-    if (w > 20) w = 20;
-    for (i = 0; i < w; i++) {
-        row_t[i] = fill_tile;
-        row_a[i] = 0x08 | 7; /* VRAM Bank 1 + BGP7 */
-    }
-    for (ry = 0; ry < h; ry++) {
-        VBK_REG = 1;
-        set_win_tiles(x, y + ry, w, 1, row_a);
-        VBK_REG = 0;
-        set_win_tiles(x, y + ry, w, 1, row_t);
-    }
-}
+BANKREF_EXTERN(print_win_ram_b127)
+extern void print_win_ram_b127(uint8_t x, uint8_t y, const char *ram_str) BANKED;
+BANKREF_EXTERN(flush_vscroll_b127)
+extern void flush_vscroll_b127(uint8_t cnt) BANKED;
 
 void hw_print_win(uint8_t x, uint8_t y, const char *str) {
-    uint8_t row_t[20];
-    uint8_t row_a[20];
+    char buf[21];
     uint8_t n = 0;
-    while (str[n] != '\0' && (uint8_t)(x + n) < 20) {
-        row_t[n] = ascii_to_font_tile(str[n]);
-        row_a[n] = 0x08 | 7;
+    while (n < 20U && str[n] != '\0') {
+        buf[n] = str[n];
         n++;
     }
-    if (n > 0) {
-        VBK_REG = 1;
-        set_win_tiles(x, y, n, 1, row_a);
-        VBK_REG = 0;
-        set_win_tiles(x, y, n, 1, row_t);
-    }
+    buf[n] = '\0';
+    print_win_ram_b127(x, y, buf);
 }
+
+static uint8_t s_prev_oam_used = 40;
 
 void hw_clear_remaining_oam(void) {
     uint8_t i;
-    for (i = g_oam_next; i < 40; i++) {
-        move_sprite(i, 0, 0);
+    uint8_t lim = s_prev_oam_used;
+    for (i = g_oam_next; i < lim; i++) {
+        shadow_OAM[i].y = 0;
     }
+    s_prev_oam_used = g_oam_next ? g_oam_next : 1;
 }
 
 void hw_put_sprite8(int16_t sx, int16_t sy, uint8_t tile, uint8_t attr) {
+    OAM_item_t *it;
     if (g_oam_next >= 40) return;
     if (sx <= -8 || sx >= 160 || sy <= -8 || sy >= 128) return;
-    set_sprite_tile(g_oam_next, tile);
-    set_sprite_prop(g_oam_next, attr);
-    move_sprite(g_oam_next, (uint8_t)(sx + 8), (uint8_t)(sy + 16));
-    g_oam_next++;
+    it = &shadow_OAM[g_oam_next++];
+    it->y = (uint8_t)(sy + 16);
+    it->x = (uint8_t)(sx + 8);
+    it->tile = tile;
+    it->prop = attr;
 }
 
 void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr) {
@@ -509,78 +568,30 @@ void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t 
 }
 
 void hw_put_sprite16(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t attr) {
-    /* Full `0.5x` half-scale (`32x32 MD -> 16x16 GBC`) column-major `2x2` sprite renderer with seamless H/V-flip! */
     hw_put_sprite_cols2rows(sx - 8, sy - 8, base_tile, 2u, attr);
 }
 
+BANKREF_EXTERN(draw_transition_card_win_b127)
+extern void draw_transition_card_win_b127(const char *line1, const char *line2, uint8_t act_num) BANKED;
+BANKREF_EXTERN(spawn_try_place_b127)
+extern void spawn_try_place_b127(uint16_t idx, int16_t ox, int16_t oy, uint8_t oid, uint8_t osub) BANKED;
+BANKREF_EXTERN(sonic_anim_oct_b127)
+extern uint8_t sonic_anim_oct_b127(uint8_t *out_fx, uint8_t *out_fy, uint8_t cmd, uint8_t do_oct) BANKED;
+
 void hw_show_transition_card(const char *line1, const char *line2, uint8_t act_num) {
-    char act_buf[8];
-    uint8_t prev = CURRENT_BANK;
+    char l1[20], l2[20];
+    uint8_t i = 0, prev = CURRENT_BANK;
+    l1[0] = '\0'; l2[0] = '\0';
+    if (line1) { for (i = 0; i < 19 && line1[i]; i++) l1[i] = line1[i]; l1[i] = '\0'; }
+    if (line2) { for (i = 0; i < 19 && line2[i]; i++) l2[i] = line2[i]; l2[i] = '\0'; }
     g_oam_next = 0;
     hw_clear_remaining_oam();
 
-    /* Ensure HUD & Title Card font/border tiles (`80..127` in `VBK=1`) are always 100% pristine! */
     SWITCH_ROM(4);
     VBK_REG = 1;
     set_bkg_data(80, 48, hud_font_tiles);
     SWITCH_ROM(prev);
-
-    /* Paint iconic Sonic Navy + Crimson Ribbon + Gold Stripe Title Card in Window Layer ($9C00) */
-    hw_fill_win_rect(0, 0, 20, 18, 80);  /* Rich Sonic Navy */
-    hw_fill_win_rect(0, 0, 20, 1, 126);  /* Top Checker Border */
-    hw_fill_win_rect(0, 17, 20, 1, 126); /* Bottom Checker Border */
-    hw_fill_win_rect(1, 5, 18, 6, 81);   /* Sonic Crimson Ribbon */
-    hw_fill_win_rect(1, 11, 18, 1, 82);  /* Ring Gold Underline */
-
-    hw_print_win(1, 2, "SONIC THE HEDGEHOG");
-    if (line1) hw_print_win(2, 6, line1);
-    if (line2) hw_print_win(2, 8, line2);
-    if (act_num > 0) {
-        act_buf[0] = 'A'; act_buf[1] = 'C'; act_buf[2] = 'T'; act_buf[3] = ' ';
-        act_buf[4] = (char)('0' + act_num); act_buf[5] = '\0';
-        hw_print_win(12, 9, act_buf);
-    }
-    WX_REG = 7;
-    WY_REG = 0;
-}
-
-static void write_u16_digits(char *dst, uint16_t val, uint8_t digits) {
-    uint8_t i;
-    for (i = digits; i > 0; i--) {
-        dst[i - 1] = (char)('0' + (val % 10));
-        val /= 10;
-    }
-}
-
-void hw_update_hud(void) {
-    char row0[21];
-    char row1[21];
-    uint16_t secs_total = g_level_frames / 60;
-    uint8_t mins = (uint8_t)(secs_total / 60);
-    uint8_t secs = (uint8_t)(secs_total % 60);
-    uint16_t sc_disp = (uint16_t)(g_score / 10);
-
-    /* Row 0: "SCR 000000  T 0:00  " */
-    memcpy(row0, "SCR 0000000 T 0:00  ", 20);
-    row0[20] = '\0';
-    write_u16_digits(&row0[4], sc_disp, 6);
-    row0[14] = (char)('0' + (mins % 10));
-    row0[16] = (char)('0' + (secs / 10));
-    row0[17] = (char)('0' + (secs % 10));
-
-    /* Row 1: "*000  @#x03  EM:0/6 " */
-    memcpy(row1, "*000  @#03   EM 0:6 ", 20);
-    row1[20] = '\0';
-    write_u16_digits(&row1[1], g_rings > 999 ? 999 : g_rings, 3);
-    write_u16_digits(&row1[8], g_lives > 99 ? 99 : g_lives, 2);
-    {
-        uint8_t em_cnt = 0, b;
-        for (b = 0; b < 6; b++) if (g_emeralds & (1 << b)) em_cnt++;
-        row1[16] = (char)('0' + em_cnt);
-    }
-
-    hw_print_win(0, 0, row0);
-    hw_print_win(0, 1, row1);
+    draw_transition_card_win_b127(l1, l2, act_num);
 }
 
 void hw_load_fullscreen_screen(uint8_t scr_idx) {
@@ -623,25 +634,43 @@ void hw_load_fullscreen_screen(uint8_t scr_idx) {
     SCY_REG = 0;
     set_bkg_palette(0, 8, desc.bg_pal);
     WY_REG = 144; /* Hide window overlay to reveal crisp full-bleed 160x144 screen! */
+    s_vbl_joy_latch = 0;
     SWITCH_ROM(prev);
 }
 
+/* Pre-cached WRAM Zone Chunk Pointers (`0..15` pages = up to `256` chunks) — ZERO `SWITCH_ROM(8)` calls in gameplay! */
+static const uint8_t *s_zone_chunk_ptrs[16];
+
+/* Zero-overlap MBC5 SRAM Bank 1 (`rRAMB = 1`) memory map:
+ *   `0xA000..0xAFFF` (`4,096` B): `s_ss_ram` (`Special Stage` 64x64 maze)
+ *   `0xB000..0xB1FF` (`  512` B): `s_fg_ram` (`max fg = 343` B across all 20 Acts)
+ *   `0xB200..0xB3FF` (`  512` B): `s_bg_ram` (`max bg = 360` B across all 20 Acts)
+ *   `0xB400..0xB8FF` (`1,280` B): `s_col_ram` (`col1[640]` + `col2[640]` zero-bank-switch collision table!)
+ *   `0xBC00..0xBFFF` (`1,024` B): `s_vscroll_q` (`8 x 49 = 392` B VBlank span queue)
+ * Leaves internal WRAM `_DATA` at `0x1B1E` with `> 990` bytes of clean hardware stack! */
+#define s_fg_ram  ((uint8_t *)0xB000U)
+#define s_bg_ram  ((uint8_t *)0xB200U)
+#define s_col_ram ((uint8_t *)0xB400U)
+static const uint8_t *s_fg_rows[32];
+static const uint8_t *s_bg_rows[16];
+static uint8_t s_scan_force = 1;
+static uint16_t s_cached_d4 = 0xFFFF;
+static uint8_t s_cached_cid = 0;
+static uint8_t s_scache_frame[2] = { 0xFF, 0xFF };
+static uint8_t s_cur_sonic_base = 0;
+
 uint8_t hw_get_raw_chunk_id(int16_t world_x, int16_t world_y) {
-    uint8_t prev, cx, cy, chunk_id;
+    uint8_t cx, cy;
     if (world_x < 0 || world_y < 0) return 0;
     cx = (uint8_t)((uint16_t)world_x >> 8);
     cy = (uint8_t)((uint16_t)world_y >> 8);
     if (cx >= g_ram_act.fg_w || cy >= g_ram_act.fg_h) return 0;
-    prev = CURRENT_BANK;
-    SWITCH_ROM(g_ram_act.data_bank);
-    chunk_id = g_ram_act.fg_layout[(uint16_t)cy * g_ram_act.fg_w + cx];
-    SWITCH_ROM(prev);
-    return chunk_id;
+    return s_fg_rows[cy][cx];
 }
 
 /* Look up 16-bit chunk block word at `(world_x, world_y)` matching `FindNearestTile` (`sub FindNearestTile.asm`) */
 uint16_t hw_get_chunk_word(int16_t world_x, int16_t world_y, uint8_t loop_alt) {
-    uint8_t prev, cx, cy, chunk_id, page_bank, bx, by;
+    uint8_t prev, cx, cy, chunk_id, page_idx, bx, by;
     const uint8_t *cptr;
     uint16_t bw;
 
@@ -651,13 +680,11 @@ uint16_t hw_get_chunk_word(int16_t world_x, int16_t world_y, uint8_t loop_alt) {
     if (cx >= g_ram_act.fg_w || cy >= g_ram_act.fg_h) return 0;
 
     prev = CURRENT_BANK;
-    SWITCH_ROM(g_ram_act.data_bank);
-    chunk_id = g_ram_act.fg_layout[(uint16_t)cy * g_ram_act.fg_w + cx];
+    chunk_id = s_fg_rows[cy][cx];
     if (chunk_id == 0) {
         SWITCH_ROM(prev);
         return 0;
     }
-    /* Exact `.specialtile` logic from `sub FindNearestTile.asm`: loop chunks (`& 0x80`) swap to `cid + 1` (and `$29 -> $51`)! */
     if (chunk_id & 0x80) {
         chunk_id &= 0x7F;
         if (loop_alt) {
@@ -669,11 +696,10 @@ uint16_t hw_get_chunk_word(int16_t world_x, int16_t world_y, uint8_t loop_alt) {
         SWITCH_ROM(prev);
         return 0;
     }
-    chunk_id--; /* 0-based index into map256 */
-    page_bank = g_ram_vset.chunk_base_bank + (chunk_id >> 4);
-    SWITCH_ROM(8);
-    cptr = g_chunk_bank_ptrs[page_bank];
-    SWITCH_ROM(page_bank);
+    chunk_id--;
+    page_idx = chunk_id >> 4;
+    cptr = s_zone_chunk_ptrs[page_idx & 15U];
+    SWITCH_ROM(g_ram_vset.chunk_base_bank + page_idx);
     bx = ((uint8_t)world_x >> 4) & 0x0F;
     by = ((uint8_t)world_y >> 4) & 0x0F;
     bw = ((const uint16_t *)cptr)[((uint16_t)(chunk_id & 0x0F) << 8) + ((uint16_t)by << 4) + bx];
@@ -681,92 +707,7 @@ uint16_t hw_get_chunk_word(int16_t world_x, int16_t world_y, uint8_t loop_alt) {
     return bw;
 }
 
-/* Resolve half-scale `(tile_byte, cgb_attr)` at GBC 8x8 tile `(wx8, wy8)` (= MD 16x16 block `(wx8*16, wy8*16)`) */
-static uint8_t s_tc_tag = 0xFF;
-static uint8_t s_tc_fcx = 0xFF, s_tc_fcy = 0xFF, s_tc_fcid = 0, s_tc_fpbank = 0;
-static const uint8_t *s_tc_fcptr = 0;
-static uint8_t s_tc_bcx = 0xFF, s_tc_bcy = 0xFF, s_tc_bcid = 0, s_tc_bpbank = 0;
-static const uint8_t *s_tc_bcptr = 0;
-
-static uint16_t resolve_world_block8(int16_t wx8, int16_t wy8) {
-    uint16_t bw = 0;
-
-    if (wx8 >= 0 && wy8 >= 0) {
-        uint8_t cx = (uint8_t)((uint16_t)wx8 >> 4);
-        uint8_t cy = (uint8_t)((uint16_t)wy8 >> 4);
-        if (cx < g_ram_act.fg_w && cy < g_ram_act.fg_h) {
-            uint8_t cid;
-            if (cx == s_tc_fcx && cy == s_tc_fcy) {
-                cid = s_tc_fcid;
-            } else {
-                s_tc_fcx = cx;
-                s_tc_fcy = cy;
-                SWITCH_ROM(g_ram_act.data_bank);
-                cid = g_ram_act.fg_layout[(uint16_t)cy * g_ram_act.fg_w + cx] & 0x7F;
-                s_tc_fcid = cid;
-                if (cid > 0 && cid <= g_ram_vset.num_chunks) {
-                    s_tc_fpbank = g_ram_vset.chunk_base_bank + ((cid - 1) >> 4);
-                    SWITCH_ROM(8);
-                    s_tc_fcptr = g_chunk_bank_ptrs[s_tc_fpbank];
-                }
-            }
-            if (cid > 0 && cid <= g_ram_vset.num_chunks) {
-                SWITCH_ROM(s_tc_fpbank);
-                bw = ((const uint16_t *)s_tc_fcptr)[((uint16_t)((cid - 1) & 0x0F) << 8)
-                    + (uint16_t)(wy8 & 0x0F) * 16 + (wx8 & 0x0F)];
-                if (bw & 0x03FF) return bw;
-            }
-        }
-    }
-
-    if (g_ram_act.bg_w > 0 && g_ram_act.bg_h > 0) {
-        uint8_t vset = g_ram_act.vset_idx;
-        uint16_t raw_x = (uint16_t)(wx8 >= 0 ? wx8 : 0);
-        uint16_t raw_y = (uint16_t)(wy8 >= 0 ? wy8 : 0);
-        uint16_t bg_tx, bg_ty;
-        if (vset == 0 || vset == 8) {
-            bg_tx = (raw_x * 3U) >> 3;
-            bg_ty = raw_y >> 2;
-        } else if (vset == 2 || vset == 3) {
-            bg_tx = raw_x >> 2;
-            bg_ty = raw_y >> 1;
-        } else if (vset == 5 || vset == 6) {
-            bg_tx = (raw_x * 3U) >> 3;
-            bg_ty = raw_y >> 1;
-        } else {
-            bg_tx = raw_x >> 1;
-            bg_ty = raw_y >> 1;
-        }
-        {
-            uint8_t raw_bcx = (uint8_t)(bg_tx >> 4);
-            uint8_t bcy = (uint8_t)(bg_ty >> 4);
-            uint8_t bcid;
-            if (bcy >= g_ram_act.bg_h) bcy = g_ram_act.bg_h - 1;
-            if (raw_bcx == s_tc_bcx && bcy == s_tc_bcy) {
-                bcid = s_tc_bcid;
-            } else {
-                uint8_t bcx = (uint8_t)(raw_bcx % g_ram_act.bg_w);
-                s_tc_bcx = raw_bcx;
-                s_tc_bcy = bcy;
-                SWITCH_ROM(g_ram_act.data_bank);
-                bcid = g_ram_act.bg_layout[(uint16_t)bcy * g_ram_act.bg_w + bcx] & 0x7F;
-                s_tc_bcid = bcid;
-                if (bcid > 0 && bcid <= g_ram_vset.num_chunks) {
-                    s_tc_bpbank = g_ram_vset.chunk_base_bank + ((bcid - 1) >> 4);
-                    SWITCH_ROM(8);
-                    s_tc_bcptr = g_chunk_bank_ptrs[s_tc_bpbank];
-                }
-            }
-            if (bcid > 0 && bcid <= g_ram_vset.num_chunks) {
-                SWITCH_ROM(s_tc_bpbank);
-                return ((const uint16_t *)s_tc_bcptr)[((uint16_t)((bcid - 1) & 0x0F) << 8)
-                    + (uint16_t)(bg_ty & 0x0F) * 16 + (bg_tx & 0x0F)];
-            }
-        }
-    }
-    return 0;
-}
-
+/* Fast 2-pass span resolver (`is_col=1`: 20-tile column; `is_col=0`: 23-tile row) — zero FG/BG bank ping-pong! */
 static void blocks_to_tiles_batch(const uint16_t *bw_buf, uint8_t count, uint8_t *out_t, uint8_t *out_a) {
     uint8_t i;
     uint16_t nm16 = g_ram_vset.num_m16;
@@ -787,63 +728,131 @@ static void blocks_to_tiles_batch(const uint16_t *bw_buf, uint8_t count, uint8_t
     }
 }
 
-static void draw_world_col(int16_t wx8, int16_t top_wy8) {
+typedef struct {
+    uint8_t is_col;
+    uint8_t vx;
+    uint8_t vy;
+    uint8_t t[23];
+    uint8_t a[23];
+} VScrollSpan;
+#define s_vscroll_q ((VScrollSpan *)0xBC00U)
+static uint8_t s_vscroll_cnt = 0;
+
+static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
     uint8_t prev = CURRENT_BANK;
-    uint8_t tag = (uint8_t)((g_cur_act << 1) | (g_rev_mode & 1));
-    uint16_t bw_buf[20];
-    uint8_t col_t[20];
-    uint8_t col_a[20];
-    uint8_t i, vx, vy0, n1, n2;
-    if (tag != s_tc_tag) { s_tc_tag = tag; s_tc_fcx = 0xFF; s_tc_bcx = 0xFF; }
-    vx = (uint8_t)wx8 & 31;
-    vy0 = (uint8_t)top_wy8 & 31;
-    n1 = (vy0 + 20 <= 32) ? 20 : (uint8_t)(32 - vy0);
-    n2 = (uint8_t)(20 - n1);
-    for (i = 0; i < 20; i++) {
-        bw_buf[i] = resolve_world_block8(wx8, top_wy8 + i);
+    uint8_t n = is_col ? 20U : 23U;
+    uint16_t bw_buf[23];
+    VScrollSpan *sp;
+    uint8_t i, cur_cx = 0xFF, cur_cy = 0xFF;
+    const uint16_t *fcptr = 0;
+
+    if (s_vscroll_cnt >= 8U) {
+        rRAMB = 1;
+        flush_vscroll_b127(s_vscroll_cnt);
+        s_vscroll_cnt = 0;
     }
-    blocks_to_tiles_batch(bw_buf, 20, col_t, col_a);
+
+    {
+        int16_t wx = wx0;
+        int16_t wy = wy0;
+        int16_t wx_step = is_col ? 0 : 1;
+        int16_t wy_step = is_col ? 1 : 0;
+        for (i = 0; i < n; i++) {
+            uint16_t bw = 0;
+            if (wx >= 0 && wy >= 0) {
+                uint8_t cx = (uint8_t)((uint16_t)wx >> 4);
+                uint8_t cy = (uint8_t)((uint16_t)wy >> 4);
+                if (cx < g_ram_act.fg_w && cy < g_ram_act.fg_h) {
+                    if (cx != cur_cx || cy != cur_cy) {
+                        uint8_t cid;
+                        cur_cx = cx;
+                        cur_cy = cy;
+                        cid = s_fg_rows[cy][cx] & 0x7FU;
+                        if (cid > 0U && cid <= g_ram_vset.num_chunks) {
+                            uint8_t pg = (cid - 1U) >> 4;
+                            SWITCH_ROM(g_ram_vset.chunk_base_bank + pg);
+                            fcptr = (const uint16_t *)s_zone_chunk_ptrs[pg & 15U] + ((uint16_t)((cid - 1U) & 0x0FU) << 8);
+                        } else {
+                            fcptr = 0;
+                        }
+                    }
+                    if (fcptr) {
+                        bw = fcptr[(uint8_t)((((uint8_t)wy & 0x0FU) << 4) | ((uint8_t)wx & 0x0FU))];
+                    }
+                }
+            }
+            bw_buf[i] = bw;
+            wx += wx_step;
+            wy += wy_step;
+        }
+    }
+
+    if (g_ram_act.bg_w > 0U && g_ram_act.bg_h > 0U) {
+        uint8_t vset = g_ram_act.vset_idx;
+        uint8_t is_sky1 = (uint8_t)(vset == 0 || vset == 8);
+        uint8_t px_mode = (vset == 0 || vset == 8 || vset == 5 || vset == 6) ? 0U : ((vset == 2 || vset == 3) ? 1U : 2U);
+        uint8_t cur_bcx = 0xFF, cur_bcy = 0xFF;
+        const uint16_t *bcptr = 0;
+        int16_t wx = wx0;
+        int16_t wy = wy0;
+        int16_t wx_step = is_col ? 0 : 1;
+        int16_t wy_step = is_col ? 1 : 0;
+        for (i = 0; i < n; i++) {
+            if ((bw_buf[i] & 0x03FFU) == 0U) {
+                uint16_t rx = (uint16_t)(wx >= 0 ? wx : 0);
+                uint16_t ry = (uint16_t)(wy >= 0 ? wy : 0);
+                uint16_t bg_tx = (px_mode == 0U) ? ((rx + (rx << 1)) >> 3) : ((px_mode == 1U) ? (rx >> 2) : (rx >> 1));
+                uint16_t bg_ty = is_sky1 ? ((ry >= 44U && ry <= 47U) ? 3U : (ry & 0x0FU)) : (ry >> 1);
+                uint8_t rbcx = (uint8_t)(bg_tx >> 4);
+                uint8_t bcy = (uint8_t)(bg_ty >> 4);
+                if (bcy >= g_ram_act.bg_h) bcy = g_ram_act.bg_h - 1U;
+                if (rbcx != cur_bcx || bcy != cur_bcy) {
+                    uint8_t bcx = rbcx, bcid;
+                    while (bcx >= g_ram_act.bg_w) bcx -= g_ram_act.bg_w;
+                    cur_bcx = rbcx;
+                    cur_bcy = bcy;
+                    bcid = s_bg_rows[bcy][bcx] & 0x7FU;
+                    if (bcid > 0U && bcid <= g_ram_vset.num_chunks) {
+                        uint8_t pg = (bcid - 1U) >> 4;
+                        SWITCH_ROM(g_ram_vset.chunk_base_bank + pg);
+                        bcptr = (const uint16_t *)s_zone_chunk_ptrs[pg & 15U] + ((uint16_t)((bcid - 1U) & 0x0FU) << 8);
+                    } else {
+                        bcptr = 0;
+                    }
+                }
+                if (bcptr) {
+                    bw_buf[i] = bcptr[(uint8_t)((((uint8_t)bg_ty & 0x0FU) << 4) | ((uint8_t)bg_tx & 0x0FU))];
+                }
+            }
+            wx += wx_step;
+            wy += wy_step;
+        }
+    }
+
+    rRAMB = 1;
+    sp = &s_vscroll_q[s_vscroll_cnt++];
+    sp->is_col = is_col;
+    sp->vx = (uint8_t)wx0 & 31U;
+    sp->vy = (uint8_t)wy0 & 31U;
+    blocks_to_tiles_batch(bw_buf, n, sp->t, sp->a);
     SWITCH_ROM(prev);
-    VBK_REG = 1;
-    set_bkg_tiles(vx, vy0, 1, n1, col_a);
-    if (n2) set_bkg_tiles(vx, 0, 1, n2, col_a + n1);
-    VBK_REG = 0;
-    set_bkg_tiles(vx, vy0, 1, n1, col_t);
-    if (n2) set_bkg_tiles(vx, 0, 1, n2, col_t + n1);
 }
 
-static void draw_world_row(int16_t left_wx8, int16_t wy8) {
-    uint8_t prev = CURRENT_BANK;
-    uint8_t tag = (uint8_t)((g_cur_act << 1) | (g_rev_mode & 1));
-    uint16_t bw_buf[23];
-    uint8_t row_t[23];
-    uint8_t row_a[23];
-    uint8_t i, vx0, vy, n1, n2;
-    if (tag != s_tc_tag) { s_tc_tag = tag; s_tc_fcx = 0xFF; s_tc_bcx = 0xFF; }
-    vx0 = (uint8_t)left_wx8 & 31;
-    vy = (uint8_t)wy8 & 31;
-    n1 = (vx0 + 23 <= 32) ? 23 : (uint8_t)(32 - vx0);
-    n2 = (uint8_t)(23 - n1);
-    for (i = 0; i < 23; i++) {
-        bw_buf[i] = resolve_world_block8(left_wx8 + i, wy8);
-    }
-    blocks_to_tiles_batch(bw_buf, 23, row_t, row_a);
-    SWITCH_ROM(prev);
-    VBK_REG = 1;
-    set_bkg_tiles(vx0, vy, n1, 1, row_a);
-    if (n2) set_bkg_tiles(0, vy, n2, 1, row_a + n1);
-    VBK_REG = 0;
-    set_bkg_tiles(vx0, vy, n1, 1, row_t);
-    if (n2) set_bkg_tiles(0, vy, n2, 1, row_t + n1);
-}
+#define draw_world_col(wx, wy) enqueue_world_span((wx), (wy), 1U)
+#define draw_world_row(wx, wy) enqueue_world_span((wx), (wy), 0U)
 
 void hw_refresh_full_viewport(void) {
     int16_t wx0 = (g_cam_x >> 4) - 1;
     int16_t wy0 = (g_cam_y >> 4) - 1;
     uint8_t r;
+    s_vscroll_cnt = 0;
     for (r = 0; r < 20; r++) {
         draw_world_row(wx0, wy0 + r);
-        if ((r & 3) == 3) vsync();
+        if ((r & 3) == 3) {
+            vsync();
+            flush_vscroll_b127(s_vscroll_cnt);
+            s_vscroll_cnt = 0;
+        }
     }
     SCX_REG = (uint8_t)(g_cam_x >> 1);
     SCY_REG = (uint8_t)(g_cam_y >> 1);
@@ -854,6 +863,11 @@ void hw_stream_viewport_delta(int16_t old_cam_x, int16_t old_cam_y) {
     int16_t new_tx = g_cam_x >> 4;
     int16_t old_ty = old_cam_y >> 4;
     int16_t new_ty = g_cam_y >> 4;
+
+    if (new_tx - old_tx > 8 || new_tx - old_tx < -8 || new_ty - old_ty > 8 || new_ty - old_ty < -8) {
+        hw_refresh_full_viewport();
+        return;
+    }
 
     while (old_tx < new_tx) {
         old_tx++;
@@ -875,43 +889,6 @@ void hw_stream_viewport_delta(int16_t old_cam_x, int16_t old_cam_y) {
     SCY_REG = (uint8_t)(g_cam_y >> 1);
 }
 
-void hw_set_underwater_palette(uint8_t underwater) {
-    if (underwater != s_underwater_pal_active) {
-        uint16_t pal_ram[28];
-        s_underwater_pal_active = underwater;
-        memcpy(pal_ram, underwater ? g_ram_vset.uw_pal : g_ram_vset.bg_pal, sizeof(pal_ram));
-        set_bkg_palette(0, 7, pal_ram);
-    }
-}
-
-/* Live VBlank Zone Color Cycling matching `_inc/PaletteCycle.asm` — cycles ONLY true water/lava/light sub-palettes,
-   NEVER modifying brown/stone/steel foreground wall sub-palettes! */
-void hw_step_palette_cycle(void) {
-    static const uint8_t vset_slot[9] = { 1, 5, 1, 5, 4, 5, 5, 5, 1 };
-    static const uint16_t vset_shimmer[9][4] = {
-        { RGB8(168,224,252), RGB8(216,244,252), RGB8(248,252,252), RGB8(140,200,248) }, /* 0: GHZ BGP1 water */
-        { RGB8( 96,220,240), RGB8(156,240,252), RGB8(236,252,252), RGB8( 64,188,220) }, /* 1: LZ  BGP5 water */
-        { RGB8(252,136,  0), RGB8(252,192, 24), RGB8(252,236, 88), RGB8(244, 88,  0) }, /* 2: MZ  BGP1 lava  */
-        { RGB8(196,224,252), RGB8(252,244,196), RGB8(252,252,252), RGB8(164,204,248) }, /* 3: SLZ BGP5 stars */
-        { RGB8(252,228, 64), RGB8(252,112,188), RGB8(112,244,220), RGB8(252,172, 56) }, /* 4: SYZ BGP4 neon  */
-        { RGB8(252,220, 64), RGB8(252,132, 56), RGB8(180,236,252), RGB8(224,188, 48) }, /* 5: SBZ1 BGP5 elec */
-        { RGB8(252,220, 64), RGB8(252,132, 56), RGB8(180,236,252), RGB8(224,188, 48) }, /* 6: SBZ2 BGP5 elec */
-        { RGB8( 96,220,240), RGB8(156,240,252), RGB8(236,252,252), RGB8( 64,188,220) }, /* 7: SBZ3 BGP5 water*/
-        { RGB8(168,224,252), RGB8(216,244,252), RGB8(248,252,252), RGB8(140,200,248) }  /* 8: END BGP1 water */
-    };
-    uint16_t cyc_pal[4];
-    const uint16_t *src_pal = s_underwater_pal_active ? g_ram_vset.uw_pal : g_ram_vset.bg_pal;
-    uint8_t vset = g_ram_act.vset_idx < 9 ? g_ram_act.vset_idx : 0;
-    uint8_t slot;
-
-    if ((g_frame_counter & 7) != 0) return;
-    slot = vset_slot[vset];
-    memcpy(cyc_pal, &src_pal[slot << 2], sizeof(cyc_pal));
-    cyc_pal[3] = vset_shimmer[vset][(g_frame_counter >> 3) & 3];
-    set_bkg_palette(slot, 1, cyc_pal);
-    g_pal_cycles++;
-}
-
 static void reload_common_hud_and_sprites(void) {
     SWITCH_ROM(4);
     VBK_REG = 1;
@@ -927,17 +904,51 @@ void hw_load_act(uint8_t act_idx) {
     int16_t sx, sy;
     uint8_t hold;
     uint16_t pal_ram[32];
+    char act_label[16];
 
     if (act_idx >= NUM_PLAYABLE_ACTS) act_idx = 0;
     g_cur_act = act_idx;
 
     SWITCH_ROM(8);
-    g_ram_act = g_acts[act_idx];
-    g_ram_vset = g_visual_sets[g_ram_act.vset_idx];
+    __critical {
+        g_ram_act = g_acts[act_idx];
+        g_ram_vset = g_visual_sets[g_ram_act.vset_idx];
+    }
+    for (hold = 0; hold < 15 && g_ram_act.label[hold]; hold++) {
+        act_label[hold] = g_ram_act.label[hold];
+    }
+    act_label[hold] = '\0';
+    for (hold = 0; hold < 16; hold++) {
+        uint8_t b = g_ram_vset.chunk_base_bank + hold;
+        s_zone_chunk_ptrs[hold] = (b < 128U) ? g_chunk_bank_ptrs[b] : 0;
+    }
+    SWITCH_ROM(g_ram_act.data_bank);
+    {
+        uint16_t flen = (uint16_t)g_ram_act.fg_w * g_ram_act.fg_h;
+        uint16_t blen = (uint16_t)g_ram_act.bg_w * g_ram_act.bg_h;
+        if (flen > 384U) flen = 384U;
+        if (blen > 384U) blen = 384U;
+        rRAMB = 1;
+        memcpy(s_fg_ram, g_ram_act.fg_layout, flen);
+        if (blen) memcpy(s_bg_ram, g_ram_act.bg_layout, blen);
+    }
+    for (hold = 0; hold < 32; hold++) {
+        s_fg_rows[hold] = &s_fg_ram[(uint16_t)hold * g_ram_act.fg_w];
+    }
+    for (hold = 0; hold < 16; hold++) {
+        s_bg_rows[hold] = &s_bg_ram[(uint16_t)hold * g_ram_act.bg_w];
+    }
+    s_scan_force = 1;
+    s_cached_d4 = 0xFFFF;
+    SWITCH_ROM(g_ram_vset.meta_bank);
+    rRAMB = 1;
+    memset(s_col_ram, 0, 2048U);
+    memcpy(s_col_ram, g_ram_vset.col1, g_ram_vset.num_m16);
+    memcpy(s_col_ram + 1024U, g_ram_vset.col2, g_ram_vset.num_m16);
 
     /* Display crisp colorful Sonic Title Card Window during seamless VRAM streaming */
     set_bkg_palette(7, 1, &g_ram_vset.bg_pal[28]);
-    hw_show_transition_card(g_ram_act.label, "ZONE", (uint8_t)((act_idx % 3) + 1));
+    hw_show_transition_card(act_label, "ZONE", (uint8_t)((act_idx % 3) + 1));
 
     /* Stream 464 Zone BG tiles + 128 Zone Sprite tiles cleanly across VBlanks */
     SWITCH_ROM(g_ram_vset.tiles_bank);
@@ -979,9 +990,11 @@ void hw_load_act(uint8_t act_idx) {
     g_act_clear_done = 0;
     g_boss_active = 0;
     g_boss_defeated = 0;
-    g_water_y = g_ram_act.water_y;
-    s_underwater_pal_active = 0;
+    g_water_y = (act_idx >= 9 && act_idx <= 11) ? g_ram_act.water_y : 0x7FFF;
+    hw_set_underwater_palette(0xFF);
     s_loaded_sonic_frame = 0xFF;
+    s_scache_frame[0] = 0xFF;
+    s_scache_frame[1] = 0xFF;
 
     g_debug_active = 0;
     g_button_state = 0;
@@ -991,6 +1004,7 @@ void hw_load_act(uint8_t act_idx) {
     objects_reset_for_act();
     boss_and_gimmick_reset();
     hw_scan_spawn_objects();
+    hw_step_sonic_anim();
 
     memcpy(pal_ram, g_ram_vset.bg_pal, sizeof(pal_ram));
     set_bkg_palette(0, 8, pal_ram);
@@ -999,12 +1013,17 @@ void hw_load_act(uint8_t act_idx) {
     hw_refresh_full_viewport();
 
     /* Hold Title Card briefly so player reads Zone & Act, then reveal HUD bar at WY=128! */
-    for (hold = 0; hold < 4; hold++) {
+    for (hold = 0; hold < 2; hold++) {
         vsync();
     }
     hw_update_hud();
     WX_REG = 7;
     WY_REG = 128;
+    g_paused = 0;
+    g_joy = joypad();
+    g_joy_prev = g_joy;
+    g_joy_pressed = 0;
+    s_vbl_joy_latch = 0;
     SWITCH_ROM(prev);
 }
 
@@ -1050,11 +1069,14 @@ void hw_load_special_stage_vram(uint8_t ss_idx, int16_t *out_sx, int16_t *out_sy
     set_bkg_palette(0, 8, ss_pals);
     g_sonic.invuln = 0;
     s_loaded_sonic_frame = 0xFF;
+    s_scache_frame[0] = 0xFF;
+    s_scache_frame[1] = 0xFF;
     SCX_REG = 0;
     SCY_REG = 0;
     hw_update_hud();
     WX_REG = 7;
     WY_REG = 128;
+    s_vbl_joy_latch = 0;
     SWITCH_ROM(prev);
 }
 
@@ -1062,28 +1084,30 @@ void hw_copy_ss_maze(uint8_t ss_idx, uint8_t *dst4096) {
     uint8_t prev = CURRENT_BANK;
     SpecialStageDesc d;
     SWITCH_ROM(8);
-    d = g_special_stages[ss_idx % NUM_SPECIAL_STAGES];
+    __critical {
+        d = g_special_stages[ss_idx % NUM_SPECIAL_STAGES];
+    }
     SWITCH_ROM(d.bank);
     memcpy(dst4096, d.maze64x64, 4096);
     SWITCH_ROM(prev);
 }
 
+/* Exact 64-entry Sonic 1 Quarter-Sine Table in `uint8_t` (`65 B` vs `130 B`) — exact `0..256` with ZERO bank switch! */
+static const uint8_t s_qsin[64] = {
+    0, 6, 12, 18, 25, 31, 37, 43, 49, 56, 62, 68, 74, 80, 86, 92,
+    97, 103, 109, 115, 120, 126, 131, 136, 142, 147, 152, 157, 162, 167, 171, 176,
+    181, 185, 189, 193, 197, 201, 205, 209, 212, 216, 219, 222, 225, 228, 231, 234,
+    236, 238, 241, 243, 244, 246, 248, 249, 251, 252, 253, 254, 254, 255, 255, 255
+};
+
 int16_t hw_sin(uint8_t angle) {
-    uint8_t prev = CURRENT_BANK;
-    int16_t v;
-    SWITCH_ROM(5);
-    v = s1_sine_table[angle];
-    SWITCH_ROM(prev);
-    return v;
+    uint8_t q = angle & 63;
+    int16_t v = (angle & 64) ? (q == 0 ? 256 : (int16_t)s_qsin[64 - q]) : (int16_t)s_qsin[q];
+    return (angle & 128) ? -v : v;
 }
 
 int16_t hw_cos(uint8_t angle) {
-    uint8_t prev = CURRENT_BANK;
-    int16_t v;
-    SWITCH_ROM(5);
-    v = s1_sine_table[(uint16_t)angle + 64];
-    SWITCH_ROM(prev);
-    return v;
+    return hw_sin((uint8_t)(angle + 64U));
 }
 
 uint8_t hw_read_demo_input(uint8_t demo_idx) {
@@ -1113,27 +1137,42 @@ uint8_t hw_read_demo_input(uint8_t demo_idx) {
 /* ============================================================================================
  * LITERAL INSTRUCTION-FOR-INSTRUCTION PORT OF SEGA GENESIS SONIC 1 COLLISION ENGINE
  * (`vendor/s1disasm/_incObj/sub FindNearestTile & FindFloor & FindWall.asm`)
- * Preserves signed negative arch heights (`-1..-16`), full blocks (`16`), `H-flip` (`0x0800`),
- * `V-flip` (`0x1000`), ceiling `d6=0x1000`, left-wall `d6=0x0800`, and loop swap `loop_plane`!
  * ============================================================================================ */
-static uint8_t lookup_col_id(uint16_t d4) {
-    uint16_t bidx = d4 & 0x07FF;
-    if (bidx == 0) return 0;
-    if (bidx < 640) return g_ram_vset.col1[bidx];
-    if (bidx < 1280) return g_ram_vset.col2[bidx - 640];
-    return 0;
-}
-
 static uint8_t sample_col_height(int16_t d2, int16_t d3, uint8_t solid_bit, uint16_t d6,
                                  uint8_t loop_f, uint8_t rotated, uint8_t *a4, int16_t *out_d0) {
-    uint16_t d4 = hw_get_chunk_word(d3, d2, loop_f);
-    uint8_t prev, cid;
+    uint8_t prev, cx, cy, chunk_id, page_idx, cid;
+    uint16_t d4;
     int16_t idx_coord;
 
-    if ((d4 & 0x07FF) == 0 || (d4 & ((uint16_t)1U << solid_bit)) == 0) return 0;
+    if (d3 < 0 || d2 < 0) return 0;
+    cx = (uint8_t)((uint16_t)d3 >> 8);
+    cy = (uint8_t)((uint16_t)d2 >> 8);
+    if (cx >= g_ram_act.fg_w || cy >= g_ram_act.fg_h) return 0;
+
     prev = CURRENT_BANK;
-    SWITCH_ROM(g_ram_vset.meta_bank);
-    cid = lookup_col_id(d4);
+    chunk_id = s_fg_rows[cy][cx];
+    if (chunk_id & 0x80) {
+        chunk_id &= 0x7F;
+        if (loop_f) {
+            chunk_id++;
+            if (chunk_id == 0x29) chunk_id = 0x51;
+        }
+    }
+    if (chunk_id == 0 || chunk_id > g_ram_vset.num_chunks) {
+        SWITCH_ROM(prev);
+        return 0;
+    }
+    chunk_id--;
+    page_idx = chunk_id >> 4;
+    SWITCH_ROM(g_ram_vset.chunk_base_bank + page_idx);
+    d4 = ((const uint16_t *)s_zone_chunk_ptrs[page_idx & 15U])[((uint16_t)(chunk_id & 0x0F) << 8)
+        | (uint8_t)((((uint8_t)d2) & 0xF0) | (((uint8_t)d3 >> 4) & 0x0F))];
+
+    if ((d4 & 0x07FF) == 0 || (d4 & ((uint16_t)1U << solid_bit)) == 0) {
+        SWITCH_ROM(prev);
+        return 0;
+    }
+    cid = s_col_ram[d4 & 0x03FFU];
     if (cid == 0) {
         SWITCH_ROM(prev);
         return 0;
@@ -1242,34 +1281,98 @@ int16_t hw_wall_distance(int16_t px, int16_t py, int8_t dir) {
         : hw_find_wall(py, px ^ 0x0F, 14, 0x0800, -16, &dummy);
 }
 
-static uint8_t s_dplc_buf[512];
+static uint8_t s_dplc_raw[528];
+static uint8_t s_dplc_pending_cnt;
+static uint8_t s_dplc_pending_dst;
+static const uint8_t s_scache_base[2] = { 0, 16 };
+static uint8_t s_scache_rr = 0;
+const uint8_t *g_ss_dma_ptr;
 
-/* Stream dynamic Sonic DPLC tiles into VRAM Bank 0 slots `0..31` whenever `g_sonic.frame` changes! */
+static void gdma_transfer(uint16_t src, uint8_t dst_hi, uint8_t blocks_m1) {
+    HDMA1_REG = (uint8_t)(src >> 8);
+    HDMA2_REG = (uint8_t)src;
+    HDMA3_REG = dst_hi;
+    HDMA4_REG = 0x00;
+    HDMA5_REG = blocks_m1;
+}
+
+static void flush_vblank_hdma(void) {
+    if (s_vscroll_cnt) {
+        flush_vscroll_b127(s_vscroll_cnt);
+        s_vscroll_cnt = 0;
+    }
+    if (s_dplc_pending_cnt) {
+        uint16_t ssrc = ((uint16_t)s_dplc_raw + 15U) & 0xFFF0U;
+        uint16_t vdst = 0x8000U + ((uint16_t)s_dplc_pending_dst << 4);
+        VBK_REG = 0;
+        HDMA1_REG = (uint8_t)(ssrc >> 8);
+        HDMA2_REG = (uint8_t)ssrc;
+        HDMA3_REG = (uint8_t)(vdst >> 8);
+        HDMA4_REG = (uint8_t)vdst;
+        HDMA5_REG = s_dplc_pending_cnt - 1U;
+        s_dplc_pending_cnt = 0;
+    }
+    if (g_ss_dma_ptr) {
+        uint16_t s = (uint16_t)g_ss_dma_ptr;
+        g_ss_dma_ptr = 0;
+        VBK_REG = 0;
+        gdma_transfer(s, 0x98, 31U);
+        VBK_REG = 1;
+        gdma_transfer(s + 512U, 0x98, 31U);
+        VBK_REG = 0;
+    }
+}
+
 static void ensure_sonic_dplc_loaded(uint8_t frame) {
-    uint8_t prev, cnt, i;
-    uint16_t off, st;
+    uint8_t prev, cnt, i, slot;
+    uint16_t off;
+    uint16_t st_list[32];
+    uint8_t *dst;
     if (frame >= 89) frame = 1;
-    if (frame == s_loaded_sonic_frame) return;
-    s_loaded_sonic_frame = frame;
+
+    for (slot = 0; slot < 2U; slot++) {
+        if (s_scache_frame[slot] == frame) {
+            s_cur_sonic_base = s_scache_base[slot];
+            return;
+        }
+    }
 
     prev = CURRENT_BANK;
     SWITCH_ROM(9);
     off = sonic_dplc_offsets[frame];
     cnt = sonic_dplc_blob[off];
     if (cnt > 32) cnt = 32;
+    if (cnt == 0) { SWITCH_ROM(prev); return; }
+    memcpy(st_list, &sonic_dplc_blob[off + 1], (uint16_t)cnt << 1);
+
+    /* Non-overlapping 2-slot cache in `VBK=0` (`0..15` & `16..31`) — NEVER touches `32..127` or `VBK=1`! */
+    if (cnt <= 16U) {
+        slot = s_scache_rr & 1U;
+        s_scache_rr = slot ^ 1U;
+        s_scache_frame[slot] = frame;
+        s_cur_sonic_base = s_scache_base[slot];
+    } else {
+        s_scache_frame[0] = frame;
+        s_scache_frame[1] = 0xFF;
+        s_cur_sonic_base = 0;
+    }
+
+    dst = (uint8_t *)(((uint16_t)s_dplc_raw + 15U) & 0xFFF0U);
     for (i = 0; i < cnt; i++) {
-        SWITCH_ROM(9);
-        st = ((uint16_t)sonic_dplc_blob[off + 2 + i * 2] << 8) | sonic_dplc_blob[off + 1 + i * 2];
+        uint16_t st = st_list[i];
+        const uint8_t *src;
         if (st < 768) {
             SWITCH_ROM(6);
-            memcpy(&s_dplc_buf[(uint16_t)i << 4], &sonic_tiles_part0[st << 4], 16);
+            src = &sonic_tiles_part0[st << 4];
         } else {
             SWITCH_ROM(7);
-            memcpy(&s_dplc_buf[(uint16_t)i << 4], &sonic_tiles_part1[(st - 768) << 4], 16);
+            src = &sonic_tiles_part1[(st - 768) << 4];
         }
+        memcpy(dst, src, 16);
+        dst += 16;
     }
-    VBK_REG = 0;
-    set_sprite_data(0, cnt, s_dplc_buf);
+    s_dplc_pending_dst = s_cur_sonic_base;
+    s_dplc_pending_cnt = cnt;
     SWITCH_ROM(prev);
 }
 
@@ -1288,23 +1391,7 @@ void hw_step_sonic_anim(void) {
         g_sonic.anim_timer = 0;
     }
 
-    /* Update 360-degree 8-octant sprite flip/rotation flags every frame (`SAnim_WalkRun`, `01 Sonic.asm:2230`) */
-    if (!g_sonic.rolling && g_sonic.on_ground && (g_sonic.anim == ANI_WALK || g_sonic.anim == ANI_RUN)) {
-        uint8_t d0 = g_sonic.angle;
-        uint8_t fx = g_sonic.facing_left ? 1 : 0;
-        uint8_t fy = 0;
-        if (!fx) d0 = (uint8_t)(~d0);
-        d0 = (uint8_t)(d0 + 0x10);
-        if (d0 & 0x80) {
-            fx ^= 1;
-            fy ^= 1;
-        }
-        s_sonic_rot_fx = fx;
-        s_sonic_rot_fy = fy;
-    } else {
-        s_sonic_rot_fx = g_sonic.facing_left ? 1 : 0;
-        s_sonic_rot_fy = 0;
-    }
+    (void)sonic_anim_oct_b127(&s_sonic_rot_fx, &s_sonic_rot_fy, 0, 0);
 
     if (g_sonic.anim_timer > 0) {
         g_sonic.anim_timer--;
@@ -1314,7 +1401,6 @@ void hw_step_sonic_anim(void) {
     SWITCH_ROM(9);
     base = sonic_ani_offsets[g_sonic.anim];
     spd = sonic_ani_blob[base];
-    /* Speed-proportional walk/run/roll cadence matching Sonic 1 `Sonic_Animate`! */
     if (g_sonic.anim == ANI_WALK || g_sonic.anim == ANI_RUN || g_sonic.anim == ANI_ROLL) {
         int16_t aspd = g_sonic.gsp < 0 ? -g_sonic.gsp : g_sonic.gsp;
         int16_t calc = 8 - (aspd >> 8);
@@ -1343,18 +1429,12 @@ void hw_step_sonic_anim(void) {
             cmd = g_sonic.frame;
         }
     }
+    SWITCH_ROM(prev);
     if (cmd > 0 && cmd < 89) {
-        /* Apply authentic 8-octant diagonal/vertical/upside-down frame offset (`+oct*6` Walk, `+oct*4` Run)! */
-        if (!g_sonic.rolling && g_sonic.on_ground && (g_sonic.anim == ANI_WALK || g_sonic.anim == ANI_RUN)) {
-            uint8_t d0 = g_sonic.facing_left ? g_sonic.angle : (uint8_t)(~g_sonic.angle);
-            uint8_t oct = (uint8_t)(((uint8_t)(d0 + 0x10) >> 5) & 3);
-            cmd = (uint8_t)(cmd + oct * (g_sonic.anim == ANI_WALK ? 6 : 4));
-        }
-        g_sonic.frame = cmd;
+        g_sonic.frame = sonic_anim_oct_b127(&s_sonic_rot_fx, &s_sonic_rot_fy, cmd, 1);
         g_sonic.anim_idx++;
     }
     g_sonic.anim_timer = spd;
-    SWITCH_ROM(prev);
 }
 
 void hw_draw_sonic_sprite(void) {
@@ -1382,7 +1462,7 @@ void hw_draw_sonic_sprite(void) {
         int16_t fy = s_sonic_rot_fy ? (scr_y - dy - 8) : (scr_y + dy);
         uint8_t attr = fl ^ (s_sonic_rot_fx ? 0x20 : 0) ^ (s_sonic_rot_fy ? 0x40 : 0);
         if (g_sonic.loop_plane) attr |= 0x80;
-        hw_put_sprite8(fx, fy, lt, attr);
+        hw_put_sprite8(fx, fy, (uint8_t)(lt + s_cur_sonic_base), attr);
     }
     SWITCH_ROM(prev);
 
@@ -1458,25 +1538,26 @@ void hw_animate_level_gfx(void) {
     SWITCH_ROM(prev);
 }
 
-/* `_inc/Palette Fading.asm`: Non-Black / Non-White Smooth CGB Sky-Tinted Fade Step */
-void hw_fade_step(uint8_t step_idx) {
-    uint16_t faded[4];
-    uint8_t s = step_idx & 3;
-    faded[0] = RGB8(20 + (s << 2), 36 + (s << 3), 112 + (s << 4));
-    faded[1] = RGB8(28 + (s << 3), 56 + (s << 3), 140 + (s << 3));
-    faded[2] = RGB8(80 + (s << 4), 120 + (s << 4), 196 + (s << 2));
-    faded[3] = RGB8(180 + (s << 4), 196 + (s << 3), 220 + (s << 2));
-    set_bkg_palette(7, 1, faded);
-}
+static int16_t s_last_scan_cam_x = -32767;
+static uint8_t s_last_scan_tag = 0xFF;
 
-/* Scan sorted Act object layout (`ram_act.objects` or `REV00` bank 125) across full 320px `0.5x` world viewport */
 void hw_scan_spawn_objects(void) {
-    uint8_t prev = CURRENT_BANK;
+    uint8_t prev;
     const uint8_t *p;
     uint16_t idx = 0;
-    int16_t min_x = g_cam_x - 64;
-    int16_t max_x = g_cam_x + 384;
+    int16_t min_x = g_cam_x - 96;
+    int16_t max_x = g_cam_x + 464;
+    uint8_t scan_tag = (uint8_t)((g_cur_act << 1) | (g_rev_mode & 1));
+    int16_t dcam = g_cam_x - s_last_scan_cam_x;
 
+    if (!s_scan_force && scan_tag == s_last_scan_tag && dcam > -8 && dcam < 8) {
+        return;
+    }
+    s_scan_force = 0;
+    s_last_scan_tag = scan_tag;
+    s_last_scan_cam_x = g_cam_x;
+
+    prev = CURRENT_BANK;
     if (g_rev_mode && (g_cur_act == 2 || g_cur_act == 9)) {
         SWITCH_ROM(SUPPLEMENT_REV00_BANK);
         p = (g_cur_act == 2) ? rev00_ghz3_objs : rev00_lz1_objs;
@@ -1487,50 +1568,14 @@ void hw_scan_spawn_objects(void) {
     while (idx < 512) {
         uint16_t ox = (uint16_t)p[0] | ((uint16_t)p[1] << 8);
         if (ox == 0xFFFF) break;
-        if ((int16_t)ox >= min_x && (int16_t)ox <= max_x) {
-            if (!(g_obj_taken[idx >> 3] & (uint8_t)(1U << (idx & 7)))) {
-                uint8_t already = 0, s, slot_out = 0xFF;
-                int16_t oy = (int16_t)((uint16_t)p[2] | ((uint16_t)p[3] << 8));
-                uint8_t oid = p[4];
-                uint8_t osub = p[5];
-                for (s = 0; s < MAX_ACTIVE_OBJS; s++) {
-                    if (g_objs[s].active) {
-                        if (g_objs[s].spawn_slot == idx && g_objs[s].base_x == (int16_t)ox) {
-                            already = 1;
-                            break;
-                        }
-                    } else if (slot_out == 0xFF) {
-                        slot_out = s;
-                    }
-                }
-                /* Guarantee critical Goal Post (`0x0D`), Prison Capsule (`0x3E`), & Giant Ring (`0x4B`) ALWAYS spawn! */
-                if (!already && slot_out == 0xFF && (oid == 0x0D || oid == 0x3E || oid == 0x4B)) {
-                    for (s = 0; s < MAX_ACTIVE_OBJS; s++) {
-                        uint8_t eid = g_objs[s].id;
-                        if (eid != 0x0D && eid != 0x3E && eid != 0x4B && eid != 0x3D) {
-                            slot_out = s;
-                            break;
-                        }
-                    }
-                }
-                if (!already && slot_out != 0xFF) {
-                    g_objs[slot_out].active = 1;
-                    g_objs[slot_out].id = oid;
-                    g_objs[slot_out].subtype = osub;
-                    g_objs[slot_out].spawn_slot = idx;
-                    g_objs[slot_out].x = (int16_t)ox;
-                    g_objs[slot_out].y = oy;
-                    g_objs[slot_out].base_x = (int16_t)ox;
-                    g_objs[slot_out].base_y = oy;
-                    g_objs[slot_out].vx = -0x80;
-                    g_objs[slot_out].vy = 0;
-                    g_objs[slot_out].state = 0;
-                    g_objs[slot_out].timer = 0;
-                    g_objs[slot_out].hp = 1;
-                }
-            }
-        } else if ((int16_t)ox > max_x) {
-            break; /* Sorted ascending by X -> early exit in microseconds! */
+        if ((int16_t)ox >= min_x) {
+            int16_t oy;
+            uint8_t oid, osub;
+            if ((int16_t)ox > max_x) break;
+            oy = (int16_t)((uint16_t)p[2] | ((uint16_t)p[3] << 8));
+            oid = p[4];
+            osub = p[5];
+            spawn_try_place_b127(idx, (int16_t)ox, oy, oid, osub);
         }
         p += 6;
         idx++;
@@ -1553,8 +1598,10 @@ void main(void) {
     /* Preload HUD/Font tiles (Bank 1 BG 80..127) + Common Sprites (Bank 0 OBJ 32..127) */
     reload_common_hud_and_sprites();
 
-    /* Load Battery-Backed MBC5 SRAM Save State (`high_score`, `unlocked_act`, `rev_mode`, `jp_credits`) */
+    /* Load Battery-Backed MBC5 SRAM Save State & keep MBC5 fast RAM (`$A200..$B9FF` caches) enabled! */
     sram_load_or_init();
+    ENABLE_RAM;
+    rRAMB = 1;
 
     /* Load authentic SEGA Boot Screen BEFORE enabling LCD so Frame 1 is IMMEDIATELY crisp multi-color SEGA! */
     g_game_mode = GM_SEGA;
@@ -1565,15 +1612,26 @@ void main(void) {
     /* Turn LCD ON ONCE with BG ($8800, $9800) + Window ($9C00) + Sprites ON — NEVER turned off again! */
     LCDC_REG = LCDCF_ON | LCDCF_BG8800 | LCDCF_BG9800 | LCDCF_BGON | LCDCF_WIN9C00 | LCDCF_WINON | LCDCF_OBJ8 | LCDCF_OBJON;
 
-    /* Drive all SMPS music, Wave-RAM drum packets, & SFX directly from the SM83 hardware VBlank interrupt (`0x0040`)! */
+    /* Drive 15 kHz SEGA digital voice (`TIM_IFLAG`) + 60 Hz SMPS music/SFX (`VBL_IFLAG`) from hardware interrupts! */
     CRITICAL {
         add_VBL(hw_sound_isr);
+        add_TIM(hw_sega_pcm_tim_isr);
     }
-    set_interrupts(VBL_IFLAG);
+    set_interrupts(VBL_IFLAG | TIM_IFLAG);
+    hw_start_sega_chant();
 
     while (1) {
+        uint8_t latched = 0;
+        if (g_game_mode == GM_LEVEL && !g_paused) {
+            __critical {
+                latched = s_vbl_joy_latch;
+                s_vbl_joy_latch = 0;
+            }
+        } else {
+            s_vbl_joy_latch = 0;
+        }
         g_joy_prev = g_joy;
-        g_joy = joypad();
+        g_joy = joypad() | latched;
         g_joy_pressed = (g_joy ^ g_joy_prev) & g_joy;
 
         if (g_next_mode != g_game_mode) {
@@ -1583,12 +1641,20 @@ void main(void) {
         if (!g_mode_init_done) {
             g_mode_init_done = 1;
             screens_init_mode(g_game_mode);
+            g_joy = joypad();
+            g_joy_prev = g_joy;
+            g_joy_pressed = 0;
+            g_frame_counter++;
+            vsync();
+            flush_vblank_hdma();
+            continue;
         }
 
         screens_update_mode(g_game_mode);
 
         g_frame_counter++;
         vsync();
+        flush_vblank_hdma();
         hw_animate_level_gfx();
     }
 }

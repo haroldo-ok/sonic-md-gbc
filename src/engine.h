@@ -3,8 +3,16 @@
 
 #include <gbdk/platform.h>
 #include <stdint.h>
+#include <string.h>
 #include "../generated/assets.h"
 #include "../generated/supplement.h"
+
+void *safe_copy_bytes(void *dst, const void *src, uint16_t n);
+void *safe_set_bytes(void *dst, uint8_t val, uint16_t n);
+#undef memcpy
+#define memcpy(d, s, n) safe_copy_bytes((d), (s), (uint16_t)(n))
+#undef memset
+#define memset(d, v, n) safe_set_bytes((d), (uint8_t)(v), (uint16_t)(n))
 
 /* Game Mode IDs matching Sonic 1 `GameModeArray` (`_inc/GameModeArray.asm`) */
 #define GM_SEGA          0
@@ -305,29 +313,33 @@ extern volatile uint8_t g_cur_bgm;
 extern volatile uint8_t g_cur_sfx;
 extern volatile uint16_t g_sound_events;
 extern volatile uint16_t g_sound_isr_ticks;
+extern volatile uint8_t g_sega_pcm_playing;
 
 /* NONBANKED Bank-0 Hardware & Asset Streaming Services (`src/main.c`) */
 void hw_play_bgm(uint8_t bgm_id);
 void hw_play_sfx(uint8_t sfx_id);
 void hw_sound_tick(void);
 void hw_sound_isr(void);
-void hw_play_sega_chant_step(uint16_t pkt_idx);
-void hw_fill_win_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t fill_tile);
+void hw_sega_pcm_tim_isr(void);
+void hw_start_sega_chant(void);
+void hw_stop_sega_chant(void);
+void hw_fast_vram_row20(uint8_t ry, const uint8_t *row_t, const uint8_t *row_a);
+void hw_fill_win_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t fill_tile) BANKED;
 void hw_print_win(uint8_t x, uint8_t y, const char *str);
 void hw_clear_remaining_oam(void);
 void hw_put_sprite8(int16_t sx, int16_t sy, uint8_t tile, uint8_t attr);
 void hw_put_sprite16(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t attr);
 void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr);
 void hw_show_transition_card(const char *line1, const char *line2, uint8_t act_num);
-void hw_update_hud(void);
+void hw_update_hud(void) BANKED;
 void hw_load_fullscreen_screen(uint8_t scr_idx);
 void hw_load_act(uint8_t act_idx);
 void hw_refresh_full_viewport(void);
 void hw_stream_viewport_delta(int16_t old_cx, int16_t old_cy);
-void hw_set_underwater_palette(uint8_t underwater);
-void hw_step_palette_cycle(void);
+void hw_set_underwater_palette(uint8_t underwater) BANKED;
+void hw_step_palette_cycle(void) BANKED;
 void hw_animate_level_gfx(void);
-void hw_fade_step(uint8_t step_idx);
+void hw_fade_step(uint8_t step_idx) BANKED;
 void hw_load_special_stage_vram(uint8_t ss_idx, int16_t *out_sx, int16_t *out_sy);
 void hw_copy_ss_maze(uint8_t ss_idx, uint8_t *dst4096);
 void hw_init_osc_from_rom(uint16_t *dst16);

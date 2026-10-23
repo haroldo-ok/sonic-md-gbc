@@ -10,7 +10,7 @@
   "smps_music_tracks": 19,
   "smps_sfx_tracks": 49,
   "sonic_frames": 89,
-  "sonic_tiles": 544,
+  "sonic_tiles": 545,
   "converted_files_count": 946,
   "files": [
     {
@@ -4293,7 +4293,7 @@
       "sha256": "cbdf250594bd33487411e72a922bf7b1eb47a4d3687f2ce9d45218b6d18af534",
       "raw_bytes": 1424,
       "converted_bytes": 2048,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artkos",
       "placeholder": false
     },
@@ -4311,7 +4311,7 @@
       "sha256": "f8f97f9fa42e015473c170c21b4c370dd92aab2fa515f7696000cf40c1f3bcc9",
       "raw_bytes": 5727,
       "converted_bytes": 7376,
-      "rom_bank": 80,
+      "rom_bank": 81,
       "category": "artnem",
       "placeholder": false
     },
@@ -4329,7 +4329,7 @@
       "sha256": "e8b24a59cfd7d8eef7ccfdc4c4623bb7a633027450495c6c8fd0a6a7baba7380",
       "raw_bytes": 6984,
       "converted_bytes": 7264,
-      "rom_bank": 81,
+      "rom_bank": 82,
       "category": "artnem",
       "placeholder": false
     },
@@ -4338,7 +4338,7 @@
       "sha256": "cf932efee7ab5d6e73a3df6a07d8f23de4dfb5d1588a31dce78621106c15a179",
       "raw_bytes": 10308,
       "converted_bytes": 10608,
-      "rom_bank": 82,
+      "rom_bank": 83,
       "category": "artnem",
       "placeholder": false
     },
@@ -4347,7 +4347,7 @@
       "sha256": "4182b0fafe0d4d16bced1f95e2e1398e186684dca138ac92d0a2eb28e72a9023",
       "raw_bytes": 10155,
       "converted_bytes": 10896,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4374,7 +4374,7 @@
       "sha256": "3e9294f75231cb3545104227efb6d1e301aa23b91144448072fa65043b4d8198",
       "raw_bytes": 348,
       "converted_bytes": 224,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4383,7 +4383,7 @@
       "sha256": "af9213174724c80c110ef1df3f29215f6e1515d909056e066e5a9a63fe682776",
       "raw_bytes": 314,
       "converted_bytes": 224,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4392,7 +4392,7 @@
       "sha256": "340fab1310c87c03408fb2d4e46c2d6c5f631236aacd0740f0384df8b16cad64",
       "raw_bytes": 380,
       "converted_bytes": 288,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4401,7 +4401,7 @@
       "sha256": "e5994ca4951016f7bcb95241f7dfe165ac3d72169979cc2b09ab2a5095091e42",
       "raw_bytes": 309,
       "converted_bytes": 288,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4410,7 +4410,7 @@
       "sha256": "ef319e8c8a73589a092016849e5bae0f4463eaccb23abb842608195cfa0af842",
       "raw_bytes": 343,
       "converted_bytes": 288,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4419,7 +4419,7 @@
       "sha256": "e37eb043ce14d5e260397dccf1c1a95f2ec03330759867f1a23e81ae0cd40da1",
       "raw_bytes": 284,
       "converted_bytes": 224,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4428,7 +4428,7 @@
       "sha256": "89a99cb8068ce70e06968a3d4f128210e0ab24c9b46f1b5d2827a045043b0614",
       "raw_bytes": 348,
       "converted_bytes": 288,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4437,7 +4437,7 @@
       "sha256": "0e7f50a50c95982b30ed3dbfb8aa13cc1da682a37e8bd55e0af2eb154f44c95d",
       "raw_bytes": 1407,
       "converted_bytes": 1216,
-      "rom_bank": 83,
+      "rom_bank": 84,
       "category": "artnem",
       "placeholder": false
     },
@@ -4446,7 +4446,7 @@
       "sha256": "ca4c04ce2057189609a359144ba1c73dca6d62631dc84cf073343270c58ee555",
       "raw_bytes": 2091,
       "converted_bytes": 2304,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4455,7 +4455,7 @@
       "sha256": "fd55f116031ebcadd05230ab9ab233e2800cfb228e58eecdec5872ac44077fcc",
       "raw_bytes": 288,
       "converted_bytes": 272,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4464,7 +4464,7 @@
       "sha256": "165e069afb75f8bf329ca24ab640a62b2e1acf41c58a1620362ed3e09071f73b",
       "raw_bytes": 1895,
       "converted_bytes": 2496,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4473,7 +4473,7 @@
       "sha256": "5526cd75dfacf55eb4a091b2517551f23e67127347051a47fdc6604526900620",
       "raw_bytes": 2148,
       "converted_bytes": 1728,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4482,7 +4482,7 @@
       "sha256": "f5c39a76b6fa7ebfe56c0959c963a8350326e46ee584e42937296fdaa8321c71",
       "raw_bytes": 745,
       "converted_bytes": 672,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4491,7 +4491,7 @@
       "sha256": "3527b6665f5d5b359985a78c942097742b7538345dc632f28cc79c19c11d48ee",
       "raw_bytes": 688,
       "converted_bytes": 592,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4500,7 +4500,7 @@
       "sha256": "54cc6ca97e466dce2a9d6bda79d9ff4beb9a22af276c4d7eb06460ec76f301b1",
       "raw_bytes": 570,
       "converted_bytes": 480,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4509,7 +4509,7 @@
       "sha256": "450d6e04b04ae2748b580de56086d7af1f66dfb93b093d315e5fb58d0c0cf681",
       "raw_bytes": 1534,
       "converted_bytes": 1536,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4518,7 +4518,7 @@
       "sha256": "2a468145e0cd998ae89707f9d9cbc60c31743016a3ca8d559ed8ada4121c584c",
       "raw_bytes": 509,
       "converted_bytes": 448,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4527,7 +4527,7 @@
       "sha256": "3fcc443120143c2850fa668ac7ccc7cf1ac3ac144cb23a943c7d163583eccbcc",
       "raw_bytes": 647,
       "converted_bytes": 592,
-      "rom_bank": 84,
+      "rom_bank": 85,
       "category": "artnem",
       "placeholder": false
     },
@@ -4536,7 +4536,7 @@
       "sha256": "420164557403da178be9547edb1b7d650391e6c28bce86face371a7d54e06f1e",
       "raw_bytes": 4574,
       "converted_bytes": 5168,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4545,7 +4545,7 @@
       "sha256": "9cb7252e6597a4f5a8cf9dfdc5ef6e910ca01107abea73b2980b4ed3d04bf0fc",
       "raw_bytes": 647,
       "converted_bytes": 768,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4554,7 +4554,7 @@
       "sha256": "fbb39bb25e7d4dd1ec54e3d8bd3b2b0b5423eaf77a507fe50ddb256e1f3429ef",
       "raw_bytes": 2371,
       "converted_bytes": 2224,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4563,7 +4563,7 @@
       "sha256": "0cb2762509d7416dd2cef209066145c2a447ba783ced5dc91254371321b72f84",
       "raw_bytes": 960,
       "converted_bytes": 752,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4572,7 +4572,7 @@
       "sha256": "5cd1b9c4f4192d5fdda54de4e11d7d09171790ad0a67ebda8a7c16d03ea0a8ed",
       "raw_bytes": 763,
       "converted_bytes": 656,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4581,7 +4581,7 @@
       "sha256": "ed7d0a018f9e77be499a4bc383d8714370da7223ec607e19b1df7bfaea3db402",
       "raw_bytes": 664,
       "converted_bytes": 656,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4590,7 +4590,7 @@
       "sha256": "de8f94a8afb10c7c8125652e8b464f5cdf593db1a10ed1d9d333ae2a79939e1c",
       "raw_bytes": 1769,
       "converted_bytes": 1440,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4599,7 +4599,7 @@
       "sha256": "ffd2c994859c1198e9316b06f0b5a264dea009f9b69ef5540e667aaf0ff5a19a",
       "raw_bytes": 934,
       "converted_bytes": 880,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4608,7 +4608,7 @@
       "sha256": "dbb76d874d8e3a323660297d3243ce1f3678949d6da1a9e16918fb3fa2beca90",
       "raw_bytes": 398,
       "converted_bytes": 256,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4617,7 +4617,7 @@
       "sha256": "3870b42ce47ed7cdbdcb2c956b95f968d431d9708d97040f20d786ecfe4594db",
       "raw_bytes": 616,
       "converted_bytes": 512,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4626,7 +4626,7 @@
       "sha256": "5e214063b5d25799f4a46363a78779473d2ce91b8a8277ac5f0694f7d74963ba",
       "raw_bytes": 1261,
       "converted_bytes": 1088,
-      "rom_bank": 85,
+      "rom_bank": 86,
       "category": "artnem",
       "placeholder": false
     },
@@ -4635,7 +4635,7 @@
       "sha256": "7ac6fd7f993bafa7d9bbd6b5d4dfcdc929627b53674697d4b4ca4241bdc9e8a0",
       "raw_bytes": 650,
       "converted_bytes": 512,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4644,7 +4644,7 @@
       "sha256": "c61ec84a0bc59b47c8e01727b78c8ac97e4121715c67a347b1353cb961249d75",
       "raw_bytes": 649,
       "converted_bytes": 464,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4653,7 +4653,7 @@
       "sha256": "001dc76128044ed9d397c91e46257abcf09123d3bb38363a8412af8286d8e13c",
       "raw_bytes": 1565,
       "converted_bytes": 1360,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4662,7 +4662,7 @@
       "sha256": "9c109a0ef88dd60f6072dd50ce2a6f98dec1743abd62795bc21bcf215568b806",
       "raw_bytes": 478,
       "converted_bytes": 496,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4671,7 +4671,7 @@
       "sha256": "1342eb76b8cf83c15cb27b94dfdd19ca0390bcb6fe22ca037218608a8ddafa41",
       "raw_bytes": 1316,
       "converted_bytes": 1280,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4680,7 +4680,7 @@
       "sha256": "056343605d52e59af025418e97c3e455acf92881acc74f43a97eca7973bd6927",
       "raw_bytes": 584,
       "converted_bytes": 464,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4689,7 +4689,7 @@
       "sha256": "a1cf7076e2d0fe97efec93eba2753f09a85af659a6c3bea7c2a67469832c17fc",
       "raw_bytes": 999,
       "converted_bytes": 976,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4698,7 +4698,7 @@
       "sha256": "231653afae8837b17ef931a632595b81fdbc3c7183e7cd561b5795ba82fa63e6",
       "raw_bytes": 1638,
       "converted_bytes": 1536,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4707,7 +4707,7 @@
       "sha256": "1ee58a0c0b037c8de258429569d6b3a9de7a5a2908aa8ec1645873d83a807df0",
       "raw_bytes": 734,
       "converted_bytes": 704,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4716,7 +4716,7 @@
       "sha256": "d7e22de52b7cd247c013babc0915d706a889970d123e257113819b35bc556190",
       "raw_bytes": 157,
       "converted_bytes": 192,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4725,7 +4725,7 @@
       "sha256": "6fc3cd3f8354c35465bc7348cbe716bd07217440454d63ad3e7460e5427a5350",
       "raw_bytes": 235,
       "converted_bytes": 160,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4734,7 +4734,7 @@
       "sha256": "04eeee2c45a7b7a248145c3557e75921115f36dbdc6184c60bbd70164d1eadd3",
       "raw_bytes": 96,
       "converted_bytes": 192,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4743,7 +4743,7 @@
       "sha256": "0199430d771dd1859995958c7364a47bb4cf6d84eceac8c8690eaaf530d7264d",
       "raw_bytes": 74,
       "converted_bytes": 64,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4752,7 +4752,7 @@
       "sha256": "e55772c6151004f3fd8c83a37d60e2649c41edfd839398595d0045c23222154b",
       "raw_bytes": 413,
       "converted_bytes": 608,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4761,7 +4761,7 @@
       "sha256": "1c4ebea8562702fd16993d810a06ee841f63f7df2dc61cbb4a2b2aff1c650588",
       "raw_bytes": 302,
       "converted_bytes": 384,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4770,7 +4770,7 @@
       "sha256": "8caeca8c902c6aba318b7ac13a7fabed3173016725beb835e3265b7bb986c9e7",
       "raw_bytes": 300,
       "converted_bytes": 288,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4779,7 +4779,7 @@
       "sha256": "23c44121a3219a332376af27837e14e684e2e67d7a09c1d621c4971497fd1724",
       "raw_bytes": 281,
       "converted_bytes": 224,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4788,7 +4788,7 @@
       "sha256": "6a7e10e804c7d56df642a2c737bfa107e3133f19398214a6da9be6dec2699a4e",
       "raw_bytes": 401,
       "converted_bytes": 544,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4797,7 +4797,7 @@
       "sha256": "1a408270764bee07a921fc7bfc8ee4d0b202d06db734a6031bbf91318df47d26",
       "raw_bytes": 371,
       "converted_bytes": 1344,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4806,7 +4806,7 @@
       "sha256": "e89a16212b519e9db72c150ea76abff6335328a1efc3845905c856f74c243324",
       "raw_bytes": 262,
       "converted_bytes": 192,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4815,7 +4815,7 @@
       "sha256": "388384395309acb7bdf1498c3900911c99e7c6e6f2482d08a2d53f64c4d1195b",
       "raw_bytes": 245,
       "converted_bytes": 384,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4824,7 +4824,7 @@
       "sha256": "7620869817323ebb59d6c06eed7df7e8634456c1183ec1437e9d8ee3994bb2d4",
       "raw_bytes": 769,
       "converted_bytes": 576,
-      "rom_bank": 86,
+      "rom_bank": 87,
       "category": "artnem",
       "placeholder": false
     },
@@ -4833,7 +4833,7 @@
       "sha256": "6339f4b862070924395b48d94b2673c06d91cc1422624fa753c18135044b8ae1",
       "raw_bytes": 1192,
       "converted_bytes": 2656,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4842,7 +4842,7 @@
       "sha256": "e5986ee8c2f5b2a78b7770ee71be3f201059c9aa0929acd1492694e84c500183",
       "raw_bytes": 328,
       "converted_bytes": 576,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4851,7 +4851,7 @@
       "sha256": "b7f3a93736cf6478a5d519f84deb224cea0a9f1bccf630bc00ca62880f16aad8",
       "raw_bytes": 182,
       "converted_bytes": 128,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4860,7 +4860,7 @@
       "sha256": "5aed4b8333c9bec47974e28abd4eab0600ff49801834869c76571982d1be6b2b",
       "raw_bytes": 271,
       "converted_bytes": 256,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4869,7 +4869,7 @@
       "sha256": "35b8c10822e2432091b2c0deedff795998d2c73b869a26866b352f3d4de551ed",
       "raw_bytes": 695,
       "converted_bytes": 1664,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4878,7 +4878,7 @@
       "sha256": "e871dd05c73fc61da343f9339a37158127020bbac160eb429cebbc3f9ca888a3",
       "raw_bytes": 100,
       "converted_bytes": 128,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4887,7 +4887,7 @@
       "sha256": "8b6d394c9818a8d91771008167f50b678592a91b0cdc95ac6c1224a6f93a4c17",
       "raw_bytes": 1622,
       "converted_bytes": 1856,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4896,7 +4896,7 @@
       "sha256": "7d0338b66a78dbde05437d94a879e9e21314e817c786c08b1e9959151db28667",
       "raw_bytes": 298,
       "converted_bytes": 256,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4905,7 +4905,7 @@
       "sha256": "a45d4f36b93b15576385ddeb1cd2b7a0476ce3e1bc8aaed726e41ad0bfbabff7",
       "raw_bytes": 362,
       "converted_bytes": 512,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4914,7 +4914,7 @@
       "sha256": "1404578c2db45feb1b19de9e412bad4763854e445a504dd62ba277ec057b2ade",
       "raw_bytes": 367,
       "converted_bytes": 272,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4923,7 +4923,7 @@
       "sha256": "e252c8e871bde9557bd3785634b8da41fdff0d84dc53b2b438410325d8b114fe",
       "raw_bytes": 347,
       "converted_bytes": 288,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4932,7 +4932,7 @@
       "sha256": "8bdcc84e27d72b6ee774b76b43e9448421b47cbd7c33880f4b10e338764fdd18",
       "raw_bytes": 338,
       "converted_bytes": 256,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4941,7 +4941,7 @@
       "sha256": "901ffd1ba24c7f9f6bf73655cafc3857fae32a38a31a3ca52af8ea794fdab817",
       "raw_bytes": 312,
       "converted_bytes": 384,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4950,7 +4950,7 @@
       "sha256": "84c49092c3fc9e8021eb934c3996e89e35e06d4e4b7abea6effbd4e6e51fb71f",
       "raw_bytes": 384,
       "converted_bytes": 384,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4959,7 +4959,7 @@
       "sha256": "70af1b28015f1a04287c1b6384cf5dad2fd2aa27c4ddc63e80bdf0ec4f013993",
       "raw_bytes": 161,
       "converted_bytes": 128,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4968,7 +4968,7 @@
       "sha256": "e8962e3867baf6f842a8e5d07364262cc4446834a7159014d9fb9ebebd416689",
       "raw_bytes": 2036,
       "converted_bytes": 2304,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4977,7 +4977,7 @@
       "sha256": "6975bc1f8b5ae5622b0a705199bcc3359c6f7828ebe34c919db37d690d9bd009",
       "raw_bytes": 292,
       "converted_bytes": 256,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4986,7 +4986,7 @@
       "sha256": "f49122d2cfe10cf47f0a49a2535392f2b5dbe3a374a371c66379936669e6a3e8",
       "raw_bytes": 1249,
       "converted_bytes": 1152,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -4995,7 +4995,7 @@
       "sha256": "d8b9b0ac3ef10491ed7dab295b072c73fe4aeed4e5c46381325799ecb4c33b00",
       "raw_bytes": 192,
       "converted_bytes": 160,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -5004,7 +5004,7 @@
       "sha256": "090d9c69da7f610133f3f5b852f1fe45ba9017dbc3f8c10ade55f97b11b0ee1e",
       "raw_bytes": 183,
       "converted_bytes": 416,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -5013,7 +5013,7 @@
       "sha256": "cbc48317df2134a114247e1f50e760d31f2a358b178b3bc31c0ec80a10fa8942",
       "raw_bytes": 356,
       "converted_bytes": 384,
-      "rom_bank": 87,
+      "rom_bank": 88,
       "category": "artnem",
       "placeholder": false
     },
@@ -5022,7 +5022,7 @@
       "sha256": "67948adb363c8bfe479724df6d5b4e4037a76e8e95a2d0d3c4a9b5fcc0fea791",
       "raw_bytes": 2325,
       "converted_bytes": 2496,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5031,7 +5031,7 @@
       "sha256": "1e5d16b9fb6bf4bae3963be0708f988cb0fb00e504c0d19e2a78668e8b4942cd",
       "raw_bytes": 654,
       "converted_bytes": 1104,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5040,7 +5040,7 @@
       "sha256": "decc3f099530f02297f16adb68306471f624a4f536161162f370bec40b6301c1",
       "raw_bytes": 190,
       "converted_bytes": 128,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5049,7 +5049,7 @@
       "sha256": "63dc13bb53c59a5e55aa45177612927b9f3fe58ab01b64a6c994422c7b98fd96",
       "raw_bytes": 1120,
       "converted_bytes": 1024,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5058,7 +5058,7 @@
       "sha256": "c7828fbeb17f7e18fb8274e9516c0f9c37c1cccd4fde47198dd0a51d517e1a2b",
       "raw_bytes": 175,
       "converted_bytes": 144,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5067,7 +5067,7 @@
       "sha256": "6d9c10e84a078f24886075e0195f3c0cf54dd7cb21df2ccf2b03a15bf1cd672a",
       "raw_bytes": 2179,
       "converted_bytes": 1872,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5076,7 +5076,7 @@
       "sha256": "a5b476e5870984cbca5399fb68815cea5bcfbbc6fd6614c9dd9fefbbef382e2d",
       "raw_bytes": 243,
       "converted_bytes": 224,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5085,7 +5085,7 @@
       "sha256": "a046a784837fdc02f6fbbc45fb5e63d4171903fac187ccd50a91ac0eb06a24e8",
       "raw_bytes": 88,
       "converted_bytes": 64,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5094,7 +5094,7 @@
       "sha256": "e3f03b9cd3b47ce54a8bc84ce0a489121f7190b91563b343289528d4f20f8fa7",
       "raw_bytes": 277,
       "converted_bytes": 288,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5103,7 +5103,7 @@
       "sha256": "f8a7638b8c02ccd1ab43b27c3c2a486611d2d5d3d7d2a8346d4088f32fa99747",
       "raw_bytes": 384,
       "converted_bytes": 320,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5112,7 +5112,7 @@
       "sha256": "27cf38442c9c9a4beb95babb4fc573bde05d0d16b2de956dbd21d9a1da94e798",
       "raw_bytes": 395,
       "converted_bytes": 448,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5121,7 +5121,7 @@
       "sha256": "a77693ccf6af7fa476d5b7bd00f6c0af5b744b223c1b729a8b742fafa86f1d91",
       "raw_bytes": 668,
       "converted_bytes": 1168,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5130,7 +5130,7 @@
       "sha256": "4e1d8faf455d0c4075edcd6e540f837a33160148433d1168e13853a7339ab766",
       "raw_bytes": 252,
       "converted_bytes": 240,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5139,7 +5139,7 @@
       "sha256": "0f8b0b15d4cfb9ac5c9b9ee0a4353e8e09f3d80299ed9151fbad702f904b7185",
       "raw_bytes": 515,
       "converted_bytes": 576,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5148,7 +5148,7 @@
       "sha256": "5bb51e2b01f659b8d9da1bedd99b71995a56e051d6481296253b6bc89fcee8f5",
       "raw_bytes": 83,
       "converted_bytes": 64,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5157,7 +5157,7 @@
       "sha256": "615c024d59b709849518c84ca9f4e2c49b7256ae3cc43cdc2bc68a2ba829a97f",
       "raw_bytes": 88,
       "converted_bytes": 240,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5166,7 +5166,7 @@
       "sha256": "cb42e021d3e0b3cef93f779d4d959ef8e83e8ab6cfd8d0afd6a5c3a8ed1fcd1a",
       "raw_bytes": 79,
       "converted_bytes": 128,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5175,7 +5175,7 @@
       "sha256": "9bca1a54328b0cd20e7a8695b15938de22ce2be44bbe3d6a65b18d44a9a93768",
       "raw_bytes": 816,
       "converted_bytes": 768,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5184,7 +5184,7 @@
       "sha256": "7172badbe333fa066fcdbdc8d808318fa20bad74a15b2ac96bcb32750dea5b73",
       "raw_bytes": 413,
       "converted_bytes": 640,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5193,7 +5193,7 @@
       "sha256": "9852d1d9b2ead2f599ebf6e21ea2e85d7b152ff738e2a3cb50b66f5282f63121",
       "raw_bytes": 477,
       "converted_bytes": 784,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5202,7 +5202,7 @@
       "sha256": "709e7cd9655b39583056b64692cb8e2f871fb8452a62ae1e0da73d4e3eecc90c",
       "raw_bytes": 253,
       "converted_bytes": 448,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5211,7 +5211,7 @@
       "sha256": "97a38f289efd474b94d4aabdbd4dd6a0dca853a2a227752ca771ecc94a2e063f",
       "raw_bytes": 267,
       "converted_bytes": 256,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5220,7 +5220,7 @@
       "sha256": "8307dca4c382da14e0e01dbf3a82945f4eeb4d273c65993df7f97f0f1b176e4c",
       "raw_bytes": 97,
       "converted_bytes": 128,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5229,7 +5229,7 @@
       "sha256": "a12bba10af3f19e5cd79f2703f921c418461d7e6690f69bc32d454ec458b7b34",
       "raw_bytes": 163,
       "converted_bytes": 128,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5238,7 +5238,7 @@
       "sha256": "d38ef1ffcb62edd65f1668ae29cce996bb4a1efea2f252921acad9b022feda9f",
       "raw_bytes": 579,
       "converted_bytes": 704,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5247,7 +5247,7 @@
       "sha256": "eb3a3fb1ead886aa71d06e5eba1e4c181489b5e5fdd776bed21686edf066955b",
       "raw_bytes": 326,
       "converted_bytes": 288,
-      "rom_bank": 88,
+      "rom_bank": 89,
       "category": "artnem",
       "placeholder": false
     },
@@ -5256,7 +5256,7 @@
       "sha256": "35dc8b910da7836a75bd6a4ff31953d440e09e9d1827bd993cb30d5dc9758446",
       "raw_bytes": 225,
       "converted_bytes": 256,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5265,7 +5265,7 @@
       "sha256": "d9ac46c041efdf0ebed09bc656037ff90fe4aa32723c7bebf72413ddf4ff7a8d",
       "raw_bytes": 572,
       "converted_bytes": 704,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5274,7 +5274,7 @@
       "sha256": "dabd9bfdd34cefec9853cfde896d6076f1b6f6eca5f81f42a3ef70f4847bbac5",
       "raw_bytes": 482,
       "converted_bytes": 512,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5283,7 +5283,7 @@
       "sha256": "5b84f509f3c8ff0cd2726b66866110f2930f9ed0e492f345008954f341f9e652",
       "raw_bytes": 362,
       "converted_bytes": 352,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5292,7 +5292,7 @@
       "sha256": "4acec5f344b0947537bdbe7a2cf23c788732096767a5be695ba78f5e1b7a73f2",
       "raw_bytes": 654,
       "converted_bytes": 576,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5301,7 +5301,7 @@
       "sha256": "c767f4d19e5394c1c6313d89caf964d6c27399a799cdbac9b4bc915a1ecc50ae",
       "raw_bytes": 98,
       "converted_bytes": 64,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5310,7 +5310,7 @@
       "sha256": "d04a0b27f7f17d708eacaa121c65b29905ef32fc7663f17a73050d81bd61730c",
       "raw_bytes": 1121,
       "converted_bytes": 1968,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5319,7 +5319,7 @@
       "sha256": "0c8f38c655e7e823073cf3e581a85e7624b104dc504f12a703533d0612d9b990",
       "raw_bytes": 1136,
       "converted_bytes": 2000,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5328,7 +5328,7 @@
       "sha256": "ce3f8c62a881cf39eda139d62353cfec5269d204f439d77ddd38956565623e37",
       "raw_bytes": 405,
       "converted_bytes": 432,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5337,7 +5337,7 @@
       "sha256": "8efad34a87e0f79ff8f5dbc4a007583f2c30651a1ef3100aa4c24bddd7935bf7",
       "raw_bytes": 1147,
       "converted_bytes": 928,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5346,7 +5346,7 @@
       "sha256": "618ecda12fc22562ce956b7cc825ecd7e7ebb39e6e44cb26c04c820fe3b224a8",
       "raw_bytes": 245,
       "converted_bytes": 144,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5355,7 +5355,7 @@
       "sha256": "c2232d94415c84b0d5d021b2c2985b023f5ce58c5c5071f9566c3f712f94853e",
       "raw_bytes": 3215,
       "converted_bytes": 3856,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5364,7 +5364,7 @@
       "sha256": "78f9143d19490898aaf0c506ca73a2239a49ba6305468185ac4787dcc1a6ed19",
       "raw_bytes": 1268,
       "converted_bytes": 1296,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5373,7 +5373,7 @@
       "sha256": "b70562b197245e78bded9040b7bfa0ba1d69f19d39c136c2c941267de5294fd0",
       "raw_bytes": 93,
       "converted_bytes": 144,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5382,7 +5382,7 @@
       "sha256": "20f569010acb8df032dea4eb3b65902fd477933e1d14332a472eb9e0ea591077",
       "raw_bytes": 359,
       "converted_bytes": 256,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5391,7 +5391,7 @@
       "sha256": "193b517ab79da53ca60f105f609ffa207ee3de0ce443cec0c75b62b5a6421efd",
       "raw_bytes": 237,
       "converted_bytes": 288,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5400,7 +5400,7 @@
       "sha256": "6bee8f4f4a762c1ab1c08ec64317904f041b0d7600888346e2ffb74eb89ddec7",
       "raw_bytes": 176,
       "converted_bytes": 144,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5409,7 +5409,7 @@
       "sha256": "99a77c98dffdfa8b86fddd8e8561b99289046c61ad8c7e431f615d07a923a038",
       "raw_bytes": 131,
       "converted_bytes": 144,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5418,7 +5418,7 @@
       "sha256": "d0512e9dfeae51d67f7c22ba06f6dbf0d0562c253c5ae7381df643d9704c5c8f",
       "raw_bytes": 207,
       "converted_bytes": 144,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5427,7 +5427,7 @@
       "sha256": "2794751095a3908d6ef3dbe12337f230b77ca0029ff724abaebdb63da449c434",
       "raw_bytes": 145,
       "converted_bytes": 144,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5436,7 +5436,7 @@
       "sha256": "997d6af095938fbbb8c3ef9dc52fe5640fe19695274d0581e9d3f26d3edb9a17",
       "raw_bytes": 382,
       "converted_bytes": 256,
-      "rom_bank": 89,
+      "rom_bank": 90,
       "category": "artnem",
       "placeholder": false
     },
@@ -5445,7 +5445,7 @@
       "sha256": "58aa556e2d5f8beab71f912fa9d838995cab17164b38374daa16013aaab74871",
       "raw_bytes": 500,
       "converted_bytes": 432,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5454,7 +5454,7 @@
       "sha256": "01dd89dcd066ff7fd9d115d23b1dc5826162d31e05ea47321300d759ebc2dbdd",
       "raw_bytes": 218,
       "converted_bytes": 144,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5463,7 +5463,7 @@
       "sha256": "6cad5b2014eaa4d0814ee4da7eac0c992a0ffd6cfc9ba6be1de71107ba2aa539",
       "raw_bytes": 2360,
       "converted_bytes": 3984,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5472,7 +5472,7 @@
       "sha256": "c0147bacbee58826aef93071d3db51d87cc5cde95ff1cf42bffe7a64b005ffbf",
       "raw_bytes": 193,
       "converted_bytes": 144,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5481,7 +5481,7 @@
       "sha256": "74739915dcb7b16a23c3cdb4541cf82934a88786429a9c6615b6f0bebc127cd7",
       "raw_bytes": 206,
       "converted_bytes": 144,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5490,7 +5490,7 @@
       "sha256": "102395115c13cf28e3f994bf69ba219aa61e017f17831135056f4bb112d83853",
       "raw_bytes": 203,
       "converted_bytes": 144,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5499,7 +5499,7 @@
       "sha256": "91ef05eb46092e811b0367b09e2862dd62ccf448eee6689c87ad80d5c9ca5088",
       "raw_bytes": 199,
       "converted_bytes": 144,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5508,7 +5508,7 @@
       "sha256": "dd2f8997062dc1273d6b879fa55303c4c7ab2dff3b8d9b79721d181e28ac4c8c",
       "raw_bytes": 201,
       "converted_bytes": 144,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5517,7 +5517,7 @@
       "sha256": "014eaa38d9146d9867e8516587f916ce7b283829df0ce6381e1b37c3267e0f79",
       "raw_bytes": 207,
       "converted_bytes": 144,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5526,7 +5526,7 @@
       "sha256": "416e634cfeaf76096cfb3c8d8c2448ffd6b1b3cb3683e35ca06e5fc74182deab",
       "raw_bytes": 123,
       "converted_bytes": 128,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5535,7 +5535,7 @@
       "sha256": "437aba17ddb55fd461f4e1b25b417f0f346573650dc11a3db21a8d335ab84bbf",
       "raw_bytes": 257,
       "converted_bytes": 256,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5544,7 +5544,7 @@
       "sha256": "dfc97a9b0aaa6425d5015d6c7128e6638b55a68340c552afcf51f2cd7b6c6ccb",
       "raw_bytes": 219,
       "converted_bytes": 224,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5553,7 +5553,7 @@
       "sha256": "de853947611eb141c89fb268be83de3c949c89f989378a31f069a63a74bc9844",
       "raw_bytes": 225,
       "converted_bytes": 192,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5562,7 +5562,7 @@
       "sha256": "f292fa60bd0928d2604c672e164ae7ae365b315ef1f434a503d60c7db3bd9bc8",
       "raw_bytes": 1550,
       "converted_bytes": 2048,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5571,7 +5571,7 @@
       "sha256": "30aba8d0b44f074bc4122363ccc90b5e652a2180f2384d44cd07bc1280d25a96",
       "raw_bytes": 4107,
       "converted_bytes": 4064,
-      "rom_bank": 90,
+      "rom_bank": 91,
       "category": "artnem",
       "placeholder": false
     },
@@ -5580,7 +5580,7 @@
       "sha256": "e442a399f532b65d2fc78c1ac153b68fd6d51ce5996ac76744f1d6efb9f3166d",
       "raw_bytes": 6606,
       "converted_bytes": 8400,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5589,7 +5589,7 @@
       "sha256": "94e7e6e5d5e043cdedf15f0cb5cd93fb69ac3ab87595319f7149a1a689cad788",
       "raw_bytes": 51,
       "converted_bytes": 32,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5598,7 +5598,7 @@
       "sha256": "831f15a24f33e7a1030099382a981874e3ac3c02d7c6601d4e2a3218ff708b3f",
       "raw_bytes": 982,
       "converted_bytes": 752,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5607,7 +5607,7 @@
       "sha256": "e1c84e9f3f93e44521d2d2931f7b5d957b5868020e3811c006837af50ccf3564",
       "raw_bytes": 488,
       "converted_bytes": 576,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5616,7 +5616,7 @@
       "sha256": "0821311faaf71f17cd35b4b7ff7ee38eb219f4b59f0f63fc1c3b44cac1617dd9",
       "raw_bytes": 82,
       "converted_bytes": 48,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5625,7 +5625,7 @@
       "sha256": "b6184a7a0900be9ee785e6c649eff99095fba12493f3ad42876db56bbf593c08",
       "raw_bytes": 72,
       "converted_bytes": 64,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5634,7 +5634,7 @@
       "sha256": "134724d5815844dc5cf5e4b52d215003f5c3f5c3a0e9ed6caf45ac85194a524f",
       "raw_bytes": 531,
       "converted_bytes": 704,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5643,7 +5643,7 @@
       "sha256": "40433264f02b183b7b3d1ba404988eae0d3fe335846164f182258741370d84d2",
       "raw_bytes": 389,
       "converted_bytes": 576,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5652,7 +5652,7 @@
       "sha256": "d8af8f9025f05a07eec92c67e1a7bffee07e166f33e09ecbe2a3394048d893b8",
       "raw_bytes": 83,
       "converted_bytes": 96,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5661,7 +5661,7 @@
       "sha256": "0ba816a66b49d7bfdef2d6465fdf75d4bba18fd38a855ebe3dadf880ba57b089",
       "raw_bytes": 266,
       "converted_bytes": 240,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5670,7 +5670,7 @@
       "sha256": "d0ff5831a6799f544a0557db2b63113bf74809c07e447d5e7872b73cf56e01ea",
       "raw_bytes": 135,
       "converted_bytes": 256,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5679,7 +5679,7 @@
       "sha256": "fa91082adb781edcec98c92ae73f932d0068a22a5da196522f01e0a119b299a3",
       "raw_bytes": 583,
       "converted_bytes": 944,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5688,7 +5688,7 @@
       "sha256": "8dc9bdcf7a5731ef74e83ae626f3aee492ce40fd37a53b98e3f862dd51887ac3",
       "raw_bytes": 58,
       "converted_bytes": 48,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5697,7 +5697,7 @@
       "sha256": "93def0fed366ee7feece62f5f07b7f1902a97638de4d0ef0ae7cdf0c5ab9760f",
       "raw_bytes": 259,
       "converted_bytes": 256,
-      "rom_bank": 91,
+      "rom_bank": 92,
       "category": "artnem",
       "placeholder": false
     },
@@ -5706,7 +5706,7 @@
       "sha256": "b5b0b41b46ed2ebb343a3783b1652018cc6b26f856067a151cf9da4a84f93547",
       "raw_bytes": 1024,
       "converted_bytes": 512,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5715,7 +5715,7 @@
       "sha256": "5ce73227b743d1dec61e09bc6433350c45a53a2cf6640d8137e8c7022ca03512",
       "raw_bytes": 1152,
       "converted_bytes": 576,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5724,7 +5724,7 @@
       "sha256": "576da9b13f25ae99cb95c030a5cd9abd71054dc3f5b1795c2279268182938d68",
       "raw_bytes": 512,
       "converted_bytes": 256,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5733,7 +5733,7 @@
       "sha256": "f64b16f3df5671cd8b58cd255106cd0422e9ba0466ce4016eca142f026867122",
       "raw_bytes": 3136,
       "converted_bytes": 1568,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5742,7 +5742,7 @@
       "sha256": "4c45b02cbc8b68b3255d887ab9ef1b2699f38fdd4476785d9945302b1358730f",
       "raw_bytes": 768,
       "converted_bytes": 384,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5751,7 +5751,7 @@
       "sha256": "11c4f9acbc93ea986ec585f60c7b890a122770c0191705b8950de2f5768bdfe3",
       "raw_bytes": 1312,
       "converted_bytes": 656,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5760,7 +5760,7 @@
       "sha256": "7cd4f89313bd0741477a79c07959550272117b5aaf68846619ecbbb87ec637d9",
       "raw_bytes": 320,
       "converted_bytes": 160,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5769,7 +5769,7 @@
       "sha256": "a264428f830d9d3cde9e875848f32f6f32c8b57631f5ef0a784a3e32347f23fe",
       "raw_bytes": 768,
       "converted_bytes": 384,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5778,7 +5778,7 @@
       "sha256": "1a46b2b48aef5a5312798eb6f4dc80a6d028d62e2b0c96f76d6363740830df84",
       "raw_bytes": 768,
       "converted_bytes": 384,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5787,7 +5787,7 @@
       "sha256": "dcc05dd83d8d7fe48518ac087bca4266a08f6d7ced260fb8577a0feceac08ee4",
       "raw_bytes": 1536,
       "converted_bytes": 768,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5796,7 +5796,7 @@
       "sha256": "8226934a93b93b91411fc5b280854b375f9bb207acef10e700ea1e341854272b",
       "raw_bytes": 2688,
       "converted_bytes": 1344,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "artunc",
       "placeholder": false
     },
@@ -5922,7 +5922,7 @@
       "sha256": "c0513793194507a1fc87b558cd54d1b5dbe7695491cca6bd563ad7c6f85f2fe9",
       "raw_bytes": 256,
       "converted_bytes": 256,
-      "rom_bank": 101,
+      "rom_bank": 102,
       "category": "collide",
       "placeholder": false
     },
@@ -5931,7 +5931,7 @@
       "sha256": "296ce45a7b65415fe511fab16a65086736749c144d39d5a55510604f0bd50d66",
       "raw_bytes": 4096,
       "converted_bytes": 4096,
-      "rom_bank": 101,
+      "rom_bank": 102,
       "category": "collide",
       "placeholder": false
     },
@@ -5940,7 +5940,7 @@
       "sha256": "8168fbfcba1c1a56a5d38379174b7016b06f73e900ea818f94329dc6e3c49a29",
       "raw_bytes": 4096,
       "converted_bytes": 4096,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "collide",
       "placeholder": false
     },
@@ -5949,7 +5949,7 @@
       "sha256": "44bb9a55593a0d283235a20b076636c676c8c2d9d56d032d81dab8d3becc7d44",
       "raw_bytes": 410,
       "converted_bytes": 410,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "collide",
       "placeholder": false
     },
@@ -5958,7 +5958,7 @@
       "sha256": "95bcab4722cac3571fa0b6cdfd5655444278e514729ea0b1f88a42182d082802",
       "raw_bytes": 200,
       "converted_bytes": 200,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "collide",
       "placeholder": false
     },
@@ -5967,7 +5967,7 @@
       "sha256": "252ad497f530910181067cadcaf926729f4ff0592cbc1ff0b6a2f4a015d05458",
       "raw_bytes": 400,
       "converted_bytes": 400,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "collide",
       "placeholder": false
     },
@@ -5976,7 +5976,7 @@
       "sha256": "caf93616f98ea1ca6967dc0b73e86cba4a0c2ddcf175e143e7fbc583272b8901",
       "raw_bytes": 600,
       "converted_bytes": 600,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "collide",
       "placeholder": false
     },
@@ -5985,7 +5985,7 @@
       "sha256": "4108ff9447b758386d62a90e750278f4e57d56e6d0ee08aa3ea23683cbf5e4a6",
       "raw_bytes": 500,
       "converted_bytes": 500,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "collide",
       "placeholder": false
     },
@@ -5994,7 +5994,7 @@
       "sha256": "273e921229fbd38dac7712bd2004cad3263d77dd0d9181d37b44d35c283126cd",
       "raw_bytes": 500,
       "converted_bytes": 500,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "collide",
       "placeholder": false
     },
@@ -6120,7 +6120,7 @@
       "sha256": "093fc42b6990d458338f3794bfeae52bff3117ad2a8e0633953ec6196637b071",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6129,7 +6129,7 @@
       "sha256": "c62dda813419b37b32c2b4e3e205c4e62421a738de2ea9c461f6cb66d9e8fe06",
       "raw_bytes": 242,
       "converted_bytes": 242,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6138,7 +6138,7 @@
       "sha256": "e228027497e88fb4f82ff09b84cecc8cc71b390a88694f0a5dafa9c6082ba7cc",
       "raw_bytes": 200,
       "converted_bytes": 200,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6147,7 +6147,7 @@
       "sha256": "085ae897459309bd0918ccc6d9a1d6ad28ca0d153d2c3332bb0f831610600ac2",
       "raw_bytes": 290,
       "converted_bytes": 290,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6156,7 +6156,7 @@
       "sha256": "04d491bd812891cf881d414da2d7c771a28b4106a9f2c7c2fa955d3665284560",
       "raw_bytes": 34,
       "converted_bytes": 34,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6165,7 +6165,7 @@
       "sha256": "447821c20c814c9702acfd765c8e269b8e00117506127179f062b8c1daeefe27",
       "raw_bytes": 258,
       "converted_bytes": 258,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6174,7 +6174,7 @@
       "sha256": "86566acaadf2edf16b85f9c7570c274f4844865cd9bf02c4f6d097e1d6459b1b",
       "raw_bytes": 154,
       "converted_bytes": 154,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6183,7 +6183,7 @@
       "sha256": "ca2af8fbb1ab3761f535cd705d669fcbef22e815f8dfa6142b45e3cb04d14cdb",
       "raw_bytes": 282,
       "converted_bytes": 282,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6192,7 +6192,7 @@
       "sha256": "e4808595221873aa5d784207404e7f3e80f54f76b262e8a684e585e548f59928",
       "raw_bytes": 258,
       "converted_bytes": 258,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6201,7 +6201,7 @@
       "sha256": "66e2878caf2573fd7be5d167ebaaca9ace8691aa0960710b11d9ae296d59ffa7",
       "raw_bytes": 158,
       "converted_bytes": 158,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6210,7 +6210,7 @@
       "sha256": "097d5ca40b9aaced2c7c901d4f3a43783bb17d41df8dd9cdbf4c51314eaa18ac",
       "raw_bytes": 122,
       "converted_bytes": 122,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6219,7 +6219,7 @@
       "sha256": "e8d6fab14f7400869a4dc1ce5a8348d8481645d704c9876a17fed9d7aa4082ca",
       "raw_bytes": 164,
       "converted_bytes": 164,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6228,7 +6228,7 @@
       "sha256": "435bca926f83b280cf80e44780d0098372fc95d2bda0b425a5fb07e0c285c91e",
       "raw_bytes": 146,
       "converted_bytes": 146,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6237,7 +6237,7 @@
       "sha256": "12693af20d990137241342c334fc1e7ca4affd473526fbd45ae18930c9a3d9a9",
       "raw_bytes": 226,
       "converted_bytes": 226,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6246,7 +6246,7 @@
       "sha256": "146254a570b687db15dcd6a5c633ad689cc87a57be1954606d787cfe99d036e0",
       "raw_bytes": 164,
       "converted_bytes": 164,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "levels",
       "placeholder": false
     },
@@ -6255,7 +6255,7 @@
       "sha256": "51d0740ad35d14a56a99f809490378b7df8800cae5513d7d3cfb74c8e3c3aa29",
       "raw_bytes": 290,
       "converted_bytes": 290,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6264,7 +6264,7 @@
       "sha256": "2a833e2239c4eea4ec43b47a02a67c6922239b2a5ec52de178267df9d436aedb",
       "raw_bytes": 62,
       "converted_bytes": 62,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6273,7 +6273,7 @@
       "sha256": "872cc27487270ea942a6fa2ea31bd72b9151a80a2860fdf8f890c621df2bd522",
       "raw_bytes": 322,
       "converted_bytes": 322,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6282,7 +6282,7 @@
       "sha256": "caaf0e328fe1bb6b8f2036dc18133b9d45c16578753de36aa8bfe86daf64e47a",
       "raw_bytes": 362,
       "converted_bytes": 362,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6291,7 +6291,7 @@
       "sha256": "4c9852c51a0fd516e2da4f5553d0e5461b6f28e2ed2756ea6f890f3174bc94b2",
       "raw_bytes": 186,
       "converted_bytes": 186,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6300,7 +6300,7 @@
       "sha256": "fec21ee973decd040cc2360ff5330bdf40335be91069ba6dae213791e5a24e71",
       "raw_bytes": 274,
       "converted_bytes": 274,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6309,7 +6309,7 @@
       "sha256": "c79ec7d352a61e32ec024312209425c38d2ef10d594730bb01441f740d89a60d",
       "raw_bytes": 240,
       "converted_bytes": 240,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6318,7 +6318,7 @@
       "sha256": "4b0db7c8140db963f4a0b8d8986c35fd8ccc028288782077be5fbd27f6621f97",
       "raw_bytes": 282,
       "converted_bytes": 282,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6327,7 +6327,7 @@
       "sha256": "0abd68d5e01d183670599c5285815c6cdf44828dc68bf619aee5db3f1c68434b",
       "raw_bytes": 122,
       "converted_bytes": 122,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6336,7 +6336,7 @@
       "sha256": "157632b12a75d824f8f9a9b0a5b1dc5a8b93b1a7644fd25a85c1112b3057b7b8",
       "raw_bytes": 188,
       "converted_bytes": 188,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6345,7 +6345,7 @@
       "sha256": "9037239f44e07cb961e1aeb55d87803d24bcf667beaeb42c99dc6f6324eb928a",
       "raw_bytes": 260,
       "converted_bytes": 260,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6354,7 +6354,7 @@
       "sha256": "21eef3ae38e09f4e7bc2ca80f3aab521ce105f2260743e85757bbb1b71c1f74e",
       "raw_bytes": 346,
       "converted_bytes": 346,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6363,7 +6363,7 @@
       "sha256": "388dbaf875724035a2681083685a2adbaecaca9e464158d8ba486490237aa572",
       "raw_bytes": 58,
       "converted_bytes": 58,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6372,7 +6372,7 @@
       "sha256": "5abcc3f7cdf2dabfdff0558f9144561faf1f26156adfc6fb6b7f1494e2239c4c",
       "raw_bytes": 58,
       "converted_bytes": 58,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "levels",
       "placeholder": false
     },
@@ -6381,7 +6381,7 @@
       "sha256": "568f70ef8f0e17f20937cd10968d238a90fda7d19b5e6cb18e8550a16aa095f5",
       "raw_bytes": 2464,
       "converted_bytes": 3512,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "map16",
       "placeholder": false
     },
@@ -6390,7 +6390,7 @@
       "sha256": "74200541d97baff31898eaed2cc172947a3b17d9f5d102ab1456e0aa9eaf3618",
       "raw_bytes": 810,
       "converted_bytes": 1568,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "map16",
       "placeholder": false
     },
@@ -6399,7 +6399,7 @@
       "sha256": "4a781792b52f57a366c2c4cc67d6e48563d35cb2b5c33f4e021e9482eec7c3c0",
       "raw_bytes": 2058,
       "converted_bytes": 2976,
-      "rom_bank": 93,
+      "rom_bank": 94,
       "category": "map16",
       "placeholder": false
     },
@@ -6408,7 +6408,7 @@
       "sha256": "016529eea9a2c06fa6113bb11361a862ac86aaed50e2839c4a235e7a1f3cb8a5",
       "raw_bytes": 3738,
       "converted_bytes": 4816,
-      "rom_bank": 94,
+      "rom_bank": 95,
       "category": "map16",
       "placeholder": false
     },
@@ -6417,7 +6417,7 @@
       "sha256": "c5fdbf4300479c4258a1ef9c3e9661d8149d87a27f107cc2278cc5c07c582a2a",
       "raw_bytes": 2020,
       "converted_bytes": 3312,
-      "rom_bank": 94,
+      "rom_bank": 95,
       "category": "map16",
       "placeholder": false
     },
@@ -6426,7 +6426,7 @@
       "sha256": "3e8744bf47628e7fbe608cf759183cff84ad2cd346f23eb42e2fc21239c0d266",
       "raw_bytes": 2414,
       "converted_bytes": 3448,
-      "rom_bank": 94,
+      "rom_bank": 95,
       "category": "map16",
       "placeholder": false
     },
@@ -6435,7 +6435,7 @@
       "sha256": "0f5326d50dfb0e98f6a49ebfb24cde45155a87278f71c4b44a8f629ec0f2753c",
       "raw_bytes": 8464,
       "converted_bytes": 8464,
-      "rom_bank": 95,
+      "rom_bank": 96,
       "category": "map256",
       "placeholder": false
     },
@@ -6444,7 +6444,7 @@
       "sha256": "9a5f8476c8568fef8f935fe24cd6af6bf057a47b62c3a8dd4b254855e7e58490",
       "raw_bytes": 10224,
       "converted_bytes": 10224,
-      "rom_bank": 96,
+      "rom_bank": 97,
       "category": "map256",
       "placeholder": false
     },
@@ -6453,7 +6453,7 @@
       "sha256": "7215edddc196a61f042ba34149a20e8058933fe7bb504fdbb27c6b2a1bc1160a",
       "raw_bytes": 6080,
       "converted_bytes": 6080,
-      "rom_bank": 97,
+      "rom_bank": 98,
       "category": "map256",
       "placeholder": false
     },
@@ -6462,7 +6462,7 @@
       "sha256": "d4421780994005fec4c7ad590e753c680eea3c662fd1826fe37fd842e76b3ada",
       "raw_bytes": 6048,
       "converted_bytes": 6048,
-      "rom_bank": 97,
+      "rom_bank": 98,
       "category": "map256",
       "placeholder": false
     },
@@ -6471,7 +6471,7 @@
       "sha256": "b6bfa4d70dc76ac1f2b5ad7d2e9cecb3433490b24478fd4442eab4a40f452a19",
       "raw_bytes": 10832,
       "converted_bytes": 10832,
-      "rom_bank": 98,
+      "rom_bank": 99,
       "category": "map256",
       "placeholder": false
     },
@@ -6480,7 +6480,7 @@
       "sha256": "b19fa34068e430be0374fbb1839c7d01b110ed99421dff191ee7e527a53f3b41",
       "raw_bytes": 10848,
       "converted_bytes": 10848,
-      "rom_bank": 99,
+      "rom_bank": 100,
       "category": "map256",
       "placeholder": false
     },
@@ -6489,7 +6489,7 @@
       "sha256": "9006932f451e2c80f8c2e9ad8e9ef0310a548be531c5b6fa6733cfcf47320bcc",
       "raw_bytes": 9264,
       "converted_bytes": 9264,
-      "rom_bank": 100,
+      "rom_bank": 101,
       "category": "map256",
       "placeholder": false
     },
@@ -6498,7 +6498,7 @@
       "sha256": "64c5bc313fd9e3a0a619cb20c80a6a5aee532920d769249ce0ce34b06ae51d80",
       "raw_bytes": 9136,
       "converted_bytes": 9136,
-      "rom_bank": 101,
+      "rom_bank": 102,
       "category": "map256",
       "placeholder": false
     },
@@ -6507,7 +6507,7 @@
       "sha256": "6e4d389d352378cbfc72fcefc4cd824141f171b5617c6adeba26c339d382fbad",
       "raw_bytes": 348,
       "converted_bytes": 348,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "objpos",
       "placeholder": false
     },
@@ -6516,7 +6516,7 @@
       "sha256": "9ec7eb1759194d62f4b53fda69fa18e3f5dff5dc83b453b57d358d030ca37ff8",
       "raw_bytes": 18,
       "converted_bytes": 18,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "objpos",
       "placeholder": false
     },
@@ -6525,7 +6525,7 @@
       "sha256": "ec2d098aa5909b1ed1a42cbb1424b45cd35ae35ecc0699b42ff1796782d7a05a",
       "raw_bytes": 1290,
       "converted_bytes": 1290,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "objpos",
       "placeholder": false
     },
@@ -6534,7 +6534,7 @@
       "sha256": "03e4f1e2c1224500e02aa7c355f070ba37c3f8bb931e4c0aea5ba05e54324a17",
       "raw_bytes": 1470,
       "converted_bytes": 1470,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "objpos",
       "placeholder": false
     },
@@ -6543,7 +6543,7 @@
       "sha256": "3c42b3e2884c3f99ead1743d0bcbf5444e8789080ad3dc7bba0d4fb8803922c9",
       "raw_bytes": 1722,
       "converted_bytes": 1722,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "objpos",
       "placeholder": false
     },
@@ -6552,7 +6552,7 @@
       "sha256": "f99eb7bf2ebb4ab8fe9572182d84db98a28582d0ebf8d423386703f50fda737c",
       "raw_bytes": 1722,
       "converted_bytes": 1722,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "objpos",
       "placeholder": false
     },
@@ -6561,7 +6561,7 @@
       "sha256": "5fcb6194d10308a0a89318cb7519608eeb2632a0dd4ea5e3cc2695f2d7298ba4",
       "raw_bytes": 1134,
       "converted_bytes": 1134,
-      "rom_bank": 102,
+      "rom_bank": 103,
       "category": "objpos",
       "placeholder": false
     },
@@ -6570,7 +6570,7 @@
       "sha256": "320a5334853733e1a00466190ee47cbd00b2fe114312d2772619b4536da0d2a3",
       "raw_bytes": 1140,
       "converted_bytes": 1140,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6579,7 +6579,7 @@
       "sha256": "addb851b5c04e20c41e3e0961c5c79c8d453c051681efa101ce213dbe58b8f8c",
       "raw_bytes": 834,
       "converted_bytes": 834,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6588,7 +6588,7 @@
       "sha256": "94673c840673a96564543d5338935cddea6c1563aff200cc6bf7a7c677527cc3",
       "raw_bytes": 1506,
       "converted_bytes": 1506,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6597,7 +6597,7 @@
       "sha256": "9479e9b14b368a088aa376317e2e8b0c19dd726ce4ac50d8468eefe52f63d25e",
       "raw_bytes": 1476,
       "converted_bytes": 1476,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6606,7 +6606,7 @@
       "sha256": "7b2e711d254c0f2499f6a2a528e93b7e7742702f1522605da977a007abb5e359",
       "raw_bytes": 876,
       "converted_bytes": 876,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6615,7 +6615,7 @@
       "sha256": "eed2d3f18b362f4c9d0692f768ba63bd6eb03d5cc108bd3b393c54fffd132099",
       "raw_bytes": 876,
       "converted_bytes": 876,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6624,7 +6624,7 @@
       "sha256": "f129230634bae1332f24feb600217a4957f2978c2c274220060a57255385c3db",
       "raw_bytes": 1194,
       "converted_bytes": 1194,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6633,7 +6633,7 @@
       "sha256": "f66b23a4a5e2afedc62cc0cecf515906fd0ac9d7ff998289a507023b2194380b",
       "raw_bytes": 1398,
       "converted_bytes": 1398,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6642,7 +6642,7 @@
       "sha256": "5248829d6eb17c63390da430714d26d0af32954094c8522641ed2d08f0d59356",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6651,7 +6651,7 @@
       "sha256": "fbefdb8fb030657823e09856e8ea8ce4fde55f8774298c0ba00abb66b6d230e4",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6660,7 +6660,7 @@
       "sha256": "cf6c46c3ec5465e24fd7abf2188a2cb5bdfce15003ef17423e0360b1db9cadbf",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6669,7 +6669,7 @@
       "sha256": "1ca17868928f045ed980bcff81849fb55eaee4c310d672b4cd4034b854113a62",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6678,7 +6678,7 @@
       "sha256": "d8ba96f3655a2db98bfef211dd22cf82acfebf5d09cb4baa7eacb2135f9dce02",
       "raw_bytes": 74,
       "converted_bytes": 74,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6687,7 +6687,7 @@
       "sha256": "d260898b541995d9a6c6ad0427d840d36e00fb5ddefc21d3850f85386c590744",
       "raw_bytes": 62,
       "converted_bytes": 62,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6696,7 +6696,7 @@
       "sha256": "3fe0cc7dea9d7414b3b2989491219a11cbef821a297311521d1afef8f7eff1f6",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6705,7 +6705,7 @@
       "sha256": "d2a4417f4426c06f0a85937315023f3e62acc58d07b5837fd63c10255defc9d1",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6714,7 +6714,7 @@
       "sha256": "afd1b43da15e9b2f47cc3c9de9c79664122a521b3b5c5e578971b0db6c29a37c",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6723,7 +6723,7 @@
       "sha256": "6a23528488ed4d74ce2a7619363f7f43b2c1919cf0a73c30e748142288de18f2",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6732,7 +6732,7 @@
       "sha256": "f2b4b8302e49e1e013ca8afc76c82e08537b685958a6f20fa7a17dec948ed4d6",
       "raw_bytes": 50,
       "converted_bytes": 50,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6741,7 +6741,7 @@
       "sha256": "b2c6346dd3e5a30aba5a70a011063cd65ab80ee2778460e88f1e05ad1b256ed8",
       "raw_bytes": 56,
       "converted_bytes": 56,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos/platforms",
       "placeholder": false
     },
@@ -6750,7 +6750,7 @@
       "sha256": "684a8239bf7c2c37b679ff9e75ef999a6a922837b4ca41b1ccc2f025a5bf7098",
       "raw_bytes": 1854,
       "converted_bytes": 1854,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6759,7 +6759,7 @@
       "sha256": "2787e1e8317b2070720eaacc1df1b7f8da5595b0fb49f367dbc81ccf46c6e0c9",
       "raw_bytes": 1854,
       "converted_bytes": 1854,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6768,7 +6768,7 @@
       "sha256": "043121ae99fb60aded7898021dc36a80d4470b00ddc2669adbda5e2ae6eb7b26",
       "raw_bytes": 1758,
       "converted_bytes": 1758,
-      "rom_bank": 103,
+      "rom_bank": 104,
       "category": "objpos",
       "placeholder": false
     },
@@ -6777,7 +6777,7 @@
       "sha256": "efaf859bc5f4b8bcabaceef0774d5c36bd832fb58aa26358d32d75abd300d011",
       "raw_bytes": 1176,
       "converted_bytes": 1176,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6786,7 +6786,7 @@
       "sha256": "9f0bbb83c32c6fcb3ce1dfb384b6dff8de9499e860dd86c4485eb9ccc56786be",
       "raw_bytes": 1344,
       "converted_bytes": 1344,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6795,7 +6795,7 @@
       "sha256": "66d29c335f14efd0d443f4a9e7a777ec4f75878a40b39ca35b1aacd03b8885e0",
       "raw_bytes": 1128,
       "converted_bytes": 1128,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6804,7 +6804,7 @@
       "sha256": "0ad575282042853e338b6a45423865f2f9cf863dd04e4015c82a1890949921b3",
       "raw_bytes": 1506,
       "converted_bytes": 1506,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6813,7 +6813,7 @@
       "sha256": "d0b83f3638d16bc333c7535d7be58eca4b973a0394eaa661c6dec5575b67c300",
       "raw_bytes": 1164,
       "converted_bytes": 1164,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6822,7 +6822,7 @@
       "sha256": "1c81f07a5df6a8c1b837842aae3bd9eb40c2409ed1ed66732984b6542b7ee829",
       "raw_bytes": 1386,
       "converted_bytes": 1386,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6831,7 +6831,7 @@
       "sha256": "4535edcb16c05d5615043ccce16366e8b4f6d49d9b9e3a603dabcf5623a4c9a7",
       "raw_bytes": 1542,
       "converted_bytes": 1542,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6840,7 +6840,7 @@
       "sha256": "57ee0f0780a1181483440ded5de817c34fe4fa73fd98ae0d06af749f99edcb5d",
       "raw_bytes": 1548,
       "converted_bytes": 1548,
-      "rom_bank": 104,
+      "rom_bank": 105,
       "category": "objpos",
       "placeholder": false
     },
@@ -6849,7 +6849,7 @@
       "sha256": "3049bb300857256211d94d58d2ea1294be1ff5e0377fc1f791fbce4ecaa38419",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6858,7 +6858,7 @@
       "sha256": "4c2959f3fad8f015719c0ececf1f36e82cb4761f5a48679297ed64c367d1559c",
       "raw_bytes": 18,
       "converted_bytes": 18,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6867,7 +6867,7 @@
       "sha256": "556eeb87fe2242ddb75481c76e6d6e77d6ae6da197ba583f2ffe8086593887eb",
       "raw_bytes": 18,
       "converted_bytes": 18,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6876,7 +6876,7 @@
       "sha256": "16681498aef562453baf3a432134a1204aa2c1dbc00c956d94901d1baab7027e",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6885,7 +6885,7 @@
       "sha256": "cf4a673593a95112ea707041c8dc763fe961fd40a9d7c3f2a3fe2d937aebfa1b",
       "raw_bytes": 72,
       "converted_bytes": 72,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6894,7 +6894,7 @@
       "sha256": "817c1e328adaf5784d33f29bb234e5813245ac617cbad903d28813a84d2539b0",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6903,7 +6903,7 @@
       "sha256": "6a43f820b4c71b92ab108440cf49e790d6b659b5b383084ecbcbf070de767a09",
       "raw_bytes": 12,
       "converted_bytes": 12,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6912,7 +6912,7 @@
       "sha256": "04d6171abcdbf3377be97f076789a194cbdb66930819227fff6e5992e8b96d04",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6921,7 +6921,7 @@
       "sha256": "48a479355b38a6609e21b3013e658825f19c283105dae9c64aaae1bc3d5340f0",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6930,7 +6930,7 @@
       "sha256": "19b521671018f092960ca26dbdff3946d953e10baeab3a60016433c2c96a7882",
       "raw_bytes": 12,
       "converted_bytes": 12,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6939,7 +6939,7 @@
       "sha256": "9cf063e252682c4ed9c127b6d933bcaa2faa064e44db535c881e9ca53fd73a7f",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6948,7 +6948,7 @@
       "sha256": "995b7905c49b4e3eb9a062f094bd9fcfa740da5fa2713a064ebca5fe618c8dae",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6957,7 +6957,7 @@
       "sha256": "c79dd077178d966f68c18b0bffd3dcce409befc3e3d8c23120e640b0e2080a74",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6966,7 +6966,7 @@
       "sha256": "e0822eea018bcd2971d4c28ebb026efd65ae8831433794cf8ea8583c0f64feeb",
       "raw_bytes": 10,
       "converted_bytes": 10,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6975,7 +6975,7 @@
       "sha256": "a5b1967bdd5255b3242771bda16aba898636fd6c18b0eebae10b30c99ea8c826",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6984,7 +6984,7 @@
       "sha256": "10efdb924c9edaaf63fee5162b993bcbaba6602a493809d32e88e5b1d2ff5813",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -6993,7 +6993,7 @@
       "sha256": "edc1d08b2c0f798ae9198ddae7faabc8371fb63a596d76343aa2cac45072ea28",
       "raw_bytes": 36,
       "converted_bytes": 36,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7002,7 +7002,7 @@
       "sha256": "093207cd619ba4a25a88eecab7196cf51f4cf12adff75431eeba1a8be7f27508",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7011,7 +7011,7 @@
       "sha256": "b5f4c7a4dc521538284acbeb77a0663302bf0091efcb30b6f7998b4cdf36ad8e",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7020,7 +7020,7 @@
       "sha256": "ec2391eb813ae8cbd1e6e81e9e52c8b58f419cfc368154e5de6f3ebf561068a9",
       "raw_bytes": 72,
       "converted_bytes": 72,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7029,7 +7029,7 @@
       "sha256": "65e5c9430f84c7a4680bbda060f29e7f50f2e22d87fa9c8368b04cb5826bd74c",
       "raw_bytes": 210,
       "converted_bytes": 210,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7038,7 +7038,7 @@
       "sha256": "7a5248a7cc786494d214f46530f21c9de0563985d55e7997a6f022d39600b60e",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7047,7 +7047,7 @@
       "sha256": "d8f1164b6119c4116f54226384af385cdcf023c52729cadd6f7f28f23b6d554a",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7056,7 +7056,7 @@
       "sha256": "9cd2ff5c7a74aeb7819a79d7c60c91770cac7d183357cddcada987afde7bbd63",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7065,7 +7065,7 @@
       "sha256": "4e90fa50d2cac1d6b038902cf3abe2d6e68efd29d5d7f1691beeedee946639ca",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7074,7 +7074,7 @@
       "sha256": "a35089366aa62149927f5b52c7c1c2a42e05f01d92f5b1bbc9386b84a0829cf3",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7083,7 +7083,7 @@
       "sha256": "809f6fb01f6ee63d1dfdb230c00cc255f7a6585d23e16a48e04cd4b9dc3fb16d",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7092,7 +7092,7 @@
       "sha256": "015a7ff195d8c626d1b242a53a3c8bff592fb5ef345cdc124e2035ddf7d5f434",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7101,7 +7101,7 @@
       "sha256": "52dc17160be2323f05a71a9684e109c57434e3618bafd19dd6635452731f0e79",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7110,7 +7110,7 @@
       "sha256": "3d85f5f1af13a8704499c14220ad4b8a949aa1f39fc9729b3d37089f8d016e7a",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7119,7 +7119,7 @@
       "sha256": "bd26e559e0b69890fdd3218297665c75597988340bcf45b06f3d5ff31f7cec5c",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7128,7 +7128,7 @@
       "sha256": "5a2705715b61fc02ebf926641c027de5f24cc5d12eddd3ab35ec342c0e281651",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7137,7 +7137,7 @@
       "sha256": "f2dbbbbda7805eae87ded25e3e3b334bbde9f0ff29f6093188d7ec9bc5b529d0",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7146,7 +7146,7 @@
       "sha256": "f01d8830eb7e4cf83866baf878d7f06079d1b1aa43964d136fede3d898e4ee33",
       "raw_bytes": 12,
       "converted_bytes": 12,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7155,7 +7155,7 @@
       "sha256": "a56972e4d505c91540cb17555df50e4dcbeed09e86b040f4fe13502b8981eafe",
       "raw_bytes": 48,
       "converted_bytes": 48,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7164,7 +7164,7 @@
       "sha256": "4b36b60bad7def59a5df7810ab10f5db5c58c0aad1ef81c9ad2ee0e450924c91",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7173,7 +7173,7 @@
       "sha256": "f0df030946176fdfdb110f6275e4403c324dd52ca7d998365b260c209f608b0e",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7182,7 +7182,7 @@
       "sha256": "8391d8af82c19043c89e32abf87bdd057dbe2a845c58a3a58761edceaeeb9f8a",
       "raw_bytes": 32,
       "converted_bytes": 32,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7191,7 +7191,7 @@
       "sha256": "f452690d1da8a47bb724f715e25c420553b78ced48de89a330a6f99d83e1e6ed",
       "raw_bytes": 64,
       "converted_bytes": 64,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7200,7 +7200,7 @@
       "sha256": "d0304da90b1c68058decd28f207a395c90c86c34ca7eeaf8fecd2e44925f0f76",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7209,7 +7209,7 @@
       "sha256": "2f9072d8714ac735dba537f2cbb00aeac349b411fc86d1ef76fb9c81b7c3432d",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7218,7 +7218,7 @@
       "sha256": "fd755654a1b35592dd3da392cf56b670849adf3b2bfdf920707ce0eee0259981",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7227,7 +7227,7 @@
       "sha256": "d7e1a59cc4fd046180ad8da8af8f46a60a5ca162f94246933cc9a3412263731f",
       "raw_bytes": 96,
       "converted_bytes": 96,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7236,7 +7236,7 @@
       "sha256": "65c0b92651204534c77b8709197ad1b1c67bb9aad8776029846ba01ab1388759",
       "raw_bytes": 128,
       "converted_bytes": 128,
-      "rom_bank": 92,
+      "rom_bank": 93,
       "category": "palette",
       "placeholder": false
     },
@@ -7317,7 +7317,7 @@
       "sha256": "61f3340336992978c24842d4d203e96be3988b8c4eda3826889fb38729eb84da",
       "raw_bytes": 16,
       "converted_bytes": 16,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/dac/dpcm",
       "placeholder": false
     },
@@ -7398,7 +7398,7 @@
       "sha256": "c45a2110366bed1875470b18fe1da68d08d8f93c3b26c080eaf7af602846106e",
       "raw_bytes": 1744,
       "converted_bytes": 1744,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/dac/dpcm",
       "placeholder": false
     },
@@ -7407,7 +7407,7 @@
       "sha256": "fef5128f9db27ca3326618c1e37f084c614a32d82982fd672e1fc95cce63dd35",
       "raw_bytes": 3852,
       "converted_bytes": 3852,
-      "rom_bank": 122,
+      "rom_bank": 10,
       "category": "sound/dac/dpcm",
       "placeholder": false
     },
@@ -7416,7 +7416,7 @@
       "sha256": "b89d99984b0775bfad6b20f843da9864ad8c098cfca8091a7974d49525a2283d",
       "raw_bytes": 8280,
       "converted_bytes": 8280,
-      "rom_bank": 122,
+      "rom_bank": 10,
       "category": "sound/dac/dpcm",
       "placeholder": false
     },
@@ -7479,7 +7479,7 @@
       "sha256": "0a834d48c5c0cee7056df56d68887e0744ed32e2db959625dcd5a7ce0ac91ae4",
       "raw_bytes": 11481,
       "converted_bytes": 11481,
-      "rom_bank": 109,
+      "rom_bank": 110,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7488,7 +7488,7 @@
       "sha256": "49873b8fd7f38754c35f680e0e4cf7278ce05c22f97e880d34a76abdec62c1cf",
       "raw_bytes": 11442,
       "converted_bytes": 11442,
-      "rom_bank": 110,
+      "rom_bank": 111,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7506,7 +7506,7 @@
       "sha256": "77c841df85b915c8f2528453f85d0fd38848c6cdbccdf552b086f88a88bb940d",
       "raw_bytes": 11942,
       "converted_bytes": 11942,
-      "rom_bank": 111,
+      "rom_bank": 112,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7524,7 +7524,7 @@
       "sha256": "c9399e4a69408b4ecd5aa7f7fa91263c5ae8b6413e748320b81f45a4902395ab",
       "raw_bytes": 5593,
       "converted_bytes": 5593,
-      "rom_bank": 112,
+      "rom_bank": 113,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7533,7 +7533,7 @@
       "sha256": "160a613a525d1f524875ae996daa952d1e44c236f1a971dc9ce00a5f5f69643b",
       "raw_bytes": 3969,
       "converted_bytes": 3969,
-      "rom_bank": 112,
+      "rom_bank": 113,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7542,7 +7542,7 @@
       "sha256": "6211c75f81472cb6f107dd14b95ad1650a787bb454f8b37b88689e76086a0186",
       "raw_bytes": 9093,
       "converted_bytes": 9093,
-      "rom_bank": 113,
+      "rom_bank": 114,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7551,7 +7551,7 @@
       "sha256": "bacd31e7cced682e498c105f3ca422eecc42979b4d477f038beee0e4f90f9b13",
       "raw_bytes": 5179,
       "converted_bytes": 5179,
-      "rom_bank": 113,
+      "rom_bank": 114,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7560,7 +7560,7 @@
       "sha256": "80e00bbcd0b2ab5de61871c95a0bb4f1f6948d26e098702be7974946bb2e49d6",
       "raw_bytes": 7494,
       "converted_bytes": 7494,
-      "rom_bank": 114,
+      "rom_bank": 115,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7569,7 +7569,7 @@
       "sha256": "e13e9ba9ec524e53950d5802f54d1f2703cdd6262539dfa5746aaaf8b7e74e61",
       "raw_bytes": 7565,
       "converted_bytes": 7565,
-      "rom_bank": 115,
+      "rom_bank": 116,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7578,7 +7578,7 @@
       "sha256": "8b1125b9602883cca2f81731def96ece7f94701ab76a7df6cf3d87c20f4cf70f",
       "raw_bytes": 6335,
       "converted_bytes": 6335,
-      "rom_bank": 115,
+      "rom_bank": 116,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7587,7 +7587,7 @@
       "sha256": "61ac7a971a48dbc971b4a85a03044050a0a6c594327384c0d3262938a24b3d3f",
       "raw_bytes": 5585,
       "converted_bytes": 5585,
-      "rom_bank": 116,
+      "rom_bank": 117,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7596,7 +7596,7 @@
       "sha256": "4d3d74724c0341a1c865673f12b6a6b8768e92ec4461c360bebdb809d80c31db",
       "raw_bytes": 4728,
       "converted_bytes": 4728,
-      "rom_bank": 116,
+      "rom_bank": 117,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7605,7 +7605,7 @@
       "sha256": "cec085a906a8624da4f6587b712027f614e18a5da0afbdcc2cc29a7273bef26d",
       "raw_bytes": 5346,
       "converted_bytes": 5346,
-      "rom_bank": 117,
+      "rom_bank": 118,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7623,7 +7623,7 @@
       "sha256": "15581ae26473e362d861cfdbd5942e74350b81802dda7ba970f94f846a14e9e8",
       "raw_bytes": 5105,
       "converted_bytes": 5105,
-      "rom_bank": 117,
+      "rom_bank": 118,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7632,7 +7632,7 @@
       "sha256": "77a5b5dda3971326f406670e7de3c66cf3fcf4a33ef256f51785705694a96a0d",
       "raw_bytes": 3224,
       "converted_bytes": 3224,
-      "rom_bank": 117,
+      "rom_bank": 118,
       "category": "sound/music",
       "placeholder": false
     },
@@ -7641,7 +7641,7 @@
       "sha256": "eb1f6684f557060571f08e3f6a96f18022c9f3ee753a748567b870a676374259",
       "raw_bytes": 381,
       "converted_bytes": 381,
-      "rom_bank": 117,
+      "rom_bank": 118,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7650,7 +7650,7 @@
       "sha256": "9ff9819723e5b74f89dab3d5695b52eeb88e418e440a9aa5d862c25312798051",
       "raw_bytes": 933,
       "converted_bytes": 933,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7659,7 +7659,7 @@
       "sha256": "72a4e1366956d15bff2205ef9090460e5ac5fe57345da316ce325bdc8617e7ea",
       "raw_bytes": 452,
       "converted_bytes": 452,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7668,7 +7668,7 @@
       "sha256": "4c2cdc5fd0520f0ac9bf1e88e9e68c6f56ece04e8b473dae961611d4a36dfa4f",
       "raw_bytes": 1034,
       "converted_bytes": 1034,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7677,7 +7677,7 @@
       "sha256": "4da9fb4991d9fa764fd35d4e9a9c3672fb2896a7720d11e76030d853d2c9a753",
       "raw_bytes": 706,
       "converted_bytes": 706,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7686,7 +7686,7 @@
       "sha256": "3a536f587f4b733832ea218f3cb690071c1c30adb5ba971ef0a9c4ee39ef3069",
       "raw_bytes": 901,
       "converted_bytes": 901,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7695,7 +7695,7 @@
       "sha256": "817f387f7551e1375e726bab2588fc0bee5da692e58ef7c2eecb096275f57601",
       "raw_bytes": 984,
       "converted_bytes": 984,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7704,7 +7704,7 @@
       "sha256": "6efa2f98d19d53817621df7c0c35e54cae49586143af48eff87f2af1a4713f8b",
       "raw_bytes": 980,
       "converted_bytes": 980,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7713,7 +7713,7 @@
       "sha256": "fd1e29b29f17a30477df21369c4a98a1cb97d86c229db5bc23d0c4bacae3a009",
       "raw_bytes": 1062,
       "converted_bytes": 1062,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7722,7 +7722,7 @@
       "sha256": "bb2dbc227e1c0a0c481b131081c5b1513d4092de3589febba652b519bf2edb81",
       "raw_bytes": 356,
       "converted_bytes": 356,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7731,7 +7731,7 @@
       "sha256": "40c52c6b8d0a3d2a825162d8a35e42eeef023e2e33e66ce2e51a1b7c72e167e8",
       "raw_bytes": 1233,
       "converted_bytes": 1233,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7740,7 +7740,7 @@
       "sha256": "9abb5a45fdbf269b182596077504556c5c4cabe3946579415c87766675c9898d",
       "raw_bytes": 481,
       "converted_bytes": 481,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7749,7 +7749,7 @@
       "sha256": "0f529cf5d7d3fd55607bdd696e81304eef9c48e3bc99cd0205233486e7e289c1",
       "raw_bytes": 1065,
       "converted_bytes": 1065,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7758,7 +7758,7 @@
       "sha256": "d3ed806edfcb1b1ff2fff08802bda9a0e60541406cea439ccc8871e7e3f2a673",
       "raw_bytes": 1044,
       "converted_bytes": 1044,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7767,7 +7767,7 @@
       "sha256": "d447c44ce66daf993f2e4d97fc8645697c7e6a9433b2069a1914393bd0c29943",
       "raw_bytes": 1322,
       "converted_bytes": 1322,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7776,7 +7776,7 @@
       "sha256": "969575c5c6321f168c236c8f228e0182062891e621f027f7094f60b735807ba8",
       "raw_bytes": 949,
       "converted_bytes": 949,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7785,7 +7785,7 @@
       "sha256": "4ff6c7609c1fba350e25a7e3eb615ce8a7f1042a939711f596039e4531114d4f",
       "raw_bytes": 1007,
       "converted_bytes": 1007,
-      "rom_bank": 118,
+      "rom_bank": 119,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7794,7 +7794,7 @@
       "sha256": "eb2c6699be3d14b02c53b0805f454463dad421c55ebfe5b2c41a8cd9235a86d8",
       "raw_bytes": 944,
       "converted_bytes": 944,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7803,7 +7803,7 @@
       "sha256": "97d952a0dbb019b6d6e06e16fe02200f35434e09f90061719c097b41f6fc80f2",
       "raw_bytes": 1408,
       "converted_bytes": 1408,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7812,7 +7812,7 @@
       "sha256": "5884ceec609cd42f9b86e44a64ef2024889c7be170809f92a082b3d1967aab43",
       "raw_bytes": 1354,
       "converted_bytes": 1354,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7821,7 +7821,7 @@
       "sha256": "517bab2cf5cdad033b7fcd8ac32f99cabe9bfc7388420b9ab1c001daeac61683",
       "raw_bytes": 1883,
       "converted_bytes": 1883,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7830,7 +7830,7 @@
       "sha256": "7a4c014dbd153a9009eaa559a9ba61714bdc329938ebf78d728ade1727de7f94",
       "raw_bytes": 958,
       "converted_bytes": 958,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7839,7 +7839,7 @@
       "sha256": "ccc55a0d53fac64a156809ff169e35c4a82de1fa4b8f95b1a6f762b551c03d53",
       "raw_bytes": 523,
       "converted_bytes": 523,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7848,7 +7848,7 @@
       "sha256": "a69bd124d0a0840ce2388c98d26883c1abc5e4effa1e2d0bae3d7d6c0096b2cc",
       "raw_bytes": 1159,
       "converted_bytes": 1159,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7857,7 +7857,7 @@
       "sha256": "62b08fc1d207ef0546feab0077c0d0cacee596a8fa52ad236589394649ed54e6",
       "raw_bytes": 440,
       "converted_bytes": 440,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7866,7 +7866,7 @@
       "sha256": "51162318f73f16fe9b65ebfd61c7d0f26711bb689a60d5e5eca770ad80af2b2f",
       "raw_bytes": 1683,
       "converted_bytes": 1683,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7875,7 +7875,7 @@
       "sha256": "0fcb235f2a209cbdb642b2aea68a5f0e36a88eb4fe5460ee1b85ebdd3a7871f6",
       "raw_bytes": 923,
       "converted_bytes": 923,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7884,7 +7884,7 @@
       "sha256": "9d685fee27e9d49c63a7c9a7fee8e979ba433097b67ad6cecf2f9d6b610bae9d",
       "raw_bytes": 919,
       "converted_bytes": 919,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7893,7 +7893,7 @@
       "sha256": "b773be6a8868d8a4baf415ad90ed15845a4c5652fe7203fe1d3dbf786e3fc186",
       "raw_bytes": 1389,
       "converted_bytes": 1389,
-      "rom_bank": 119,
+      "rom_bank": 120,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7902,7 +7902,7 @@
       "sha256": "17ca442ab857e9fbe5ab7fc8718d64cac50960f9756be2fe96e29fc438a73204",
       "raw_bytes": 1753,
       "converted_bytes": 1753,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7911,7 +7911,7 @@
       "sha256": "17b885664d0ddbeadbb0b6eb017131efa99675d0908d38fadfcb63552144e974",
       "raw_bytes": 1103,
       "converted_bytes": 1103,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7920,7 +7920,7 @@
       "sha256": "803529b6f45059d1c8511b17dd5086951e0aa36f0530c808b2b70461891df22c",
       "raw_bytes": 1776,
       "converted_bytes": 1776,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7929,7 +7929,7 @@
       "sha256": "78a2b6ea73c2e02639c34280451ad19046d2c2fdd7eba7e18fed64fa8e6d8326",
       "raw_bytes": 975,
       "converted_bytes": 975,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7938,7 +7938,7 @@
       "sha256": "27fd654cb88756e643e69918b84ac2c803186ca038d714b0042af8fcde462df9",
       "raw_bytes": 1150,
       "converted_bytes": 1150,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7947,7 +7947,7 @@
       "sha256": "bc1138af4f1975a970cd9d318792d533e4df969e56e1f64b038096a6d1344b44",
       "raw_bytes": 961,
       "converted_bytes": 961,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7956,7 +7956,7 @@
       "sha256": "afa907ca2520c9c112c0b5a321e6ff0e705fbc4aed37ade333869ac5eb669fcc",
       "raw_bytes": 2536,
       "converted_bytes": 2536,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7965,7 +7965,7 @@
       "sha256": "c0bf1e14893be1db6c6e0f3078c87d2588e413e47d3627e2f4dd4d358ba049fa",
       "raw_bytes": 903,
       "converted_bytes": 903,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7974,7 +7974,7 @@
       "sha256": "5a955655727db7ef37c7c388600a5f10e0d4cdd90c745a740c8040b08d23cc29",
       "raw_bytes": 1973,
       "converted_bytes": 1973,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7983,7 +7983,7 @@
       "sha256": "ab562c2b19669f0bcfe112d3318cc57b57132f518d686e072efe1b2a80f41004",
       "raw_bytes": 1140,
       "converted_bytes": 1140,
-      "rom_bank": 120,
+      "rom_bank": 121,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -7992,7 +7992,7 @@
       "sha256": "a7dd8e74bb4b18e41e751655b91eeab8155c73776cebe5de15cd453bbb985c9e",
       "raw_bytes": 977,
       "converted_bytes": 977,
-      "rom_bank": 121,
+      "rom_bank": 122,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8001,7 +8001,7 @@
       "sha256": "187f1678545aaae510ec78711016f5c18626702eecc6a2a2107a8ee037b3efba",
       "raw_bytes": 365,
       "converted_bytes": 365,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8010,7 +8010,7 @@
       "sha256": "d346d4601c7938473405448cedfdf90cc6d92dfd03665b893ff17c88b64252f1",
       "raw_bytes": 984,
       "converted_bytes": 984,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8019,7 +8019,7 @@
       "sha256": "fea77e1ae92b7dc5b3dc1890fcfa5edda2f6afbc7b5005e1b5d7a5eef160797a",
       "raw_bytes": 964,
       "converted_bytes": 964,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8028,7 +8028,7 @@
       "sha256": "24549f7fe9744c34b9737d52b633851c055a3074abfcbfaf1433d891535335dc",
       "raw_bytes": 1386,
       "converted_bytes": 1386,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8037,7 +8037,7 @@
       "sha256": "d8f918f37514ef662d2aae9bfa530259e360bb5ff50fc16c7704ee2c5c951435",
       "raw_bytes": 1113,
       "converted_bytes": 1113,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8046,7 +8046,7 @@
       "sha256": "7f6f3b4d529e25679e7d9aee0ec67f951f427d6de340e77dedf35660d74f0bfe",
       "raw_bytes": 311,
       "converted_bytes": 311,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8055,7 +8055,7 @@
       "sha256": "0d387473f7772dfb87dc8fdbc61c1aa0a993d2bb3202d3361026c976568215e0",
       "raw_bytes": 1022,
       "converted_bytes": 1022,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8064,7 +8064,7 @@
       "sha256": "320b3c201a065b5d7027eb3ee4293536228112f8d5953c48c5685380eaa20c3e",
       "raw_bytes": 1131,
       "converted_bytes": 1131,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8073,7 +8073,7 @@
       "sha256": "a4be70b95a7cb848ce3925813e78a88a93c11d1861f2ed2547b9c2ca8730aac5",
       "raw_bytes": 1182,
       "converted_bytes": 1182,
-      "rom_bank": 121,
+      "rom_bank": 10,
       "category": "sound/sfx",
       "placeholder": false
     },
@@ -8091,7 +8091,7 @@
       "sha256": "dc1a0a6ee0c3d2f6b52b7393dec9ae6ad41fc8831a0176b1467f484167d39853",
       "raw_bytes": 634,
       "converted_bytes": 4096,
-      "rom_bank": 105,
+      "rom_bank": 106,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8100,7 +8100,7 @@
       "sha256": "4015dccb21c86ee98a3a8e6cf2dcccfea5d0cb046f8981bad59dfa0b88d3db7a",
       "raw_bytes": 1042,
       "converted_bytes": 4096,
-      "rom_bank": 105,
+      "rom_bank": 106,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8109,7 +8109,7 @@
       "sha256": "6b8467c2b0cb5c07d5bb2a4865af4b754e3eebe9aeb32ce2c9d44d5c5a58f232",
       "raw_bytes": 860,
       "converted_bytes": 4096,
-      "rom_bank": 105,
+      "rom_bank": 106,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8118,7 +8118,7 @@
       "sha256": "8996ca4fe2bda84806faccfa5d9d98723191a9331165f67fa14c02021dcb5929",
       "raw_bytes": 1242,
       "converted_bytes": 4096,
-      "rom_bank": 106,
+      "rom_bank": 107,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8127,7 +8127,7 @@
       "sha256": "87d72aca0fedd39c51704ab3333f8337e850644f3d527e040f5be33b53b3e92a",
       "raw_bytes": 1234,
       "converted_bytes": 4096,
-      "rom_bank": 106,
+      "rom_bank": 107,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8136,7 +8136,7 @@
       "sha256": "254496efd5955192f47e0ffb1fbb01649deadd936fb8e915299c73f18b25aad9",
       "raw_bytes": 1200,
       "converted_bytes": 4096,
-      "rom_bank": 106,
+      "rom_bank": 107,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8145,7 +8145,7 @@
       "sha256": "daf1a80e13a9b0712cb692a27de7771453855951e07ee9e7dab402a59621ae93",
       "raw_bytes": 784,
       "converted_bytes": 4096,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8154,7 +8154,7 @@
       "sha256": "ce79a8e5a6c49d4a4f9ab7df5372e50ab9c73d0d5d252a05ef08f7f2b7dd874b",
       "raw_bytes": 754,
       "converted_bytes": 4096,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "sslayout",
       "placeholder": false
     },
@@ -8163,7 +8163,7 @@
       "sha256": "6125d9be322a61cb6a46622edc6a4226a182fd1768df854d350bb011e23ea5cb",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8172,7 +8172,7 @@
       "sha256": "e073bec58a1f4da95f65830a52f3d87351428140a53f5d35af7dce0f566db984",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8181,7 +8181,7 @@
       "sha256": "454cac9da97c5e524fbfa022374f843cdfebfa8cb064f2c181874575d34e2f62",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8190,7 +8190,7 @@
       "sha256": "b5b40539f29e7ea24e0014a43e970460dcbd9a991a09521c95538ad12f689e68",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8199,7 +8199,7 @@
       "sha256": "17b6a9089abff84fb8cdb71cb558feb1952d1cb1729f2e5100d02a8f9328b47f",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8208,7 +8208,7 @@
       "sha256": "d66dd49262f54cdd16899db6f3b97ec5a21ceed872315457ad4f86df545fc7ae",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8217,7 +8217,7 @@
       "sha256": "acad727d8f0568f5411451b896a9b15cdf139afddecbb95058fba64e3f3f2a16",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8226,7 +8226,7 @@
       "sha256": "caa4737826f1e37a11d7e0f3c6be7f385e6706d5daafe530540720bcd1cdccdf",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Credits Demos",
       "placeholder": false
     },
@@ -8235,7 +8235,7 @@
       "sha256": "7354bf1aad2d92cc64e0a647cdf3eb2c4f6c425c9c1ea2b5e27a0c4fda98203a",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Special Stages",
       "placeholder": false
     },
@@ -8244,7 +8244,7 @@
       "sha256": "906dd0ec01ef51324dc79001e3006372882adbd662b079d9790bd68a3366d809",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Special Stages",
       "placeholder": false
     },
@@ -8253,7 +8253,7 @@
       "sha256": "0aa8b1de1ecc310227e5056314adbc7c13ca946d5576f5c38342db42333f043d",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Special Stages",
       "placeholder": false
     },
@@ -8262,7 +8262,7 @@
       "sha256": "149105b5aec48d03f645de6835ab289c0decfcc36b3d8e26748d7a47ec5ba998",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Special Stages",
       "placeholder": false
     },
@@ -8271,7 +8271,7 @@
       "sha256": "faf7998c95e0c03c3974414feecfdd6881a0314ab5273060b7e583639b0ae4ae",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Special Stages",
       "placeholder": false
     },
@@ -8280,7 +8280,7 @@
       "sha256": "1e2285178f1e38658851f3542f100201763eefc4c48ec6a06a7bb707fafa1613",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos/Special Stages",
       "placeholder": false
     },
@@ -8289,7 +8289,7 @@
       "sha256": "d035b9b98907a6022fe5d4cc9044875b4cde211beab9c7bbdd9430aacb6c6d2f",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8298,7 +8298,7 @@
       "sha256": "615ef9547d7939568b7eee1158486943e81770a42c04d69e1ba80e3511bad8eb",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8307,7 +8307,7 @@
       "sha256": "c7b860a24c23c0cf551d41f5acafaa6003e65dcea28cbbdc3e07c4827fbea581",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8316,7 +8316,7 @@
       "sha256": "6125d9be322a61cb6a46622edc6a4226a182fd1768df854d350bb011e23ea5cb",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8325,7 +8325,7 @@
       "sha256": "3a79bf80601399c52960e5ac5bac5722ed433da883bef1284e148e4026042d90",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8334,7 +8334,7 @@
       "sha256": "6125d9be322a61cb6a46622edc6a4226a182fd1768df854d350bb011e23ea5cb",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8343,7 +8343,7 @@
       "sha256": "a19c4c9d5d03db19fd951c9089e58afdd354623a7914853e48df30c63c575d4b",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8352,7 +8352,7 @@
       "sha256": "7d825c3e463ec8b56cda31110470f727f1d025f06f1fd7fddd1790f9a5d6a50a",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8361,7 +8361,7 @@
       "sha256": "5e3d9dfd2a6b16111a0810122d2ebcfd02ba2675d6e194f3b08b7462be75af0c",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8370,7 +8370,7 @@
       "sha256": "f34143e23e8a5bf219a1b4c81f992eb233fb6b9541c1c36b29a05d22a029ac66",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8379,7 +8379,7 @@
       "sha256": "f34143e23e8a5bf219a1b4c81f992eb233fb6b9541c1c36b29a05d22a029ac66",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8388,7 +8388,7 @@
       "sha256": "8436ca596fe20c6756ac9728b22b043c11b068279ac12b0faeefece76ca259c1",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8397,7 +8397,7 @@
       "sha256": "de5ed38bab4b011d2c45f118a06c4201b20f196619710e449c058656974c82a5",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8406,7 +8406,7 @@
       "sha256": "0f5f66a680b890da08f50e740158ecb6d0b82e744e78970f55709b63084116b0",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8415,7 +8415,7 @@
       "sha256": "258ef413c1d33f0b9b9530aa2fff5fc6b6d1a99bdb0e499933224c1e08633829",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8424,7 +8424,7 @@
       "sha256": "f7afd21fbbb8f1d7cf03dbc0847e009ca01a4531202dec037d0d37b2c1062808",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8433,7 +8433,7 @@
       "sha256": "a99008c670c06f9c3bf4d38a7c45c448cc1a2807729d1a91b79146dec4c5a344",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8442,7 +8442,7 @@
       "sha256": "a99008c670c06f9c3bf4d38a7c45c448cc1a2807729d1a91b79146dec4c5a344",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8451,7 +8451,7 @@
       "sha256": "8b562bf9af485b66b0adc23971a5b8fe17c95f8914c7db682b638a6f4800383a",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8460,7 +8460,7 @@
       "sha256": "1a3d97f51c0ebeb3a0192fbd3995459e138caf0c573984d71710ba2455d8bb26",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8469,7 +8469,7 @@
       "sha256": "a8eb128466e96deba857d1826a9c7dfe33cc57820a30dfa73f932f29192ba690",
       "raw_bytes": 4,
       "converted_bytes": 4,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "startpos",
       "placeholder": false
     },
@@ -8478,7 +8478,7 @@
       "sha256": "13eea5d4c12be537a24c87f694a2559ee9c62d7983b790adf5d0c096a41caac4",
       "raw_bytes": 190,
       "converted_bytes": 2240,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "tilemaps",
       "placeholder": false
     },
@@ -8487,7 +8487,7 @@
       "sha256": "362f348688e89937c75f2866de953e29dbae7621172429481fd475615e80092c",
       "raw_bytes": 308,
       "converted_bytes": 1024,
-      "rom_bank": 107,
+      "rom_bank": 108,
       "category": "tilemaps",
       "placeholder": false
     },
@@ -8496,7 +8496,7 @@
       "sha256": "f50e8e5046759e0686425173d2dd0b24864abff6aeeaa2cd93912032fa872d6a",
       "raw_bytes": 768,
       "converted_bytes": 8192,
-      "rom_bank": 108,
+      "rom_bank": 109,
       "category": "tilemaps",
       "placeholder": false
     },
@@ -8505,7 +8505,7 @@
       "sha256": "9440ba489a298bb5af45a555ab751616a4771f6c33130025be72b752fb3c45c6",
       "raw_bytes": 248,
       "converted_bytes": 2624,
-      "rom_bank": 108,
+      "rom_bank": 109,
       "category": "tilemaps",
       "placeholder": false
     },
@@ -8514,7 +8514,7 @@
       "sha256": "fe78d6a06d67752e638b607f861e633f6002fc32828362d65e7c742b07d97f53",
       "raw_bytes": 252,
       "converted_bytes": 2636,
-      "rom_bank": 108,
+      "rom_bank": 109,
       "category": "tilemaps",
       "placeholder": false
     },
@@ -8523,7 +8523,7 @@
       "sha256": "aecd0a0f41513a00826b91eb1668bcaa68e00e2dc0bba58d92fd8a8ef6503235",
       "raw_bytes": 276,
       "converted_bytes": 1496,
-      "rom_bank": 109,
+      "rom_bank": 110,
       "category": "tilemaps",
       "placeholder": false
     }

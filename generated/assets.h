@@ -9,7 +9,7 @@
 #define NUM_SFX 49
 #define SFX_DATA_BANK 79
 #define PCM_SEGA_BANK 80
-#define PCM_SEGA_PACKETS 160
+#define PCM_SEGA_PACKETS 418
 #define SS_TILES_BANK 74
 
 typedef struct {

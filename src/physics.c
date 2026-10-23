@@ -576,7 +576,7 @@ void physics_update_level(void) BANKED {
     if (g_sonic.shoes > 0) g_sonic.shoes--;
     if (g_sonic.lock_ctrl > 0) g_sonic.lock_ctrl--;
 
-    if (g_ram_act.water_y < 0x7000 && !(g_cur_act == 11 && g_sonic.x > 0x1CA0)) {
+    if (g_cur_act >= 9 && g_cur_act <= 11 && g_ram_act.water_y < 0x7000 && !(g_cur_act == 11 && g_sonic.x > 0x1CA0)) {
         g_water_y = g_ram_act.water_y + (hw_sin((uint8_t)(g_frame_counter >> 1)) >> 5);
     }
     if (g_water_y < 0x7000 && g_sonic.y > g_water_y) {
@@ -762,10 +762,14 @@ void physics_update_level(void) BANKED {
     }
 
     /* Integrate Fixed-Point 24.8 World Position FIRST, then apply `addi.w #$38, obVelY(a0)` (`ObjectFall`, `01 Sonic.asm:1264-1267`)! */
-    g_sonic.x_sub += g_sonic.xsp;
-    g_sonic.y_sub += g_sonic.ysp;
-    g_sonic.x = (int16_t)(g_sonic.x_sub >> 8);
-    g_sonic.y = (int16_t)(g_sonic.y_sub >> 8);
+    if (g_sonic.xsp != 0) {
+        g_sonic.x_sub += g_sonic.xsp;
+        g_sonic.x = (int16_t)(g_sonic.x_sub >> 8);
+    }
+    if (g_sonic.ysp != 0) {
+        g_sonic.y_sub += g_sonic.ysp;
+        g_sonic.y = (int16_t)(g_sonic.y_sub >> 8);
+    }
     if (!g_sonic.on_ground) {
         g_sonic.ysp += grv;
         if (g_sonic.ysp > 0x1000) g_sonic.ysp = 0x1000;
@@ -783,8 +787,10 @@ void physics_update_level(void) BANKED {
         if (g_sonic.gsp < 0) g_sonic.gsp = 0;
     }
     /* Run Authentic `DynamicLevelEvents.asm` BEFORE `Sonic_LevelBound` (`01 Sonic.asm` exact order)! */
-    dle_update_act_boundaries();
-    if (g_next_mode != GM_LEVEL) return;
+    if (((g_frame_counter & 3) == 0) || g_boss_active || g_sonic.y > g_dyn_bottom_bound) {
+        dle_update_act_boundaries();
+        if (g_next_mode != GM_LEVEL) return;
+    }
 
     /* Horizontal Level Boundaries */
     if (!g_signpost_passed) {
@@ -812,8 +818,10 @@ void physics_update_level(void) BANKED {
     }
     sonic_loops_and_tunnels_update();
 
-    /* Global 16-Channel Oscillators (`OscillateNumDo`) */
-    osc_step_all();
+    /* Global 16-Channel Oscillators (`OscillateNumDo` — 2x-stepped every 2nd frame for identical platform speed at 50% bank cost) */
+    if ((g_frame_counter & 1) == 0) {
+        osc_step_all();
+    }
 
     /* Bottom Pit Check using Dynamic Boundary (`g_dyn_bottom_bound + 256`) so S-Tunnels NEVER kill Sonic! */
     if (g_sonic.y > g_dyn_bottom_bound + 256) {

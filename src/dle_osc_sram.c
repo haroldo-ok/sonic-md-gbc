@@ -1,5 +1,6 @@
 #pragma bank 127
 #include "engine.h"
+#include <string.h>
 
 /* ============================================================================================
  * Bank 123: Complete Engine Subsystems from `vendor/s1disasm/_inc/`:
@@ -30,6 +31,7 @@ static uint32_t calc_sram_checksum(const SramSaveBlock *b) {
 void sram_load_or_init(void) BANKED {
     SramSaveBlock *sram = (SramSaveBlock *)0xA000;
     ENABLE_RAM;
+    rRAMB = 0;
     if (sram->magic == 0x42473153UL && sram->checksum == calc_sram_checksum(sram)) {
         g_high_score = sram->high_score;
         g_unlocked_act = sram->unlocked_act;
@@ -49,7 +51,7 @@ void sram_load_or_init(void) BANKED {
         sram->jp_credits = 0;
         sram->checksum = calc_sram_checksum(sram);
     }
-    DISABLE_RAM;
+    rRAMB = 1;
 }
 
 void sram_save_progress(void) BANKED {
@@ -59,6 +61,7 @@ void sram_save_progress(void) BANKED {
         g_unlocked_act = g_cur_act;
     }
     ENABLE_RAM;
+    rRAMB = 0;
     sram->magic = 0x42473153UL;
     sram->high_score = g_high_score;
     if ((g_emeralds & 0x3F) > sram->best_emeralds) {
@@ -70,7 +73,7 @@ void sram_save_progress(void) BANKED {
     sram->rev_mode = g_rev_mode & 1;
     sram->jp_credits = g_jp_credits & 1;
     sram->checksum = calc_sram_checksum(sram);
-    DISABLE_RAM;
+    rRAMB = 1;
 }
 
 /* Authentic `_incObj/sub AddPoints.asm`: Updates Score, High Score (`v_topscore`), & 50,000-pt 1UP! */
@@ -88,8 +91,8 @@ void add_score_points(uint16_t pts) BANKED {
     g_hud_dirty = 1;
 }
 
-/* Authentic `_inc/Oscillatory Routines.asm` (`OscillateNumInit` & `OscillateNumDo`) */
-static const uint8_t s_osc_freq[16]  = { 2, 2, 2, 2, 4, 8, 8, 4, 2, 2, 2, 3, 5, 7, 2, 2 };
+/* Authentic `_inc/Oscillatory Routines.asm` (`OscillateNumInit` & `OscillateNumDo` — 2x delta every 2nd frame) */
+static const uint8_t s_osc_freq[16]  = { 4, 4, 4, 4, 8, 16, 16, 8, 4, 4, 4, 6, 10, 14, 4, 4 };
 static const uint16_t s_osc_limit[16] = {
     0x10, 0x18, 0x20, 0x30, 0x20, 0x08, 0x40, 0x40,
     0x50, 0x50, 0x20, 0x30, 0x50, 0x70, 0x10, 0x10
@@ -100,24 +103,57 @@ void osc_reset(void) BANKED {
     hw_init_osc_from_rom(g_osc_val);
 }
 
+/* Live VBlank Zone Color Cycling matching `_inc/PaletteCycle.asm` — cycles ONLY true water/lava/light sub-palettes,
+   NEVER modifying brown/stone/steel foreground wall sub-palettes! */
+void hw_step_palette_cycle(void) BANKED {
+    static const uint8_t vset_slot[9] = { 1, 5, 1, 5, 4, 5, 5, 5, 1 };
+    static const uint16_t vset_shimmer[9][4] = {
+        { RGB8(168,224,252), RGB8(216,244,252), RGB8(248,252,252), RGB8(140,200,248) },
+        { RGB8( 96,220,240), RGB8(156,240,252), RGB8(236,252,252), RGB8( 64,188,220) },
+        { RGB8(252,136,  0), RGB8(252,192, 24), RGB8(252,236, 88), RGB8(244, 88,  0) },
+        { RGB8(196,224,252), RGB8(252,244,196), RGB8(252,252,252), RGB8(164,204,248) },
+        { RGB8(252,228, 64), RGB8(252,112,188), RGB8(112,244,220), RGB8(252,172, 56) },
+        { RGB8(252,220, 64), RGB8(252,132, 56), RGB8(180,236,252), RGB8(224,188, 48) },
+        { RGB8(252,220, 64), RGB8(252,132, 56), RGB8(180,236,252), RGB8(224,188, 48) },
+        { RGB8( 96,220,240), RGB8(156,240,252), RGB8(236,252,252), RGB8( 64,188,220) },
+        { RGB8(168,224,252), RGB8(216,244,252), RGB8(248,252,252), RGB8(140,200,248) }
+    };
+    uint16_t cyc_pal[4];
+    const uint16_t *src_pal = g_sonic.underwater ? g_ram_vset.uw_pal : g_ram_vset.bg_pal;
+    uint8_t vset = g_ram_act.vset_idx < 9 ? g_ram_act.vset_idx : 0;
+    uint8_t slot;
+
+    if ((g_frame_counter & 7) != 0) return;
+    slot = vset_slot[vset];
+    cyc_pal[0] = src_pal[(slot << 2) + 0];
+    cyc_pal[1] = src_pal[(slot << 2) + 1];
+    cyc_pal[2] = src_pal[(slot << 2) + 2];
+    cyc_pal[3] = vset_shimmer[vset][(g_frame_counter >> 3) & 3];
+    set_bkg_palette(slot, 1, cyc_pal);
+    g_pal_cycles++;
+}
+
 void osc_step_all(void) BANKED {
     uint8_t i;
+    uint16_t bit = 1U;
+    uint16_t dir = g_osc_dir;
     if (g_paused) return;
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < 16; i++, bit <<= 1) {
         uint8_t step = s_osc_freq[i];
-        uint16_t lim = s_osc_limit[i];
-        uint16_t bit = (uint16_t)1U << i;
-        if (!(g_osc_dir & bit)) {
-            g_osc_val[i] += step;
-            if (g_osc_val[i] >= lim) g_osc_dir |= bit;
+        uint16_t v = g_osc_val[i];
+        if (!(dir & bit)) {
+            v += step;
+            if (v >= s_osc_limit[i]) dir |= bit;
         } else {
-            if (g_osc_val[i] > step) g_osc_val[i] -= step;
+            if (v > step) v -= step;
             else {
-                g_osc_val[i] = 0;
-                g_osc_dir &= (uint16_t)~bit;
+                v = 0;
+                dir &= (uint16_t)~bit;
             }
         }
+        g_osc_val[i] = v;
     }
+    g_osc_dir = dir;
 }
 
 /* Authentic `_inc/DynamicLevelEvents.asm`: Dynamic Camera Boundary Locks & Zone Events */
@@ -150,17 +186,18 @@ void dle_update_act_boundaries(void) BANKED {
     /* 3. `DLE_LZ3` & `DLE_SBZ3`: Dynamic Water Level Rise + SBZ3 Top-of-Shaft Transition to Final Zone! */
     if (g_cur_act == 11 && g_sonic.x > 0x1CA0 && g_water_y > 0x0200) {
         g_water_y -= 1;
-    } else if (g_cur_act == 17 && g_cam_x >= 0x0D00 && g_sonic.y < 0x0040) {
+    } else if (g_cur_act == 17 && g_sonic.x >= 0x2080 && g_sonic.y < 0x0180) {
         g_checkpoint_active = 0;
         g_cur_act = 18; /* Authentic `DLE_SBZ3`: Direct seamless entry into Final Zone! */
+        g_mode_init_done = 0;
         g_next_mode = GM_LEVEL;
         return;
     }
 
     /* 4. Complete Authentic `DynamicLevelEvents.asm` Dynamic Bottom Camera Boundaries across ALL 20 Acts! */
     if (g_cur_act == 0) {
-        /* `DLE_GHZ1` */
-        g_dyn_bottom_bound = (g_cam_x >= 0x1700 || g_sonic.x >= 0x1700) ? 0x0400 : 0x0300;
+        /* `DLE_GHZ1`: Lower S-tunnels (`X >= 0x1400`, `Y >= 1050`) + Goal Post valley (`Y = 1196`)! */
+        g_dyn_bottom_bound = (g_cam_x >= 0x1400 || g_sonic.x >= 0x1400) ? 0x0500 : 0x0300;
     } else if (g_cur_act == 1) {
         /* `DLE_GHZ2` */
         if (g_cam_x < 0x0ED0) g_dyn_bottom_bound = 0x0300;
@@ -204,3 +241,246 @@ void dle_update_act_boundaries(void) BANKED {
         g_dyn_bottom_bound = (g_cam_x < 0x1800) ? 0x0800 : 0x0510;
     }
 }
+
+void hw_fill_win_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t fill_tile) BANKED {
+    uint8_t row_t[20];
+    uint8_t row_a[20];
+    uint8_t i, ry;
+    if (w > 20) w = 20;
+    for (i = 0; i < w; i++) {
+        row_t[i] = fill_tile;
+        row_a[i] = 0x08 | 7;
+    }
+    for (ry = 0; ry < h; ry++) {
+        VBK_REG = 1;
+        set_win_tiles(x, y + ry, w, 1, row_a);
+        VBK_REG = 0;
+        set_win_tiles(x, y + ry, w, 1, row_t);
+    }
+}
+
+static uint8_t s_underwater_pal_banked = 0xFF;
+
+void hw_set_underwater_palette(uint8_t underwater) BANKED {
+    if (underwater == 0xFF) {
+        s_underwater_pal_banked = 0;
+        return;
+    }
+    if (underwater != s_underwater_pal_banked) {
+        uint16_t pal_ram[28];
+        s_underwater_pal_banked = underwater;
+        memcpy(pal_ram, underwater ? g_ram_vset.uw_pal : g_ram_vset.bg_pal, sizeof(pal_ram));
+        set_bkg_palette(0, 7, pal_ram);
+    }
+}
+
+void hw_fade_step(uint8_t step_idx) BANKED {
+    uint16_t faded[4];
+    uint8_t s = step_idx & 3;
+    faded[0] = RGB8(20 + (s << 2), 36 + (s << 3), 112 + (s << 4));
+    faded[1] = RGB8(28 + (s << 3), 56 + (s << 3), 140 + (s << 3));
+    faded[2] = RGB8(80 + (s << 4), 120 + (s << 4), 196 + (s << 2));
+    faded[3] = RGB8(180 + (s << 4), 196 + (s << 3), 220 + (s << 2));
+    set_bkg_palette(7, 1, faded);
+}
+
+static void write_u16_digits(char *dst, uint16_t val, uint8_t digits) {
+    uint8_t i;
+    for (i = digits; i > 0; i--) {
+        dst[i - 1] = (char)('0' + (val % 10));
+        val /= 10;
+    }
+}
+
+void hw_update_hud(void) BANKED {
+    char row0[21];
+    char row1[21];
+    uint16_t secs_total = g_level_frames / 60;
+    uint8_t mins = (uint8_t)(secs_total / 60);
+    uint8_t secs = (uint8_t)(secs_total % 60);
+    uint16_t sc_disp = (uint16_t)(g_score / 10);
+
+    memcpy(row0, "SCR 0000000 T 0:00  ", 20);
+    row0[20] = '\0';
+    write_u16_digits(&row0[4], sc_disp, 6);
+    row0[14] = (char)('0' + (mins % 10));
+    row0[16] = (char)('0' + (secs / 10));
+    row0[17] = (char)('0' + (secs % 10));
+
+    memcpy(row1, "*000  @#03   EM 0:6 ", 20);
+    row1[20] = '\0';
+    write_u16_digits(&row1[1], g_rings > 999 ? 999 : g_rings, 3);
+    write_u16_digits(&row1[8], g_lives > 99 ? 99 : g_lives, 2);
+    {
+        uint8_t em_cnt = 0, b;
+        for (b = 0; b < 6; b++) if (g_emeralds & (1 << b)) em_cnt++;
+        row1[16] = (char)('0' + em_cnt);
+    }
+
+    hw_print_win(0, 0, row0);
+    hw_print_win(0, 1, row1);
+}
+
+BANKREF(draw_transition_card_win_b127)
+void draw_transition_card_win_b127(const char *line1, const char *line2, uint8_t act_num) BANKED {
+    char act_buf[8];
+    hw_fill_win_rect(0, 0, 20, 1, 126);
+    hw_fill_win_rect(0, 1, 20, 16, 80);
+    hw_fill_win_rect(0, 17, 20, 1, 126);
+    hw_fill_win_rect(1, 5, 18, 6, 81);
+    hw_fill_win_rect(1, 11, 18, 1, 82);
+
+    hw_print_win(1, 2, "SONIC THE HEDGEHOG");
+    if (line1[0]) hw_print_win(2, 6, line1);
+    if (line2[0]) hw_print_win(2, 8, line2);
+    if (act_num > 0) {
+        act_buf[0] = 'A'; act_buf[1] = 'C'; act_buf[2] = 'T'; act_buf[3] = ' ';
+        act_buf[4] = (char)('0' + act_num); act_buf[5] = '\0';
+        hw_print_win(12, 9, act_buf);
+    }
+    WX_REG = 7;
+    WY_REG = 0;
+}
+
+BANKREF(spawn_try_place_b127)
+void spawn_try_place_b127(uint16_t idx, int16_t ox, int16_t oy, uint8_t oid, uint8_t osub) BANKED {
+    uint8_t already = 0, s, slot_out = 0xFF;
+    if (idx < 512U && oid != 0x0D && oid != 0x3E && oid != 0x4B &&
+        (g_obj_taken[idx >> 3] & (uint8_t)(1U << (idx & 7)))) return;
+    for (s = 0; s < MAX_ACTIVE_OBJS; s++) {
+        if (g_objs[s].active) {
+            if (g_objs[s].spawn_slot == idx && g_objs[s].base_x == ox) {
+                already = 1;
+                break;
+            }
+        } else if (slot_out == 0xFF) {
+            slot_out = s;
+        }
+    }
+    if (!already && slot_out == 0xFF && (oid == 0x0D || oid == 0x3E || oid == 0x4B)) {
+        for (s = 0; s < MAX_ACTIVE_OBJS; s++) {
+            uint8_t eid = g_objs[s].id;
+            if (eid != 0x0D && eid != 0x3E && eid != 0x4B && eid != 0x3D) {
+                slot_out = s;
+                break;
+            }
+        }
+    }
+    if (!already && slot_out != 0xFF) {
+        g_objs[slot_out].active = 1;
+        g_objs[slot_out].id = oid;
+        g_objs[slot_out].subtype = osub;
+        g_objs[slot_out].spawn_slot = idx;
+        g_objs[slot_out].x = ox;
+        g_objs[slot_out].y = oy;
+        g_objs[slot_out].base_x = ox;
+        g_objs[slot_out].base_y = oy;
+        g_objs[slot_out].vx = -0x80;
+        g_objs[slot_out].vy = 0;
+        g_objs[slot_out].state = 0;
+        g_objs[slot_out].timer = 0;
+        g_objs[slot_out].hp = 1;
+    }
+}
+
+BANKREF(sonic_anim_oct_b127)
+uint8_t sonic_anim_oct_b127(uint8_t *out_fx, uint8_t *out_fy, uint8_t cmd, uint8_t do_oct) BANKED {
+    if (!g_sonic.rolling && g_sonic.on_ground && (g_sonic.anim == ANI_WALK || g_sonic.anim == ANI_RUN)) {
+        uint8_t d0 = g_sonic.angle;
+        uint8_t fx = g_sonic.facing_left ? 1 : 0;
+        uint8_t fy = 0;
+        if (!fx) d0 = (uint8_t)(~d0);
+        d0 = (uint8_t)(d0 + 0x10);
+        if (d0 & 0x80) {
+            fx ^= 1;
+            fy ^= 1;
+        }
+        *out_fx = fx;
+        *out_fy = fy;
+        if (do_oct) {
+            uint8_t rd0 = g_sonic.facing_left ? g_sonic.angle : (uint8_t)(~g_sonic.angle);
+            uint8_t oct = (uint8_t)(((uint8_t)(rd0 + 0x10) >> 5) & 3);
+            cmd = (uint8_t)(cmd + oct * (g_sonic.anim == ANI_WALK ? 6 : 4));
+        }
+    } else {
+        *out_fx = g_sonic.facing_left ? 1 : 0;
+        *out_fy = 0;
+    }
+    return cmd;
+}
+
+static uint8_t b127_ascii_tile(char c) {
+    if (c >= '0' && c <= '9') return (uint8_t)(84 + (c - '0'));
+    if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
+    if (c >= 'A' && c <= 'X') return (uint8_t)(96 + (c - 'A'));
+    if (c == 'Y') return 94;
+    if (c == 'Z') return 95;
+    if (c == ':' || c == '-' || c == '/') return 120;
+    if (c == '*') return 121;
+    if (c == '@') return 122;
+    if (c == '#') return 123;
+    if (c == '$') return 124;
+    if (c == '>') return 125;
+    if (c == '%') return 126;
+    if (c == '!') return 127;
+    return 80;
+}
+
+BANKREF(print_win_ram_b127)
+void print_win_ram_b127(uint8_t x, uint8_t y, const char *ram_str) BANKED {
+    uint8_t row_t[20], row_a[20];
+    uint8_t i, n = 0;
+    while (ram_str[n] != '\0' && (uint8_t)(x + n) < 20U) {
+        row_t[n] = b127_ascii_tile(ram_str[n]);
+        row_a[n] = 0x08U | 7U;
+        n++;
+    }
+    if (n > 0U) {
+        volatile uint8_t *vdst = (volatile uint8_t *)(0x9C00U + ((uint16_t)y << 5) + x);
+        VBK_REG = 1;
+        for (i = 0; i < n; i++) { while (STAT_REG & STATF_BUSY) {} vdst[i] = row_a[i]; }
+        VBK_REG = 0;
+        for (i = 0; i < n; i++) { while (STAT_REG & STATF_BUSY) {} vdst[i] = row_t[i]; }
+    }
+}
+
+typedef struct {
+    uint8_t is_col;
+    uint8_t vx;
+    uint8_t vy;
+    uint8_t t[23];
+    uint8_t a[23];
+} VScrollSpanB127;
+
+static void write_vram_span_b127(uint8_t vx, uint8_t vy, uint8_t is_col, const uint8_t *ps) {
+    volatile uint8_t *vd = (volatile uint8_t *)(0x9800U + ((uint16_t)vy << 5) + vx);
+    uint8_t n;
+    if (is_col) {
+        for (n = 20U; n != 0U; n--) {
+            if (LY_REG < 144U || LY_REG >= 153U) { while (STAT_REG & STATF_BUSY) {} }
+            *vd = *ps++;
+            vd = ((uint16_t)vd < 0x9BE0U) ? (vd + 32) : (vd - 0x03E0U);
+        }
+    } else {
+        for (n = 23U; n != 0U; n--) {
+            if (LY_REG < 144U || LY_REG >= 153U) { while (STAT_REG & STATF_BUSY) {} }
+            *vd = *ps++;
+            vd = (((uint8_t)(uint16_t)vd & 31U) != 31U) ? (vd + 1) : (vd - 31);
+        }
+    }
+}
+
+BANKREF(flush_vscroll_b127)
+void flush_vscroll_b127(uint8_t cnt) BANKED {
+    const VScrollSpanB127 *q = (const VScrollSpanB127 *)0xBC00U;
+    uint8_t i;
+    rRAMB = 1;
+    for (i = 0; i < cnt; i++) {
+        VBK_REG = 1;
+        write_vram_span_b127(q[i].vx, q[i].vy, q[i].is_col, q[i].a);
+        VBK_REG = 0;
+        write_vram_span_b127(q[i].vx, q[i].vy, q[i].is_col, q[i].t);
+    }
+}
+
+

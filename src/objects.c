@@ -197,15 +197,15 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
         o->x += (o->vx >> 8);
         if (o->x < o->base_x - 48 || o->x > o->base_x + 48) o->vx = -o->vx;
     } else {
-        int16_t step = (id == 0x43) ? ((o->vx >> 8) * 3) : (o->vx >> 8);
+        int16_t step = (id == 0x43) ? (o->vx < 0 ? -3 : 3) : (o->vx < 0 ? -1 : 1);
         o->x += step;
         if (o->x < o->base_x - 56 || o->x > o->base_x + 56) {
             o->vx = -o->vx;
         }
-        if (id == 0x40 || id == 0x50 || id == 0x78) {
+        if ((id == 0x40 || id == 0x50 || id == 0x78) && ((o->x & 7) == 0)) {
             uint8_t ang = 0;
             int16_t d = hw_floor_distance(o->x, o->y + 14, &ang);
-            if (d >= -10 && d <= 10) o->y += d;
+            if (d >= -12 && d <= 12) o->y += d;
             else o->vx = -o->vx;
         }
     }
@@ -238,110 +238,70 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
     hw_put_sprite16(sx, sy, spr + anim_off, 0x08 | pal | (o->vx > 0 ? 0x20 : 0));
 }
 
-void objects_update_and_draw(void) BANKED {
-    uint8_t i;
-    uint8_t sonic_spinning = (g_sonic.rolling || g_sonic.anim == ANI_ROLL || g_sonic.invinc > 0);
+static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning, uint8_t ring_tile) {
+    int16_t cam_x = g_cam_x;
+    int16_t cam_y = g_cam_y;
+    int16_t sx, sy;
+    uint8_t id = o->id;
 
-    /* 1. Draw Sonic Sprite + Shield/Invincibility Halo (`hw_draw_sonic_sprite` in Bank 0) */
-    hw_draw_sonic_sprite();
-
-    /* 1b. Guarantee CGB 10-sprites/scanline hardware priority for end-of-act Goal Post (`0x0D`)
-     *     by placing it first in `g_objs[0]` whenever active (`<=4` Sonic + `<=3` Signpost = `<=7 <= 10`!) */
-    for (i = 1; i < MAX_ACTIVE_OBJS; i++) {
-        if (g_objs[i].active && g_objs[i].id == 0x0D && g_objs[0].id != 0x0D) {
-            ActiveObj tmp = g_objs[0];
-            g_objs[0] = g_objs[i];
-            g_objs[i] = tmp;
-            break;
+    if (o->x < cam_x - 160 || o->x > cam_x + 480) {
+        if (id != 0x3D && id != 0x3E && id != 0x0D && id != 0x7C) {
+            o->active = 0;
+            return 0;
         }
     }
 
-    /* 2. Check & Spawn Act 3 / Final Zone Boss (`GHZ3`, `MZ3`, `SYZ3`, `LZ3`, `SLZ3`, `FZ`) */
-    boss_check_and_update(sonic_spinning);
+    sx = (o->x - cam_x) >> 1;
+    sy = (o->y - cam_y) >> 1;
 
-    /* 3. Update & Draw Scattered Lost Rings (`37 Rings.asm`) */
-    for (i = 0; i < MAX_LOST_RINGS; i++) {
-        LostRing *r = &g_lost_rings[i];
-        int16_t sx, sy;
-        if (!r->active) continue;
-        if (r->timer == 0) {
-            r->active = 0;
-            continue;
-        }
-        r->timer--;
-        r->vy += 24;
-        r->x += (r->vx >> 8);
-        r->y += (r->vy >> 8);
-        if (r->vy > 0) {
-            uint8_t ang = 0;
-            int16_t d = hw_floor_distance(r->x, r->y + 8, &ang);
-            if (d <= 0) {
-                r->y += d;
-                r->vy = -(r->vy - (r->vy >> 2));
-            }
-        }
-        if (!g_sonic.dead && r->timer < 156 && box_overlap(g_sonic.x, g_sonic.y, 10, 16, r->x, r->y, 8, 8)) {
-            r->active = 0;
-            g_rings++;
-            g_hud_dirty = 1;
-            hw_play_sfx(SFX_RING);
-            continue;
-        }
-        sx = (r->x - g_cam_x) >> 1;
-        sy = (r->y - g_cam_y) >> 1;
-        if (r->timer > 40 || (g_frame_counter & 1)) {
-            hw_put_sprite8(sx - 2, sy - 2, SPR_TILE_RING + ((g_frame_counter >> 2) & 3), 2);
-        }
+    /* Skip invisible off-viewport objects cleanly while keeping active Boss (`0x3D`..`0x85`) & Goal (`0x0D`) alive */
+    if ((sx < -20 || sx > 180 || sy < -24 || sy > 152) &&
+        id != 0x3D && id != 0x7A && id != 0x71 && id != 0x85 &&
+        id != 0x0D && id != 0x3E && id != 0x4B && id != 0x7D) {
+        return 0;
     }
 
-    /* 4. Update & Draw Active Level Objects */
-    for (i = 0; i < MAX_ACTIVE_OBJS; i++) {
-        ActiveObj *o = &g_objs[i];
-        int16_t sx, sy;
-        uint8_t id;
-        if (!o->active) continue;
+    /* Explosion / Animal Release State (state == 99) */
+    if (o->state == 99) {
+        if (o->timer > 12) {
+            uint8_t ex_frame = (o->timer > 18) ? SPR_TILE_EXPLODE : (SPR_TILE_EXPLODE + 4);
+            hw_put_sprite16(sx, sy, ex_frame, (o->timer > 18) ? 1 : 2);
+        } else {
+            o->y -= 3;
+            o->x += (o->vx >= 0) ? 2 : -2;
+            hw_put_sprite8(((o->x - cam_x) >> 1) - 4, ((o->y - cam_y) >> 1) - 4,
+                           SPR_TILE_ANIMAL + ((g_frame_counter >> 2) & 3), 4 | (o->vx >= 0 ? 0x20 : 0));
+        }
+        if (--o->timer == 0) o->active = 0;
+        return 0;
+    }
 
-        /* Despawn far-away non-critical objects so slots stay available across wide levels */
-        if (o->id != 0x3D && o->id != 0x3E && o->id != 0x0D && o->id != 0x7C) {
-            if (o->x < g_cam_x - 160 || o->x > g_cam_x + 480) {
-                o->active = 0;
-                continue;
+    /* --- GOLDEN RING (`0x25` — Zero-call inline hot path for 12..16 active rings/frame!) --- */
+    if (id == 0x25) {
+        if (!g_sonic.dead) {
+            int16_t rdx = g_sonic.x - o->x;
+            if (rdx > -18 && rdx < 18) {
+                int16_t rdy = g_sonic.y - o->y;
+                if (rdy > -24 && rdy < 24) {
+                    g_rings++;
+                    g_score += 10;
+                    g_hud_dirty = 1;
+                    hw_play_sfx(SFX_RING);
+                    g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
+                    o->active = 0;
+                    return 0;
+                }
             }
         }
-
-        id = o->id;
-        sx = (o->x - g_cam_x) >> 1;
-        sy = (o->y - g_cam_y) >> 1;
-
-        /* Explosion / Animal Release State (state == 99) */
-        if (o->state == 99) {
-            if (o->timer > 12) {
-                uint8_t ex_frame = (o->timer > 18) ? SPR_TILE_EXPLODE : (SPR_TILE_EXPLODE + 4);
-                hw_put_sprite16(sx, sy, ex_frame, (o->timer > 18) ? 1 : 2);
-            } else {
-                o->y -= 3;
-                o->x += (o->vx >= 0) ? 2 : -2;
-                hw_put_sprite8(((o->x - g_cam_x) >> 1) - 4, ((o->y - g_cam_y) >> 1) - 4,
-                               SPR_TILE_ANIMAL + ((g_frame_counter >> 2) & 3), 4 | (o->vx >= 0 ? 0x20 : 0));
-            }
-            if (--o->timer == 0) o->active = 0;
-            continue;
+        if (g_oam_next < 40 && sx > -4 && sx < 164 && sy > -4 && sy < 132) {
+            OAM_item_t *it = &shadow_OAM[g_oam_next++];
+            it->y = (uint8_t)(sy + 12);
+            it->x = (uint8_t)(sx + 4);
+            it->tile = ring_tile;
+            it->prop = 2;
         }
-
-        /* --- GOLDEN RING (`0x25`) --- */
-        if (id == 0x25) {
-            if (!g_sonic.dead && box_overlap(g_sonic.x, g_sonic.y, 10, 16, o->x, o->y, 8, 8)) {
-                g_rings++;
-                g_score += 10;
-                g_hud_dirty = 1;
-                hw_play_sfx(SFX_RING);
-                g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
-                o->active = 0;
-                continue;
-            }
-            hw_put_sprite8(sx - 4, sy - 4, SPR_TILE_RING + ((g_frame_counter >> 3) & 3), 2);
-            continue;
-        }
+        return 0;
+    }
 
         /* --- ITEM MONITOR (`0x26` — `26 Monitor.asm` with true icon per subtype!) --- */
         if (id == 0x26) {
@@ -381,7 +341,7 @@ void objects_update_and_draw(void) BANKED {
                 g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
                 o->state = 99;
                 o->timer = 22;
-                continue;
+        return 0;
             }
             if (!sonic_spinning && g_sonic.ysp >= 0 &&
                 box_overlap(g_sonic.x, g_sonic.y + 16, 10, 6, o->x, o->y - 12, 14, 6)) {
@@ -396,7 +356,7 @@ void objects_update_and_draw(void) BANKED {
             else if (sub == 0x01 || sub == 0x02) { mon_tile = SPR_TILE_MONITOR + 16; mon_pal = (sub == 0x01) ? 1 : 0; } /* 1UP Sonic / Eggman */
             else                  { mon_tile = SPR_TILE_MONITOR;      mon_pal = 2; } /* Super 10-Ring (Gold) */
             hw_put_sprite16(sx, sy, mon_tile, mon_pal);
-            continue;
+        return 0;
         }
 
         /* --- BOUNCE SPRING (`0x41` — Exact `s1disasm/_incObj/41 Springs.asm` Up, LR, & Down in Red/Yellow!) --- */
@@ -467,7 +427,7 @@ void objects_update_and_draw(void) BANKED {
                 hw_put_sprite16(sx, sy + (o->timer ? (upside_down ? 2 : -2) : 0),
                                 SPR_TILE_SPRING, sp_pal | (upside_down ? 0x40 : 0));
             }
-            continue;
+        return 0;
         }
 
         /* --- SPIKES (`0x36` — `36 Spikes.asm` including moving retractable & ceiling spikes!) --- */
@@ -477,7 +437,7 @@ void objects_update_and_draw(void) BANKED {
                 sonic_hurt_or_kill(0);
             }
             hw_put_sprite16(sx, sy + (off_y >> 1), SPR_TILE_SPIKES, 5);
-            continue;
+        return 0;
         }
 
         /* --- LAMPPOST / CHECKPOINT (`0x79`) --- */
@@ -491,7 +451,7 @@ void objects_update_and_draw(void) BANKED {
                 hw_play_sfx(SFX_LAMPPOST);
             }
             hw_put_sprite16(sx, sy, SPR_TILE_LAMP, o->state ? 1 : 4);
-            continue;
+        return 0;
         }
 
         /* --- END-OF-ACT SIGNPOST (`0x0D`) & HIDDEN BONUS POINTS (`0x7D`) --- */
@@ -502,7 +462,7 @@ void objects_update_and_draw(void) BANKED {
                 hw_play_sfx(SFX_CASH);
                 o->active = 0;
             }
-            continue;
+        return 0;
         }
         if (id == 0x0D) {
             uint8_t sp_frame;
@@ -578,7 +538,7 @@ void objects_update_and_draw(void) BANKED {
             }
             /* Vertical steel Goal Post pole (`$38..$39`) anchored right onto the ground at `sy + 8..16`! */
             hw_put_sprite8(sx - 4, sy + 8, SPR_TILE_SIGNPOST + 16, 3);
-            continue;
+        return 0;
         }
 
         /* --- GIANT SPECIAL STAGE RING (`0x4B`) & STARBURST FLASH (`0x7C` — `7C Giant Ring Flash.asm`) --- */
@@ -589,9 +549,9 @@ void objects_update_and_draw(void) BANKED {
             if (--o->timer == 0) {
                 o->active = 0;
                 g_next_mode = GM_SPECIAL_STAGE;
-                return;
+        return 1;
             }
-            continue;
+        return 0;
         }
         if (id == 0x4B) {
             if (g_rings >= 50) {
@@ -603,11 +563,11 @@ void objects_update_and_draw(void) BANKED {
                     g_act_clear_done = 1;
                     o->id = 0x7C;
                     o->timer = 14;
-                    continue;
+        return 0;
                 }
                 hw_put_sprite16(sx, sy, ZSPR_GIANTRING + (((g_frame_counter >> 2) & 3) << 2), 0x08 | 2);
             }
-            continue;
+        return 0;
         }
 
         /* --- EGG PRISON CAPSULE (`0x3E` — Golden 24x16 Capsule + Separate Red Release Button `122`!) --- */
@@ -626,7 +586,7 @@ void objects_update_and_draw(void) BANKED {
                 if (--o->timer == 0) {
                     g_act_clear_done = 1;
                     g_next_mode = GM_ACT_CLEAR;
-                    return;
+        return 1;
                 }
             }
             if (o->subtype != 0) {
@@ -641,21 +601,107 @@ void objects_update_and_draw(void) BANKED {
                     hw_put_sprite_cols2rows(sx - 12, sy - 8, ZSPR_CAPSULE, 3u, 0x08 | 2);
                 }
             }
-            continue;
+        return 0;
         }
 
-        /* --- DELEGATE ALL BOSSES & INTERACTIVE ZONE GIMMICKS TO BANK 122 --- */
-        if (gimmick_handle_object(o, sx, sy, sonic_spinning)) {
-            continue;
+        /* --- FAST INLINE SCENERY PROP (`0x1C` Bridge Stump / Decoration) — ZERO cross-bank call! --- */
+        if (id == 0x1C) {
+            hw_put_sprite8(sx - 4, sy - 4, ZSPR_PROP, 0x08 | 6);
+        return 0;
         }
 
-        /* --- ALL 14 DISTINCT SONIC 1 BADNIK AIs (`s1disasm/_incObj/`) --- */
+        /* --- ALL 14 DISTINCT SONIC 1 BADNIK AIs (`s1disasm/_incObj/`) IN SAME BANK (`Bank 2`) FIRST! --- */
         if (is_badnik_id(id)) {
             update_single_badnik(o, id, sonic_spinning);
-            continue;
+        return 0;
+        }
+
+        /* --- DELEGATE BOSSES & INTERACTIVE ZONE GIMMICKS TO BANK 126 --- */
+        (void)gimmick_handle_object(o, sx, sy, sonic_spinning);
+    return 0;
+}
+
+void objects_update_and_draw(void) BANKED {
+    uint8_t i;
+    uint8_t sonic_spinning = (g_sonic.rolling || g_sonic.anim == ANI_ROLL || g_sonic.invinc > 0);
+    int16_t sonic_x = g_sonic.x;
+    int16_t sonic_y = g_sonic.y;
+    int16_t cam_x = g_cam_x;
+    int16_t cam_y = g_cam_y;
+    uint8_t ring_tile = (uint8_t)(SPR_TILE_RING + ((g_frame_counter >> 3) & 3));
+
+    /* 1. Draw Sonic Sprite + Shield/Invincibility Halo (`hw_draw_sonic_sprite` in Bank 0) */
+    hw_draw_sonic_sprite();
+
+    /* 1b. Guarantee CGB 10-sprites/scanline hardware priority for end-of-act Goal Post (`0x0D`) */
+    if (cam_x >= g_dyn_right_bound - 320 && g_objs[0].id != 0x0D) {
+        for (i = 1; i < MAX_ACTIVE_OBJS; i++) {
+            if (g_objs[i].active && g_objs[i].id == 0x0D) {
+                ActiveObj tmp = g_objs[0];
+                g_objs[0] = g_objs[i];
+                g_objs[i] = tmp;
+                break;
+            }
         }
     }
 
-    /* 5. Update & Draw Active Projectiles, Brick Debris, Score Popups & Drowning Numbers */
-    projectiles_and_popups_update();
+    /* 2. Check & Spawn Act 3 / Final Zone Boss (`GHZ3`, `MZ3`, `SYZ3`, `LZ3`, `SLZ3`, `FZ`) */
+    if (g_boss_active || g_cur_act == 2 || g_cur_act == 5 || g_cur_act == 8 ||
+        g_cur_act == 11 || g_cur_act == 14 || g_cur_act == 18) {
+        boss_check_and_update(sonic_spinning);
+    }
+
+    /* 3. Update & Draw Scattered Lost Rings (`37 Rings.asm`) — pointer walk (`0` software multiplies!) */
+    {
+        LostRing *r = g_lost_rings;
+        for (i = 0; i < MAX_LOST_RINGS; i++, r++) {
+            int16_t sx, sy;
+            if (!r->active) continue;
+            if (r->timer == 0) {
+                r->active = 0;
+                continue;
+            }
+            r->timer--;
+            r->vy += 24;
+            r->x += (r->vx >> 8);
+            r->y += (r->vy >> 8);
+            if (r->vy > 0) {
+                uint8_t ang = 0;
+                int16_t d = hw_floor_distance(r->x, r->y + 8, &ang);
+                if (d <= 0) {
+                    r->y += d;
+                    r->vy = -(r->vy - (r->vy >> 2));
+                }
+            }
+            if (!g_sonic.dead && r->timer < 156 && box_overlap(sonic_x, sonic_y, 10, 16, r->x, r->y, 8, 8)) {
+                r->active = 0;
+                g_rings++;
+                g_hud_dirty = 1;
+                hw_play_sfx(SFX_RING);
+                continue;
+            }
+            sx = (r->x - cam_x) >> 1;
+            sy = (r->y - cam_y) >> 1;
+            if (r->timer > 40 || (g_frame_counter & 1)) {
+                hw_put_sprite8(sx - 2, sy - 2, SPR_TILE_RING + ((g_frame_counter >> 2) & 3), 2);
+            }
+        }
+    }
+
+    /* 4. Update & Draw Active Level Objects — pointer walk (`0` software `__mulint` per frame!) */
+    {
+        ActiveObj *o = g_objs;
+        for (i = 0; i < MAX_ACTIVE_OBJS; i++, o++) {
+            if (!o->active) continue;
+            if (step_one_active_obj(o, sonic_spinning, ring_tile)) return;
+        }
+    }
+
+    /* 5. Update & Draw Active Projectiles, Brick Debris, Score Popups & Drowning Numbers (skip cross-bank call when all empty!) */
+    if (g_sonic.underwater ||
+        g_projs[0].active || g_projs[1].active || g_projs[2].active || g_projs[3].active ||
+        g_projs[4].active || g_projs[5].active || g_projs[6].active || g_projs[7].active ||
+        g_pops[0].active || g_pops[1].active || g_pops[2].active || g_pops[3].active) {
+        projectiles_and_popups_update();
+    }
 }
