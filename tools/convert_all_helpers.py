@@ -8,7 +8,7 @@ Converts EVERY SINGLE file and table in s1disasm into banked C source files for 
   2. All 44 CRAM palettes & animated palette cycles -> 15-bit CGB RGB555 + underwater palettes
   3. All 7 Zones / 20 Playable Acts (GHZ 1-3, MZ 1-3, SYZ 1-3, LZ 1-3, SLZ 1-3, SBZ 1-3, FZ, Ending):
      - Full virtual 2048-tile MD VRAM (PLC + animated level art)
-     - 464-slot dual-bank CGB 2bpp BG tileset + 7 optimal 4-color BG palettes + HUD palette 7
+     - 448-slot terrain + 16-slot ring-overlay dual-bank CGB 2bpp BG patterns + 7 optimal 4-color BG palettes + HUD palette 7
      - 128-slot Zone Sprite 2bpp tileset (Badniks, Bosses, Platforms, Bridges, Springs, Monitors, etc.)
      - Complete map16 CGB block table (8 bytes/block: TL,TR,BL,BR tile + CGB attr with H/V flip, bank, pal, prio)
      - Complete O(1) banked map256 chunk pages (16 chunks = 8,192 bytes per ROM bank!)
@@ -242,6 +242,38 @@ def build_font_and_hud_tiles(s1: S1DisasmROM) -> list[bytes]:
     return tiles
 
 
+def build_ring_background_tiles(common_sprites: bytes) -> bytes:
+    """Build four animated ring frames × 16 quadrant combinations for BG-tile rendering."""
+    import numpy as np
+
+    def decode_2bpp(tile: bytes) -> np.ndarray:
+        arr = np.zeros((8, 8), dtype=np.uint8)
+        for y in range(8):
+            lo, hi = tile[y * 2], tile[y * 2 + 1]
+            for x in range(8):
+                bit = 7 - x
+                arr[y, x] = ((lo >> bit) & 1) | (((hi >> bit) & 1) << 1)
+        return arr
+
+    frames = [decode_2bpp(common_sprites[frame * 16:(frame + 1) * 16]) for frame in range(4)]
+    # Palette 3 keeps color zero equal to the zone sky and provides warm orange/gold
+    # shades at indices 1 and 3; fold the source mid-gold shade into bright gold.
+    frames = [np.where(ring == 2, 3, ring).astype(np.uint8) for ring in frames]
+    out: list[bytes] = []
+    for ring in frames:
+        for mask in range(16):
+            tile = np.zeros((8, 8), dtype=np.uint8)
+            # Each map cell lies outside the ring's shared center, so place its source
+            # quadrant at the tile corner facing that center. This makes the four
+            # quarter-arcs meet across the map-cell seams instead of forming dots.
+            if mask & 1: tile[4:8, 4:8] = ring[0:4, 0:4]
+            if mask & 2: tile[4:8, 0:4] = ring[0:4, 4:8]
+            if mask & 4: tile[0:4, 4:8] = ring[4:8, 0:4]
+            if mask & 8: tile[0:4, 0:4] = ring[4:8, 4:8]
+            out.append(encode_2bpp_tile(tile))
+    return b"".join(out)
+
+
 def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, bytes]]:
     """
     Build:
@@ -305,6 +337,7 @@ def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, byt
         vram_base: int | None = None,
         align_bottom: bool = False,
         extra_sheets: list[tuple[int, str, bool]] | None = None,
+        half_scale_crop: bool = False,
     ) -> list[bytes]:
         """
         Composite an authentic multi-piece Sega Mega Drive sprite frame directly from `s1built.bin`
@@ -420,14 +453,32 @@ def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, byt
             idx_shade[s_u[0]] = 1
             idx_shade[s_u[-1]] = 3
 
-        # Preserve true Mega Drive aspect ratio inside `(out_w, out_h)` canvas (default 2:1 = exact `0.5x` half scale!)
-        scale = max(2.0, sw / float(out_w), sh / float(out_h))
-        pad_w = int(round(out_w * scale))
-        pad_h = int(round(out_h * scale))
-        off_x = max(0, (pad_w - sw) // 2)
-        off_y = max(0, (pad_h - sh) if align_bottom else ((pad_h - sh) // 2))
-        padded = np.zeros((max(pad_h, sh), max(pad_w, sw)), dtype=np.uint8)
-        padded[off_y:off_y + sh, off_x:off_x + sw] = crop
+        # Preserve native Mega Drive pixel geometry.  In exact-half mode, each output pixel
+        # represents exactly one 2x2 source block; oversized mapping frames are center-cropped
+        # instead of being squeezed into a square (which garbled long platforms and hazards).
+        if half_scale_crop:
+            src_w, src_h = out_w * 2, out_h * 2
+            if sw > src_w:
+                cx0 = (sw - src_w) // 2
+                crop = crop[:, cx0:cx0 + src_w]
+                sw = src_w
+            if sh > src_h:
+                cy0 = (sh - src_h) if align_bottom else (sh - src_h) // 2
+                crop = crop[cy0:cy0 + src_h, :]
+                sh = src_h
+            padded = np.zeros((src_h, src_w), dtype=np.uint8)
+            off_x = (src_w - sw) // 2
+            off_y = (src_h - sh) if align_bottom else (src_h - sh) // 2
+            padded[off_y:off_y + sh, off_x:off_x + sw] = crop
+        else:
+            # Legacy fit mode remains for sprites intentionally authored as a fixed-size composite.
+            scale = max(2.0, sw / float(out_w), sh / float(out_h))
+            pad_w = int(round(out_w * scale))
+            pad_h = int(round(out_h * scale))
+            off_x = max(0, (pad_w - sw) // 2)
+            off_y = max(0, (pad_h - sh) if align_bottom else ((pad_h - sh) // 2))
+            padded = np.zeros((max(pad_h, sh), max(pad_w, sw)), dtype=np.uint8)
+            padded[off_y:off_y + sh, off_x:off_x + sw] = crop
 
         total_fg_ratio = float(np.sum(crop > 0)) / float(max(1, sh * sw))
         sparse_sprite = total_fg_ratio < 0.34 or out_w <= 8
@@ -671,6 +722,135 @@ def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, byt
         gbc_h = gbc_v[::-1, :].T
         return slice_col_major_tiles(gbc_v), slice_col_major_tiles(gbc_h)
 
+    def build_crisp_spring_tiles() -> tuple[list[bytes], list[bytes]]:
+        """Draw a legible 16x16 spring at the forced half-size: red head, visible silver coil, steel foot."""
+        v = np.zeros((16, 16), dtype=np.uint8)
+        # Red spring head, dark outline, and a bright button/highlight.
+        v[1:5, 1:15] = 1
+        v[2:4, 2:14] = 2
+        v[2:3, 5:11] = 3
+        v[4, 3:13] = 2
+        # Clearly separated zig-zag coil (white steel alternating with dark outline).
+        for y, xa, xb in ((5, 6, 10), (6, 5, 7), (6, 9, 11), (7, 4, 6),
+                          (7, 10, 12), (8, 5, 7), (8, 9, 11), (9, 6, 10),
+                          (10, 5, 7), (10, 9, 11), (11, 4, 12)):
+            v[y, xa:xb] = 1 if y in (5, 7, 9, 11) else 3
+        # Heavy steel foot with two dark slots.
+        v[12:15, 1:15] = 1
+        v[13:14, 2:14] = 3
+        v[13, 4:6] = 1
+        v[13, 10:12] = 1
+        v[14, 3:13] = 2
+        h = np.rot90(v, 3).copy()  # head faces right; runtime X-flip handles left-facing springs.
+        return slice_col_major_tiles(v), slice_col_major_tiles(h)
+
+    def build_marble_glass_platform() -> list[bytes]:
+        """A clean single glass-block/platform cell for MZ's 16x16 object renderer."""
+        g = np.zeros((16, 16), dtype=np.uint8)
+        g[1:15, 1:15] = 2
+        g[0, 2:14] = 3
+        g[1:15, 0] = 1
+        g[1:15, 15] = 1
+        g[15, 1:15] = 1
+        g[1, 1:15] = 1
+        g[2:14, 2] = 3
+        g[2:14, 13] = 1
+        for i in range(4, 12):
+            g[i, 4 + (i // 3)] = 3
+        g[12:14, 3:13] = 2
+        return slice_col_major_tiles(g)
+
+    def build_zone_hazard_icon(kind: str) -> list[bytes]:
+        """Crisp 16x16 CGB icon for SYZ spikeballs and SBZ saw/electric hazards."""
+        a = np.zeros((16, 16), dtype=np.uint8)
+        if kind in ("mz_block", "sbz_trapdoor", "sbz_stomper"):
+            if kind == "mz_block":
+                a[1:15, 1:15] = 2
+                a[0, 2:14] = 3
+                a[1:15, 1] = 3
+                a[1:15, 0] = 1
+                a[1:15, 15] = 1
+                a[15, 1:15] = 1
+                a[1, 1:15] = 1
+                a[3:13, 3:13] = 2
+                a[4, 4:12] = 3
+                a[11:13, 3:13] = 1
+                a[12, 5:11] = 2
+            elif kind == "sbz_trapdoor":
+                a[3:8, 1:15] = 2
+                a[3, 2:14] = 3
+                a[2:9, 0] = 1
+                a[2:9, 15] = 1
+                a[8, 1:15] = 1
+                a[5, 2:14] = 1
+                a[4, 4] = 3
+                a[4, 11] = 3
+                a[8:14, 2:5] = 1
+                a[8:14, 11:14] = 1
+                a[13, 1:15] = 2
+            else:
+                a[1:5, 2:14] = 2
+                a[1, 3:13] = 3
+                a[0:6, 1] = 1
+                a[0:6, 14] = 1
+                a[5:12, 5:11] = 2
+                a[5:12, 4] = 1
+                a[5:12, 11] = 1
+                a[10:15, 2:14] = 2
+                a[10, 2:14] = 3
+                a[9:15, 1] = 1
+                a[9:15, 14] = 1
+                a[15, 2:14] = 1
+                a[12, 5:7] = 1
+                a[12, 9:11] = 1
+        elif kind in ("syz_small", "syz_large", "sbz_saw"):
+            cx = cy = 7
+            if kind == "sbz_saw":
+                # Toothed silver rotor, dark hub and bright cutting rim.
+                for y in range(16):
+                    for x in range(16):
+                        dx, dy = x - cx, y - cy
+                        r2 = dx * dx + dy * dy
+                        if 16 <= r2 <= 40:
+                            a[y, x] = 3 if (x + y) & 1 else 2
+                        elif 9 <= r2 < 16:
+                            a[y, x] = 1
+                        elif r2 < 5:
+                            a[y, x] = 3
+                for x, y in ((7, 0), (7, 15), (0, 7), (15, 7), (3, 2), (12, 2), (2, 12), (12, 12)):
+                    a[y, x] = 3
+            else:
+                radius = 4 if kind == "syz_large" else 3
+                spike_len = 4 if kind == "syz_large" else 3
+                for y in range(16):
+                    for x in range(16):
+                        dx, dy = x - cx, y - cy
+                        r2 = dx * dx + dy * dy
+                        if r2 <= radius * radius:
+                            a[y, x] = 2 if r2 < (radius - 1) ** 2 else 3
+                        if (abs(dx) <= 1 and abs(dy) >= radius and abs(dy) <= radius + spike_len) or \
+                           (abs(dy) <= 1 and abs(dx) >= radius and abs(dx) <= radius + spike_len):
+                            a[y, x] = 3 if (abs(dx) + abs(dy)) % 2 else 1
+                for dx, dy in ((2, 2), (2, -2), (-2, 2), (-2, -2)):
+                    for step in range(1, 3):
+                        x, y = cx + dx * step // 2, cy + dy * step // 2
+                        if 0 <= x < 16 and 0 <= y < 16:
+                            a[y, x] = 3
+        elif kind == "sbz_electric":
+            # Jagged white/cyan discharge bolt that remains legible against dark machinery.
+            # Draw a stepped bolt directly, avoiding any runtime geometry or extra dependencies.
+            for y, x0, x1 in ((0, 8, 12), (1, 7, 11), (2, 7, 10), (3, 6, 10),
+                              (4, 6, 9), (5, 5, 9), (6, 8, 12), (7, 7, 11),
+                              (8, 6, 10), (9, 5, 9), (10, 4, 8), (11, 3, 7),
+                              (12, 3, 6), (13, 2, 6), (14, 2, 5), (15, 1, 5)):
+                a[y, x0:x1] = 2
+            for y, x in ((1, 8), (2, 8), (3, 7), (4, 7), (5, 6), (7, 8), (8, 7), (9, 6), (10, 5), (11, 4), (12, 4), (13, 3), (14, 3)):
+                a[y, x] = 3
+            a[:, 0] = 0
+        else:
+            raise ValueError(f"Unknown zone hazard icon: {kind}")
+        return slice_col_major_tiles(a)
+
     def build_symmetric_spikes_4tiles() -> list[bytes]:
         """Composite 3 evenly-spaced razor steel spikes from `Spikes.nem` (`t=4..7`, `8x32` upright spike) onto `32x32 -> 16x16`!"""
         sp_raw = get_art_bytes("Spikes.nem")
@@ -760,11 +940,12 @@ def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, byt
     # 32..35 (4t): Spinning Golden Ring frames 0..3 (`8x8` each)
     for rf in (0, 1, 2, 3):
         common.extend(render_mapped_sprite_2bpp("Rings.nem", "Map_Ring", [rf], 8, 8))
-    # 36..55 (20t = 5 x `16x16` `2x2` Monitors!): Ring(f7), Shoes(f4), Shield(f5), Invinc(f6), 1UP Sonic(f3)
-    for mf in (7, 4, 5, 6, 3):
+    # 36..55 (20t = 5 x `16x16` `2x2` Monitors!): 10 Rings(f8), Shoes(f5), Shield(f6), Invinc(f7), 1UP Sonic(f4)
+    # `Map_Monitor` frame IDs include three static frames first; use the authentic icon frame for each subtype.
+    for mf in (8, 5, 6, 7, 4):
         common.extend(render_mapped_sprite_2bpp("Monitors.nem", "Map_Monitor", [mf], 16, 16, align_bottom=True))
-    # 56..63 (8t = 2 x `16x16` `2x2` Springs!): Symmetric Vertical Spring (`56..59`) + Horizontal Spring (`60..63`)!
-    spr_v4, spr_h4 = build_clean_springs_8tiles()
+    # 56..63: Purpose-built crisp half-scale springs with readable coil/base details.
+    spr_v4, spr_h4 = build_crisp_spring_tiles()
     common.extend(spr_v4)
     common.extend(spr_h4)
     # 64..67 (4t = 1 x `16x16` `2x2` Symmetric 3-Spike Steel Cluster!)
@@ -1028,8 +1209,30 @@ def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, byt
         for pfname, pmap, pf0 in zone_prop_specs[zk]:
             if pfname == "GHZ Giant Ball.nem":
                 zt.extend(wpn_ball)
+            elif zk == "MZ" and pfname == "MZ Metal Blocks.nem":
+                zt.extend(build_zone_hazard_icon("mz_block"))
+            elif zk == "SBZ" and pfname == "SBZ Trapdoor.nem":
+                zt.extend(build_zone_hazard_icon("sbz_trapdoor"))
+            elif zk == "SBZ" and pfname == "SBZ Stomper.nem":
+                zt.extend(build_zone_hazard_icon("sbz_stomper"))
+            elif zk == "MZ" and pfname == "MZ Green Glass Block.nem":
+                # The authentic glass mapping spans 64x144px; compressing it to one OAM cell
+                # turned the MZ start-area platforms into vertical stripes. Render a proper tile-sized face.
+                zt.extend(build_marble_glass_platform())
+            elif zk == "SYZ" and pfname == "SYZ Large Spikeball.nem":
+                zt.extend(build_zone_hazard_icon("syz_large"))
+            elif zk == "SYZ" and pfname == "SYZ Small Spikeball.nem":
+                zt.extend(build_zone_hazard_icon("syz_small"))
+            elif zk == "SBZ" and pfname == "SBZ Pizza Cutter.nem":
+                zt.extend(build_zone_hazard_icon("sbz_saw"))
+            elif zk == "SBZ" and pfname == "SBZ Electrocuter.nem":
+                zt.extend(build_zone_hazard_icon("sbz_electric"))
             else:
-                zt.extend(render_mapped_sprite_2bpp(pfname, pmap, [pf0], 16, 16, pal_source=zone_pals_raw[zk][16:32]))
+                zt.extend(render_mapped_sprite_2bpp(
+                    pfname, pmap, [pf0], 16, 16,
+                    pal_source=zone_pals_raw[zk][16:32],
+                    half_scale_crop=True,
+                ))
         # 68..83: 2 x `32x16` (`4x2`) Full Composite Dr. Eggman Hovercraft / FZ Cylinder = 16 tiles
         zt.extend(egg_pod_normal)
         zt.extend(fz_pod_cyl if zk == "SBZ" else egg_pod_hit)

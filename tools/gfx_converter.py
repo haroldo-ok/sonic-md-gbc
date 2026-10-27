@@ -7,7 +7,7 @@ Features:
   - Virtual 2048-tile Mega Drive VRAM builder from Pattern Load Cues + uncompressed animated art
   - Frequency-weighted K-Medoids / Greedy Variance-Minimization 7-palette CGB BG solver (BGP0..BGP6)
   - 8-palette CGB Sprite solver (OBP0..OBP7) giving Sonic simultaneous Blue body + Peach skin + Red/White shoes
-  - Flip-canonical (H/V hardware flip aware) 464-slot dual-bank CGB VRAM tile packer with zero placeholders
+  - Flip-canonical (H/V hardware flip aware) 448-slot-per-zone terrain packer plus a reserved 16-slot BG ring overlay; zero placeholders
 """
 
 from __future__ import annotations
@@ -188,10 +188,11 @@ def solve_zone_bg_palettes(
     return out_rgb555
 
 
-# Canonical CGB VRAM BG Tile Slots (464 slots total, zero overlap with Sprites 0..127 or HUD 80..127 in Bank 1!):
+# Canonical CGB VRAM BG Tile Slots (464 total):
 #   Slots 0..255   -> VBK=0, BG byte 0..255
 #   Slots 256..335 -> VBK=1, BG byte 0..79
 #   Slots 336..463 -> VBK=1, BG byte 128..255
+# convert_all.py packs terrain into slots 0..447; slots 448..463 (VBK=1, tile IDs 240..255) are reserved for stage-ring composites.
 BG_VRAM_SLOTS: list[tuple[int, int]] = (
     [(0, t) for t in range(256)]
     + [(1, t) for t in range(80)]
@@ -400,7 +401,7 @@ def pack_half_scale_m16_blocks(
     Pack EVERY downsampled `8x8` `map16` block (`bi` in `0..num_m16-1`) into:
       - `m16_gbc`: `bytearray(num_m16 * 2)` where `m16_gbc[bi*2] = tile_byte`, `m16_gbc[bi*2+1] = cgb_attr`
       - `slot_tiles_2bpp`: list of `max_slots` 16-byte 2bpp tile data arrays
-      - `unique_canon_count`: count of unique flip-canonical 8x8 tiles (<= `num_m16 <= 420 < 464`!)
+      - `unique_canon_count`: count of unique flip-canonical 8x8 tiles; if unique patterns exceed `max_slots`, low-frequency patterns are approximated by the nearest retained tile
 
     Guarantees ZERO sky seams AND ZERO sky bleed into opaque checkerboard/brick shadows:
       - `bg_pals_rgb555[0..3]` (4 sky-backed palettes) include exact `cram64[0]` backdrop color in slot 0

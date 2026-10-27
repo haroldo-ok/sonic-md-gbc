@@ -555,6 +555,22 @@ void screens_update_mode(uint8_t mode) BANKED {
     /* 4. Live Half-Scale Level Gameplay (`GM_LEVEL`) */
     if (mode == GM_LEVEL) {
         g_oam_next = 0;
+        /* Consume elapsed 60 Hz VBlank ticks; gameplay can miss frames while VBlank time still advances. */
+        {
+            uint8_t elapsed_vblanks;
+            __critical {
+                elapsed_vblanks = g_invinc_vblanks_pending;
+                g_invinc_vblanks_pending = 0;
+            }
+            if (elapsed_vblanks && g_sonic.invinc > 0) {
+                if (elapsed_vblanks >= g_sonic.invinc) {
+                    g_sonic.invinc = 0;
+                    hw_play_bgm(g_ram_act.music_id);
+                } else {
+                    g_sonic.invinc -= elapsed_vblanks;
+                }
+            }
+        }
         physics_update_level();
         if (g_next_mode != GM_LEVEL) {
             hw_clear_remaining_oam();

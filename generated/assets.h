@@ -66,6 +66,7 @@ typedef struct {
 
 extern const uint8_t hud_font_tiles[];
 extern const uint8_t common_sprite_tiles[];
+extern const uint8_t ring_bg_tiles[1024];
 extern const uint16_t sfx_table_offsets[];
 extern const uint8_t all_sfx_blob[];
 extern const uint8_t sega_wave_pcm[];

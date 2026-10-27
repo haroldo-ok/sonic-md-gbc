@@ -238,7 +238,7 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
     hw_put_sprite16(sx, sy, spr + anim_off, 0x08 | pal | (o->vx > 0 ? 0x20 : 0));
 }
 
-static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning, uint8_t ring_tile) {
+static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
     int16_t cam_x = g_cam_x;
     int16_t cam_y = g_cam_y;
     int16_t sx, sy;
@@ -293,13 +293,8 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning, uint8_t
                 }
             }
         }
-        if (g_oam_next < 40 && sx > -4 && sx < 164 && sy > -4 && sy < 132) {
-            OAM_item_t *it = &shadow_OAM[g_oam_next++];
-            it->y = (uint8_t)(sy + 12);
-            it->x = (uint8_t)(sx + 4);
-            it->tile = ring_tile;
-            it->prop = 2;
-        }
+        /* Render as a composed background-tile overlay; collision/collection above is unchanged. */
+        hw_queue_bkg_ring(o->x, o->y);
         return 0;
     }
 
@@ -322,13 +317,19 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning, uint8_t
                     g_sonic.shield = 1;
                     hw_play_sfx(SFX_SHIELD);
                 } else if (sub == 0x05) {
-                    g_sonic.invinc = 1200;
+                    __critical {
+                        g_invinc_vblanks_pending = 0;
+                        g_sonic.invinc = 1200;
+                    }
                     hw_play_bgm(BGM_INVINC);
                 } else if (sub == 0x07) {
                     g_rings += 50;
                     g_sonic.shield = 1;
                     g_sonic.shoes = 1200;
-                    g_sonic.invinc = 1200;
+                    __critical {
+                        g_invinc_vblanks_pending = 0;
+                        g_sonic.invinc = 1200;
+                    }
                     g_hud_dirty = 1;
                     hw_play_bgm(BGM_INVINC);
                 } else {
@@ -628,7 +629,6 @@ void objects_update_and_draw(void) BANKED {
     int16_t sonic_y = g_sonic.y;
     int16_t cam_x = g_cam_x;
     int16_t cam_y = g_cam_y;
-    uint8_t ring_tile = (uint8_t)(SPR_TILE_RING + ((g_frame_counter >> 3) & 3));
 
     /* 1. Draw Sonic Sprite + Shield/Invincibility Halo (`hw_draw_sonic_sprite` in Bank 0) */
     hw_draw_sonic_sprite();
@@ -689,11 +689,12 @@ void objects_update_and_draw(void) BANKED {
     }
 
     /* 4. Update & Draw Active Level Objects — pointer walk (`0` software `__mulint` per frame!) */
+    hw_begin_bkg_rings();
     {
         ActiveObj *o = g_objs;
         for (i = 0; i < MAX_ACTIVE_OBJS; i++, o++) {
             if (!o->active) continue;
-            if (step_one_active_obj(o, sonic_spinning, ring_tile)) return;
+            if (step_one_active_obj(o, sonic_spinning)) return;
         }
     }
 

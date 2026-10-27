@@ -246,6 +246,18 @@ def test_full_end_to_end_boot_gameplay_all_zones_special_stages_and_audio() -> N
         for card_f in range(52):
             pb.tick()
             analyze_frame(pb.screen.ndarray[:, :, :3], f"GHZ1_TitleCard_f{card_f}", min_uniq=2)
+        # Stage rings live in reserved CGB BG tile IDs 240..255, not the OBJ/OAM ring sprites.
+        bg_ring_tiles = sum(240 <= pb.memory[0x9800 + i] <= 255 for i in range(1024))
+        assert bg_ring_tiles >= 4, f"No stage-ring BG tile overlays found: {bg_ring_tiles} cells"
+        ring_cells = [i for i in range(1024) if 240 <= pb.memory[0x9800 + i] <= 255]
+        old_vbk = pb.memory[0xFF4F]
+        pb.memory[0xFF4F] = 1
+        ring_attrs = [pb.memory[0x9800 + i] for i in ring_cells]
+        pb.memory[0xFF4F] = old_vbk
+        ring_palette_cells = sum((attr & 0x0F) == 0x0B for attr in ring_attrs)
+        assert ring_palette_cells >= 3, f"Stage rings lack sky-matched palette 3: {ring_attrs}"
+        ring_oam_sprites = sum(32 <= pb.memory[0xFE02 + i * 4] <= 35 for i in range(40))
+        assert ring_oam_sprites == 0, f"Stage rings still consume OAM sprites: {ring_oam_sprites}"
         ghz_start_shot = pb.screen.image.copy()
         ghz_start_shot.save(os.path.join(VER_DIR, "emu_04_ghz1_start.png"))
         captured_screens.append(("GREEN HILL 1", ghz_start_shot))
@@ -279,7 +291,7 @@ def test_full_end_to_end_boot_gameplay_all_zones_special_stages_and_audio() -> N
 
         assert end_x > start_x + 250, f"Sonic failed to run right in GHZ1: {start_x} -> {end_x}"
         assert cam_x > 180, f"Camera failed to scroll in GHZ1: cam_x={cam_x}"
-        assert rings_now > 0 or score_lo > 0, "Sonic collected 0 rings / points during GHZ1 run!"
+        assert rings_now > 0, "Sonic failed to collect any of the background-tile stage rings!"
         assert snd_after > snd_before + 10, "4-channel SMPS BGM/SFX did not advance during gameplay!"
 
         anim_uploads = read_u16(pb, sym_anim_up)
@@ -301,7 +313,7 @@ def test_full_end_to_end_boot_gameplay_all_zones_special_stages_and_audio() -> N
             pb.memory[sym_mode] = 0xFE  # Force fresh transition directly into `screens_init_mode(GM_LEVEL)`!
             pb.memory[sym_next_mode] = 3  # GM_LEVEL
             # Enter `hw_load_act` (`WY` becomes `0` on Title Card), verify EVERY Title Card frame,
-            # then run 20 live full-color gameplay frames (`WY == 128`, checking `min_uniq >= 6` on EVERY frame)!
+            # then run 20 live gameplay frames (`WY == 128`, checking `min_uniq >= 4` after parallax removal)!
             card_wait = 0
             while pb.memory[0xFF4A] != 0 and card_wait < 10:
                 pb.tick()
@@ -317,7 +329,7 @@ def test_full_end_to_end_boot_gameplay_all_zones_special_stages_and_audio() -> N
             pb.button_press("right")
             for f_k in range(20):
                 pb.tick()
-                st = analyze_frame(pb.screen.ndarray[:, :, :3], f"Act_{act_id}_Live_f{f_k}", min_uniq=6)
+                st = analyze_frame(pb.screen.ndarray[:, :, :3], f"Act_{act_id}_Live_f{f_k}", min_uniq=4)
                 if f_k == 19:
                     report_frames.append(st)
                     if act_id in showcase_acts:
@@ -635,7 +647,8 @@ def test_ghz_wall_stability_and_loops_and_tunnels():
             analyze_frame(frame_rgb, f"Wall_Steady_f{fi}")
             wall_frames.append(frame_rgb)
         pal_after = read_u16(pb, sym_pal_cyc)
-        assert pal_after >= pal_before + 3, f"Water palette cycle did not tick: {pal_before} -> {pal_after}"
+        # The 32-frame sample can begin immediately after a cycle boundary; require two observed updates.
+        assert pal_after >= pal_before + 2, f"Water palette cycle did not tick: {pal_before} -> {pal_after}"
 
         wall_arr = np.stack(wall_frames, axis=0)
         flicker_px = int(np.any(wall_arr[:, 108:144, :, :] != wall_arr[0:1, 108:144, :, :], axis=(0, 3)).sum())
@@ -1227,7 +1240,7 @@ def test_live_ingame_sprites_enemies_shots_monitors_springs_boss_and_props():
             ]
             return pb.screen.image.copy(), oam
 
-        # Panel 1: GHZ Monitors (Ring, Shoes, Shield, Invinc, 1UP) + V-Spring + H-Spring + Spikes
+        # Panel 1: GHZ monitors use the authentic 10-Rings, Shoes, Shield, Invinc, and 1UP icons + springs/spikes
         im1, oam1 = snap_scene(0, 128, 368, [
             (0x26, -104, -56, 6),  # Super Ring Monitor (tiles 36..39)
             (0x26, -52,  -56, 3),  # Speed Shoes Monitor (tiles 40..43)
@@ -1511,7 +1524,8 @@ def test_spring_kinematics_match_original_s1disasm():
         set_sonic_pos(pb, base_x, base_y - 6, 0, 0x0100, 0)
         clear_and_place_spring(pb, base_x, base_y, 0x02)
         min_y_yel = base_y
-        for _ in range(100):
+        # Let the camera bring this deliberately off-screen test spring into the active-object update range.
+        for _ in range(130):
             pb.tick()
             min_y_yel = min(min_y_yel, read_s16(pb, sym_sonic + 10))
         yel_height = (base_y - 8) - min_y_yel
@@ -1570,8 +1584,8 @@ def test_spring_kinematics_match_original_s1disasm():
 
 
 def test_09_background_map_integrity_pupils_sega_and_fps():
-    """Verify crisp uncorrupted foreground + background parallax maps across all Zones,
-    Sonic eye pupils (Title Screen + gameplay), 48 kHz SEGA chant quality, and high FPS."""
+    """Verify intact foreground maps with parallax removed and ring overlays on BG tiles,
+    Sonic eye pupils, 48 kHz SEGA chant quality, and high FPS."""
     syms = load_noi_symbols(NOI_PATH)
     b0_end = syms["s__INITIALIZER"] + syms["l__INITIALIZER"]
     assert b0_end <= 0x4000, f"Bank 0 overflow: 0x{b0_end:04X}"
@@ -1644,12 +1658,38 @@ def test_09_background_map_integrity_pupils_sega_and_fps():
             pb.button_release("right")
             zone_frames[zn] = pb.screen.ndarray[:, :, :3].copy()
 
-        # Verify GHZ1 upper sky (`y = 0..38`) has pure royal-blue sky + crisp puffy clouds (zero wrapped lake ripples in sky!)
+        # Parallax-only clouds/ripples are gone; the teal-blue GHZ sky contrasts with Sonic's royal blue.
         ghz_top = zone_frames["GHZ1"][0:38, :, :]
         cloud_bright = int(np.sum((ghz_top[:, :, 0] >= 128) & (ghz_top[:, :, 1] >= 190) & (ghz_top[:, :, 2] >= 240)))
-        sky_royal = int(np.sum((zone_frames["GHZ1"][0:14, :, 0] <= 40) & (zone_frames["GHZ1"][0:14, :, 1] <= 56) & (zone_frames["GHZ1"][0:14, :, 2] >= 180)))
-        assert cloud_bright >= 150, f"GHZ1 upper sky missing puffy clouds (`bg_ty` misaligned!): {cloud_bright} cloud px"
-        assert sky_royal >= 1500, f"GHZ1 upper sky polluted by wrapped lake water ripples! sky_royal={sky_royal}/2240 px"
+        ghz_sky = zone_frames["GHZ1"][0:14, :, :]
+        sky_contrast = int(np.sum((ghz_sky[:, :, 0] >= 48) & (ghz_sky[:, :, 0] <= 80) & (ghz_sky[:, :, 1] >= 112) & (ghz_sky[:, :, 1] <= 160) & (ghz_sky[:, :, 2] >= 190) & (ghz_sky[:, :, 2] <= 235)))
+        assert cloud_bright == 0, f"GHZ1 parallax cloud pixels unexpectedly remain: {cloud_bright}"
+        assert sky_contrast >= 1500, f"GHZ1 contrasting foreground sky color was lost: sky_contrast={sky_contrast}/2240 px"
+
+        # Enter a fresh live GHZ act, then verify the 60 Hz VBlank-based invincibility countdown.
+        pb.memory[syms["_g_cur_act"]] = 0
+        pb.memory[syms["_g_next_mode"]] = 3
+        pb.memory[syms["_g_mode_init_done"]] = 0
+        for _ in range(55):
+            pb.tick(1, True, False)
+        pb.memory[syms["_g_paused"]] = 0
+        pb.memory[syms["_g_game_mode"]] = 3
+        pb.memory[syms["_g_next_mode"]] = 3
+        pb.memory[syms["_g_mode_init_done"]] = 1
+        invinc_addr = syms["_g_sonic"] + 29  # SonicState.invinc (uint16_t) in the target 8-bit ABI.
+        for button in ("a", "b", "select", "start", "right", "left", "up", "down"):
+            pb.button_release(button)
+        pb.memory[syms["_g_invinc_vblanks_pending"]] = 0
+        pb.memory[invinc_addr] = 0xB0  # Original s1disasm duration: 20 * 60 = 1200 VBlanks.
+        pb.memory[invinc_addr + 1] = 0x04
+        for _ in range(1190):
+            pb.tick(1, True, False)
+        invinc_left = pb.memory[invinc_addr] | (pb.memory[invinc_addr + 1] << 8)
+        assert 0 < invinc_left <= 20, f"Invincibility drifted from 1200 VBlanks: {invinc_left} remain after 1190 ticks"
+        for _ in range(20):
+            pb.tick(1, True, False)
+        invinc_left = pb.memory[invinc_addr] | (pb.memory[invinc_addr + 1] << 8)
+        assert invinc_left == 0, f"Invincibility did not expire at the original 1200-VBlank duration: {invinc_left}"
 
         # Verify Special Stage 55+ FPS
         pb.memory[syms["_g_next_mode"]] = 5
@@ -1670,3 +1710,37 @@ def test_09_background_map_integrity_pupils_sega_and_fps():
 
 
 
+
+def test_experimental_30fps_rom_paces_gameplay_and_keeps_60hz_vblank() -> None:
+    """The opt-in ROM should update gameplay at ~30 Hz while audio/VBlank stay at 60 Hz."""
+    rom_path = os.path.join(ROOT, "sonic-30fps.gbc")
+    noi_path = os.path.join(ROOT, "sonic-30fps.noi")
+    syms = load_noi_symbols(noi_path)
+    sym_frame = syms["_g_frame_counter"]
+    sym_isr = syms["_g_sound_isr_ticks"]
+    sym_mode = syms["_g_game_mode"]
+    sym_next = syms["_g_next_mode"]
+    sym_init = syms["_g_mode_init_done"]
+    sym_act = syms["_g_cur_act"]
+
+    with PyBoy(rom_path, window="null", sound_emulated=False) as pb:
+        while read_u16(pb, sym_frame) < 1:
+            pb.tick()
+        pb.memory[sym_act] = 0
+        pb.memory[sym_next] = 3
+        pb.memory[sym_init] = 0
+        boot_ticks = 0
+        while (pb.memory[sym_mode] != 3 or pb.memory[0xFF4A] != 128) and boot_ticks < 240:
+            pb.tick()
+            boot_ticks += 1
+        assert pb.memory[sym_mode] == 3, "30 FPS test ROM did not enter GHZ1 gameplay"
+
+        frames_before = read_u16(pb, sym_frame)
+        isr_before = read_u16(pb, sym_isr)
+        for frame in range(120):
+            pb.tick()
+            analyze_frame(pb.screen.ndarray[:, :, :3], f"30FPS_GHZ1_f{frame}")
+        game_updates = (read_u16(pb, sym_frame) - frames_before) & 0xFFFF
+        vbl_ticks = (read_u16(pb, sym_isr) - isr_before) & 0xFFFF
+        assert 58 <= game_updates <= 62, f"Expected ~60 gameplay updates in 120 VBlanks, got {game_updates}"
+        assert vbl_ticks == 120, f"VBlank audio clock changed under 30 FPS cap: {vbl_ticks}"

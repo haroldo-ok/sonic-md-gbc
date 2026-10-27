@@ -1,5 +1,9 @@
 #include "engine.h"
 
+#ifndef SONIC_GAMEPLAY_30FPS
+#define SONIC_GAMEPLAY_30FPS 0
+#endif
+
 /* Interrupt-safe `memcpy` replacement: GBDK's default `___memcpy` loads
  * hardware `SP = src` without disabling `IME`, which corrupts `SP` and RAM if
  * our `60 Hz` `hw_sound_isr` or `5,461 Hz` `hw_sega_pcm_tim_isr` fires mid-copy! */
@@ -40,6 +44,7 @@ volatile uint8_t g_game_mode = GM_SEGA;
 volatile uint8_t g_next_mode = GM_SEGA;
 volatile uint8_t g_mode_init_done = 0;
 volatile uint16_t g_frame_counter = 0;
+volatile uint8_t g_invinc_vblanks_pending = 0;
 volatile uint8_t g_cur_act = 0;
 volatile uint8_t g_cur_ss = 0;
 volatile uint8_t g_demo_mode = 0;
@@ -69,6 +74,7 @@ int16_t g_dyn_top_bound = 0;
 int16_t g_dyn_bottom_bound = 0x0300;
 uint16_t g_osc_val[16];
 uint16_t g_osc_dir = 0;
+static uint8_t s_ring_force_redraw = 1;
 
 SonicState g_sonic;
 ActiveObj g_objs[MAX_ACTIVE_OBJS];
@@ -494,10 +500,15 @@ static volatile uint8_t s_vbl_joy_latch = 0;
 
 void hw_sound_isr(void) {
     g_sound_isr_ticks++;
-    if (g_sega_pcm_playing) return;
+    /* Sonic 1's invincibility timer is 20*60 VBlanks, not rendered game-loop iterations. */
+    if (g_game_mode == GM_LEVEL && !g_paused &&
+        g_invinc_vblanks_pending != 0xFF) {
+        g_invinc_vblanks_pending++;
+    }
     if (g_game_mode == GM_LEVEL && !g_paused) {
         s_vbl_joy_latch |= (joypad() & J_SELECT);
     }
+    if (g_sega_pcm_playing) return;
     if (s_audio_lock) return;
     if (g_paused && g_game_mode == GM_LEVEL) {
         if (!s_paused_muted) {
@@ -641,21 +652,21 @@ void hw_load_fullscreen_screen(uint8_t scr_idx) {
 /* Pre-cached WRAM Zone Chunk Pointers (`0..15` pages = up to `256` chunks) — ZERO `SWITCH_ROM(8)` calls in gameplay! */
 static const uint8_t *s_zone_chunk_ptrs[16];
 
-/* Zero-overlap MBC5 SRAM Bank 1 (`rRAMB = 1`) memory map:
- *   `0xA000..0xAFFF` (`4,096` B): `s_ss_ram` (`Special Stage` 64x64 maze)
- *   `0xB000..0xB1FF` (`  512` B): `s_fg_ram` (`max fg = 343` B across all 20 Acts)
- *   `0xB200..0xB3FF` (`  512` B): `s_bg_ram` (`max bg = 360` B across all 20 Acts)
- *   `0xB400..0xB8FF` (`1,280` B): `s_col_ram` (`col1[640]` + `col2[640]` zero-bank-switch collision table!)
- *   `0xBC00..0xBFFF` (`1,024` B): `s_vscroll_q` (`8 x 49 = 392` B VBlank span queue)
- * Leaves internal WRAM `_DATA` at `0x1B1E` with `> 990` bytes of clean hardware stack! */
+/* MBC5 SRAM Bank 1 (`rRAMB = 1`) runtime map after removing the parallax BG plane:
+ *   `0xA000..0xAFFF`: Special Stage 64x64 maze
+ *   `0xB000..0xB1FF`: active foreground level layout only
+ *   `0xB200..0xB3FF`: no longer copied/used for parallax background layouts
+ *   `0xB400..0xB8FF`: full primary + secondary collision tables
+ *   `0xBC00..0xBFFF`: VBlank span queue
+ * Internal WRAM `_DATA` remains at `0x1B1E` with `> 990` bytes of stack headroom. */
+
 #define s_fg_ram  ((uint8_t *)0xB000U)
-#define s_bg_ram  ((uint8_t *)0xB200U)
 #define s_col_ram ((uint8_t *)0xB400U)
 static const uint8_t *s_fg_rows[32];
-static const uint8_t *s_bg_rows[16];
-static uint8_t s_scan_force = 1;
 static uint16_t s_cached_d4 = 0xFFFF;
+static uint16_t s_cached_col_key = 0xFFFF;
 static uint8_t s_cached_cid = 0;
+static uint8_t s_scan_force = 1;
 static uint8_t s_scache_frame[2] = { 0xFF, 0xFF };
 static uint8_t s_cur_sonic_base = 0;
 
@@ -787,48 +798,8 @@ static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
         }
     }
 
-    if (g_ram_act.bg_w > 0U && g_ram_act.bg_h > 0U) {
-        uint8_t vset = g_ram_act.vset_idx;
-        uint8_t is_sky1 = (uint8_t)(vset == 0 || vset == 8);
-        uint8_t px_mode = (vset == 0 || vset == 8 || vset == 5 || vset == 6) ? 0U : ((vset == 2 || vset == 3) ? 1U : 2U);
-        uint8_t cur_bcx = 0xFF, cur_bcy = 0xFF;
-        const uint16_t *bcptr = 0;
-        int16_t wx = wx0;
-        int16_t wy = wy0;
-        int16_t wx_step = is_col ? 0 : 1;
-        int16_t wy_step = is_col ? 1 : 0;
-        for (i = 0; i < n; i++) {
-            if ((bw_buf[i] & 0x03FFU) == 0U) {
-                uint16_t rx = (uint16_t)(wx >= 0 ? wx : 0);
-                uint16_t ry = (uint16_t)(wy >= 0 ? wy : 0);
-                uint16_t bg_tx = (px_mode == 0U) ? ((rx + (rx << 1)) >> 3) : ((px_mode == 1U) ? (rx >> 2) : (rx >> 1));
-                uint16_t bg_ty = is_sky1 ? ((ry >= 44U && ry <= 47U) ? 3U : (ry & 0x0FU)) : (ry >> 1);
-                uint8_t rbcx = (uint8_t)(bg_tx >> 4);
-                uint8_t bcy = (uint8_t)(bg_ty >> 4);
-                if (bcy >= g_ram_act.bg_h) bcy = g_ram_act.bg_h - 1U;
-                if (rbcx != cur_bcx || bcy != cur_bcy) {
-                    uint8_t bcx = rbcx, bcid;
-                    while (bcx >= g_ram_act.bg_w) bcx -= g_ram_act.bg_w;
-                    cur_bcx = rbcx;
-                    cur_bcy = bcy;
-                    bcid = s_bg_rows[bcy][bcx] & 0x7FU;
-                    if (bcid > 0U && bcid <= g_ram_vset.num_chunks) {
-                        uint8_t pg = (bcid - 1U) >> 4;
-                        SWITCH_ROM(g_ram_vset.chunk_base_bank + pg);
-                        bcptr = (const uint16_t *)s_zone_chunk_ptrs[pg & 15U] + ((uint16_t)((bcid - 1U) & 0x0FU) << 8);
-                    } else {
-                        bcptr = 0;
-                    }
-                }
-                if (bcptr) {
-                    bw_buf[i] = bcptr[(uint8_t)((((uint8_t)bg_ty & 0x0FU) << 4) | ((uint8_t)bg_tx & 0x0FU))];
-                }
-            }
-            wx += wx_step;
-            wy += wy_step;
-        }
-    }
-
+    /* Original independently scrolling parallax BG plane removed by request. Empty FG cells stay blank;
+       collectible stage rings are queued as true CGB background-tile overlays instead. */
     rRAMB = 1;
     sp = &s_vscroll_q[s_vscroll_cnt++];
     sp->is_col = is_col;
@@ -845,6 +816,7 @@ void hw_refresh_full_viewport(void) {
     int16_t wx0 = (g_cam_x >> 4) - 1;
     int16_t wy0 = (g_cam_y >> 4) - 1;
     uint8_t r;
+    s_ring_force_redraw = 1;
     s_vscroll_cnt = 0;
     for (r = 0; r < 20; r++) {
         draw_world_row(wx0, wy0 + r);
@@ -869,6 +841,8 @@ void hw_stream_viewport_delta(int16_t old_cam_x, int16_t old_cam_y) {
         return;
     }
 
+    if (old_tx != new_tx || old_ty != new_ty) s_ring_force_redraw = 1;
+
     while (old_tx < new_tx) {
         old_tx++;
         draw_world_col(old_tx + 20, new_ty - 1);
@@ -889,10 +863,131 @@ void hw_stream_viewport_delta(int16_t old_cam_x, int16_t old_cam_y) {
     SCY_REG = (uint8_t)(g_cam_y >> 1);
 }
 
+#define MAX_BG_RING_CELLS (MAX_ACTIVE_OBJS * 4U) /* every active object may be a ring; four cells per ring */
+/* Pack 5-bit tile X, 5-bit tile Y, and the 4-bit quadrant mask into 16 bits. */
+static uint16_t s_ring_cells_a[MAX_BG_RING_CELLS], s_ring_cells_b[MAX_BG_RING_CELLS];
+static uint16_t *s_ring_prev_cells = s_ring_cells_a;
+static uint16_t *s_ring_next_cells = s_ring_cells_b;
+static uint8_t s_ring_prev_count, s_ring_next_count;
+static uint8_t s_ring_last_frame = 0xFF;
+
+static uint8_t ring_cell_index(const uint16_t *cells, uint8_t count, uint8_t x, uint8_t y) {
+    uint8_t i;
+    uint16_t pos = (uint16_t)(((uint16_t)(y & 31U) << 5) | (x & 31U));
+    for (i = 0; i < count; i++)
+        if ((cells[i] & 0x03FFU) == pos) return i;
+    return 0xFF;
+}
+
+static void ring_cell_add(uint8_t x, uint8_t y, uint8_t bit) {
+    uint8_t i = ring_cell_index(s_ring_next_cells, s_ring_next_count, x, y);
+    if (i == 0xFF) {
+        if (s_ring_next_count >= MAX_BG_RING_CELLS) return;
+        i = s_ring_next_count++;
+        s_ring_next_cells[i] = (uint16_t)(((uint16_t)(y & 31U) << 5) | (x & 31U));
+    }
+    s_ring_next_cells[i] |= (uint16_t)((uint16_t)bit << 10);
+}
+
+void hw_begin_bkg_rings(void) {
+    s_ring_next_count = 0;
+}
+
+void hw_queue_bkg_ring(int16_t world_x, int16_t world_y) {
+    uint8_t x, y;
+    /* Only populate the 32×32 world tile window around the visible viewport. */
+    if (world_x < g_cam_x - 16 || world_x > g_cam_x + 336 ||
+        world_y < g_cam_y - 16 || world_y > g_cam_y + 288) return;
+    x = (uint8_t)(((uint16_t)world_x >> 4) & 31U);
+    y = (uint8_t)(((uint16_t)world_y >> 4) & 31U);
+    /* Each ring contributes one quadrant to each of four adjacent BG tiles. */
+    ring_cell_add((x + 31U) & 31U, (y + 31U) & 31U, 1U);
+    ring_cell_add(x, (y + 31U) & 31U, 2U);
+    ring_cell_add((x + 31U) & 31U, y, 4U);
+    ring_cell_add(x, y, 8U);
+}
+
+void hw_flush_bkg_rings(void) {
+    uint8_t i, frame = (uint8_t)((g_frame_counter >> 3) & 3U);
+    uint8_t prev_bank;
+    VBK_REG = 0;
+
+    /* Remove cells whose last contributing stage ring was collected or streamed out. */
+    for (i = 0; i < s_ring_prev_count; i++) {
+        uint16_t old = s_ring_prev_cells[i];
+        uint8_t old_x = (uint8_t)(old & 31U);
+        uint8_t old_y = (uint8_t)((old >> 5) & 31U);
+        if (ring_cell_index(s_ring_next_cells, s_ring_next_count, old_x, old_y) == 0xFF) {
+            uint8_t tile = get_bkg_tile_xy(old_x, old_y);
+            if (tile >= BKG_RING_TILE_BASE) {
+                set_bkg_tile_xy(old_x, old_y, 0);
+                VBK_REG = 1;
+                set_bkg_attribute_xy(old_x, old_y, 0);
+                VBK_REG = 0;
+            }
+            s_ring_force_redraw = 1;
+        }
+    }
+
+    if (frame != s_ring_last_frame) {
+        s_ring_force_redraw = 1;
+        prev_bank = CURRENT_BANK;
+        SWITCH_ROM(4);
+        VBK_REG = 1;
+        set_bkg_data(BKG_RING_TILE_BASE, 16, ring_bg_tiles + ((uint16_t)frame << 8));
+        VBK_REG = 0;
+        SWITCH_ROM(prev_bank);
+        s_ring_last_frame = frame;
+    }
+
+    /* Compare the desired tile IDs with VRAM once per cell; this replaces per-ring scans of both cell lists. */
+    for (i = 0; i < s_ring_next_count; i++) {
+        uint16_t cell = s_ring_next_cells[i];
+        uint8_t cell_x = (uint8_t)(cell & 31U);
+        uint8_t cell_y = (uint8_t)((cell >> 5) & 31U);
+        uint8_t old_tile = get_bkg_tile_xy(cell_x, cell_y);
+        uint8_t tile = (uint8_t)(BKG_RING_TILE_BASE + (cell >> 10));
+        if ((old_tile == 0U || old_tile >= BKG_RING_TILE_BASE) && old_tile != tile) {
+            s_ring_force_redraw = 1;
+            break;
+        }
+    }
+
+    if (s_ring_force_redraw) {
+        /* Write one composite background tile per occupied cell; existing terrain wins. */
+        for (i = 0; i < s_ring_next_count; i++) {
+            uint16_t cell = s_ring_next_cells[i];
+            uint8_t cell_x = (uint8_t)(cell & 31U);
+            uint8_t cell_y = (uint8_t)((cell >> 5) & 31U);
+            uint8_t old_tile = get_bkg_tile_xy(cell_x, cell_y);
+            uint8_t tile = (uint8_t)(BKG_RING_TILE_BASE + (cell >> 10));
+            if (old_tile == 0U || old_tile >= BKG_RING_TILE_BASE) {
+                if (old_tile != tile) set_bkg_tile_xy(cell_x, cell_y, tile);
+                /* Attributes live in VRAM bank 1; rewrite even when tile IDs match to clear stale terrain attrs. */
+                VBK_REG = 1;
+                set_bkg_attribute_xy(cell_x, cell_y, 0x0BU); /* Bank 1, palette 3: sky-matched zero + warm ring colors */
+                VBK_REG = 0;
+            }
+        }
+        s_ring_force_redraw = 0;
+    }
+
+    {
+        uint16_t *tmp = s_ring_prev_cells;
+        s_ring_prev_cells = s_ring_next_cells;
+        s_ring_next_cells = tmp;
+        s_ring_prev_count = s_ring_next_count;
+    }
+    s_ring_next_count = 0;
+    VBK_REG = 0;
+}
+
 static void reload_common_hud_and_sprites(void) {
     SWITCH_ROM(4);
     VBK_REG = 1;
     set_bkg_data(80, 48, hud_font_tiles);
+    set_bkg_data(BKG_RING_TILE_BASE, 16, ring_bg_tiles);
+    s_ring_last_frame = 0xFF;
     VBK_REG = 0;
     set_sprite_data(32, 64, common_sprite_tiles);
     set_sprite_data(96, 32, common_sprite_tiles + 1024);
@@ -908,6 +1003,25 @@ void hw_load_act(uint8_t act_idx) {
 
     if (act_idx >= NUM_PLAYABLE_ACTS) act_idx = 0;
     g_cur_act = act_idx;
+
+    /* Clear any previous act's ring overlay from wrapped BG-map cells before streaming new art. */
+    if (s_ring_prev_count) {
+        vsync();
+        rRAMB = 1;
+        VBK_REG = 0;
+        for (hold = 0; hold < s_ring_prev_count; hold++) {
+            uint16_t cell = s_ring_prev_cells[hold];
+            uint8_t cell_x = (uint8_t)(cell & 31U);
+            uint8_t cell_y = (uint8_t)((cell >> 5) & 31U);
+            if (get_bkg_tile_xy(cell_x, cell_y) >= BKG_RING_TILE_BASE) {
+                set_bkg_tile_xy(cell_x, cell_y, 0);
+                VBK_REG = 1;
+                set_bkg_attribute_xy(cell_x, cell_y, 0);
+                VBK_REG = 0;
+            }
+        }
+    }
+    s_ring_prev_count = s_ring_next_count = 0;
 
     SWITCH_ROM(8);
     __critical {
@@ -925,21 +1039,16 @@ void hw_load_act(uint8_t act_idx) {
     SWITCH_ROM(g_ram_act.data_bank);
     {
         uint16_t flen = (uint16_t)g_ram_act.fg_w * g_ram_act.fg_h;
-        uint16_t blen = (uint16_t)g_ram_act.bg_w * g_ram_act.bg_h;
         if (flen > 384U) flen = 384U;
-        if (blen > 384U) blen = 384U;
         rRAMB = 1;
         memcpy(s_fg_ram, g_ram_act.fg_layout, flen);
-        if (blen) memcpy(s_bg_ram, g_ram_act.bg_layout, blen);
     }
     for (hold = 0; hold < 32; hold++) {
         s_fg_rows[hold] = &s_fg_ram[(uint16_t)hold * g_ram_act.fg_w];
     }
-    for (hold = 0; hold < 16; hold++) {
-        s_bg_rows[hold] = &s_bg_ram[(uint16_t)hold * g_ram_act.bg_w];
-    }
-    s_scan_force = 1;
     s_cached_d4 = 0xFFFF;
+    s_cached_col_key = 0xFFFF;
+    s_cached_cid = 0;
     SWITCH_ROM(g_ram_vset.meta_bank);
     rRAMB = 1;
     memset(s_col_ram, 0, 2048U);
@@ -1003,6 +1112,7 @@ void hw_load_act(uint8_t act_idx) {
     physics_init_sonic(sx, sy);
     objects_reset_for_act();
     boss_and_gimmick_reset();
+    s_scan_force = 1;
     hw_scan_spawn_objects();
     hw_step_sonic_anim();
 
@@ -1140,8 +1250,8 @@ uint8_t hw_read_demo_input(uint8_t demo_idx) {
  * ============================================================================================ */
 static uint8_t sample_col_height(int16_t d2, int16_t d3, uint8_t solid_bit, uint16_t d6,
                                  uint8_t loop_f, uint8_t rotated, uint8_t *a4, int16_t *out_d0) {
-    uint8_t prev, cx, cy, chunk_id, page_idx, cid;
-    uint16_t d4;
+    uint8_t prev, cx, cy, chunk_id, page_idx, cid, tile_idx;
+    uint16_t d4, cache_key;
     int16_t idx_coord;
 
     if (d3 < 0 || d2 < 0) return 0;
@@ -1163,17 +1273,23 @@ static uint8_t sample_col_height(int16_t d2, int16_t d3, uint8_t solid_bit, uint
         return 0;
     }
     chunk_id--;
-    page_idx = chunk_id >> 4;
-    SWITCH_ROM(g_ram_vset.chunk_base_bank + page_idx);
-    d4 = ((const uint16_t *)s_zone_chunk_ptrs[page_idx & 15U])[((uint16_t)(chunk_id & 0x0F) << 8)
-        | (uint8_t)((((uint8_t)d2) & 0xF0) | (((uint8_t)d3 >> 4) & 0x0F))];
-
-    if ((d4 & 0x07FF) == 0 || (d4 & ((uint16_t)1U << solid_bit)) == 0) {
-        SWITCH_ROM(prev);
-        return 0;
+    tile_idx = (uint8_t)(((uint8_t)d2 & 0xF0U) | (((uint8_t)d3 >> 4) & 0x0FU));
+    cache_key = ((uint16_t)chunk_id << 8) | tile_idx;
+    if (cache_key == s_cached_col_key) {
+        d4 = s_cached_d4;
+        cid = s_cached_cid;
+    } else {
+        page_idx = chunk_id >> 4;
+        SWITCH_ROM(g_ram_vset.chunk_base_bank + page_idx);
+        d4 = ((const uint16_t *)s_zone_chunk_ptrs[page_idx & 15U])[
+            ((uint16_t)(chunk_id & 0x0FU) << 8) | tile_idx];
+        cid = ((d4 & 0x07FFU) != 0U) ? s_col_ram[d4 & 0x03FFU] : 0U;
+        s_cached_col_key = cache_key;
+        s_cached_d4 = d4;
+        s_cached_cid = cid;
     }
-    cid = s_col_ram[d4 & 0x03FFU];
-    if (cid == 0) {
+
+    if ((d4 & 0x07FFU) == 0U || (d4 & ((uint16_t)1U << solid_bit)) == 0U || cid == 0U) {
         SWITCH_ROM(prev);
         return 0;
     }
@@ -1538,8 +1654,12 @@ void hw_animate_level_gfx(void) {
     SWITCH_ROM(prev);
 }
 
+
 static int16_t s_last_scan_cam_x = -32767;
 static uint8_t s_last_scan_tag = 0xFF;
+
+extern const uint8_t rev00_ghz3_objs[];
+extern const uint8_t rev00_lz1_objs[];
 
 void hw_scan_spawn_objects(void) {
     uint8_t prev;
@@ -1550,13 +1670,10 @@ void hw_scan_spawn_objects(void) {
     uint8_t scan_tag = (uint8_t)((g_cur_act << 1) | (g_rev_mode & 1));
     int16_t dcam = g_cam_x - s_last_scan_cam_x;
 
-    if (!s_scan_force && scan_tag == s_last_scan_tag && dcam > -8 && dcam < 8) {
-        return;
-    }
+    if (!s_scan_force && scan_tag == s_last_scan_tag && dcam > -8 && dcam < 8) return;
     s_scan_force = 0;
     s_last_scan_tag = scan_tag;
     s_last_scan_cam_x = g_cam_x;
-
     prev = CURRENT_BANK;
     if (g_rev_mode && (g_cur_act == 2 || g_cur_act == 9)) {
         SWITCH_ROM(SUPPLEMENT_REV00_BANK);
@@ -1565,17 +1682,13 @@ void hw_scan_spawn_objects(void) {
         SWITCH_ROM(g_ram_act.data_bank);
         p = g_ram_act.objects;
     }
-    while (idx < 512) {
+    while (idx < 512U) {
         uint16_t ox = (uint16_t)p[0] | ((uint16_t)p[1] << 8);
         if (ox == 0xFFFF) break;
+        if ((int16_t)ox > max_x) break;
         if ((int16_t)ox >= min_x) {
-            int16_t oy;
-            uint8_t oid, osub;
-            if ((int16_t)ox > max_x) break;
-            oy = (int16_t)((uint16_t)p[2] | ((uint16_t)p[3] << 8));
-            oid = p[4];
-            osub = p[5];
-            spawn_try_place_b127(idx, (int16_t)ox, oy, oid, osub);
+            int16_t oy = (int16_t)((uint16_t)p[2] | ((uint16_t)p[3] << 8));
+            spawn_try_place_b127(idx, (int16_t)ox, oy, p[4], p[5]);
         }
         p += 6;
         idx++;
@@ -1655,6 +1768,11 @@ void main(void) {
         g_frame_counter++;
         vsync();
         flush_vblank_hdma();
+        if (g_game_mode == GM_LEVEL && !g_paused) hw_flush_bkg_rings();
         hw_animate_level_gfx();
+#if SONIC_GAMEPLAY_30FPS
+        /* Experimental: pace gameplay at 30 Hz; VBlank audio and timers remain at 60 Hz. */
+        if (g_game_mode == GM_LEVEL) vsync();
+#endif
     }
 }

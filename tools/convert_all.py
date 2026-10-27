@@ -37,6 +37,7 @@ from convert_all_helpers import (
     GEN_DIR,
     VER_DIR,
     build_common_and_zone_sprites,
+    build_ring_background_tiles,
     build_font_and_hud_tiles,
     build_fullscreen_scene,
     convert_sonic_complete,
@@ -74,6 +75,7 @@ def main() -> None:
     hud_tiles_list = build_font_and_hud_tiles(s1)
     hud_tiles_blob = b"".join(hud_tiles_list)  # 48 * 16 = 768 bytes!
     common_spr_blob, zone_spr_blobs = build_common_and_zone_sprites(s1)
+    ring_bg_tiles_blob = build_ring_background_tiles(common_spr_blob)  # 4 frames × 16 masks × 16 bytes = 1,024 B
     sonic_data = convert_sonic_complete(s1)
 
     # Split `sonic_data["tiles_2bpp"]` (20,624 bytes = 1,289 tiles * 16 B) across Banks 6 & 7 (`768` tiles = 12,288 B + `521` tiles = 8,336 B)!
@@ -215,7 +217,7 @@ def main() -> None:
 
         # Set exact authentic Mega Drive VDP backdrop sky color `cram64[0]` BEFORE downsampling & solving palettes!
         zone_sky_rgb8 = {
-            "GHZ":    (32, 48, 224),
+            "GHZ":    (64, 136, 216),
             "LZ":     (12, 48, 88),
             "MZ":     (56, 32, 168),
             "SLZ":    (12, 20, 96),
@@ -256,9 +258,11 @@ def main() -> None:
                 rgb_samples.append((px8, w_f))
 
         bg_pals7 = solve_zone_bg_palettes(rgb_samples, cram64[0], num_pals=7)
+        # Reserve CGB BG bank-1 tiles 240..255 for sixteen ring quadrant composites; ring art frames stream separately.
         m16_gbc, slot_tiles, uniq_cnt = pack_half_scale_m16_blocks(
-            block_rgb_list, block_prio_list, block_sky_list, blk_weight_map, cram64, bg_pals7, max_slots=464
+            block_rgb_list, block_prio_list, block_sky_list, blk_weight_map, cram64, bg_pals7, max_slots=448
         )
+        slot_tiles.extend([bytes(16)] * (464 - len(slot_tiles)))
 
         # Build underwater CGB BG palettes if this Zone has water (`LZ`, `SBZ3`), otherwise warm tint
         if uw_pal_name:
@@ -331,7 +335,7 @@ def main() -> None:
             "bg_pal": all_bg_u16,
             "uw_pal": all_uw_u16,
         })
-        print(f"    -> {vs_name:6s}: {num_m16:3d} blocks, {num_ch:2d} chunks, tiles_bank={b_tiles}, meta_bank={b_meta}, chunk_bank={chunk_base_b}")
+        print(f"    -> {vs_name:6s}: {num_m16:3d} blocks, {uniq_cnt:3d} unique tiles, {num_ch:2d} chunks, tiles_bank={b_tiles}, meta_bank={b_meta}, chunk_bank={chunk_base_b}")
 
     print("[4/7] Converting ALL 20 Playable Acts (Layouts, Backgrounds, Start Positions, Boundaries, Water & Objects)...")
     # All 20 playable Acts in exact game order (`act_global_id = 0..19`)!
@@ -641,6 +645,9 @@ def main() -> None:
         f.write(f"const uint8_t common_sprite_tiles[{len(common_spr_blob)}] = {{\n    ")
         f.write(", ".join(f"0x{b:02X}" for b in common_spr_blob))
         f.write("\n};\n\n")
+        f.write(f"const uint8_t ring_bg_tiles[{len(ring_bg_tiles_blob)}] = {{\n    ")
+        f.write(", ".join(f"0x{b:02X}" for b in ring_bg_tiles_blob))
+        f.write("\n};\n\n")
         f.write(f"const uint16_t sfx_table_offsets[{len(sfx_offsets)}] = {{\n    ")
         f.write(", ".join(str(x) for x in sfx_offsets))
         f.write("\n};\n")
@@ -771,6 +778,7 @@ def main() -> None:
         "",
         "extern const uint8_t hud_font_tiles[];",
         "extern const uint8_t common_sprite_tiles[];",
+        "extern const uint8_t ring_bg_tiles[1024];",
         "extern const uint16_t sfx_table_offsets[];",
         "extern const uint8_t all_sfx_blob[];",
         "extern const uint8_t sega_wave_pcm[];",

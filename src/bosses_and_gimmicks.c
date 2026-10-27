@@ -850,8 +850,14 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
         if (id == 0x13 || id == 0x14 || id == 0x6D) {
             hw_put_sprite8(sx - 4, sy - 4, SPR_TILE_SHOT_FIRE + ((g_frame_counter >> 1) & 1), 1);
         } else {
-            uint8_t hz_tile = (id == 0x16 || id == 0x58 || id == 0x6A) ? (ZSPR_PROP + 16) : (ZSPR_PROP + 20);
+            uint8_t hz_tile;
             uint8_t hz_pal = (id == 0x4C || id == 0x54) ? 1 : ((id == 0x6E) ? 4 : 5);
+            if (g_cur_act >= 6 && g_cur_act <= 8) {
+                /* SYZ IDs 0x57/0x58 are the distinct small and giant spikeballs, not the roller prop. */
+                hz_tile = (id == 0x58) ? (ZSPR_PROP + 4) : (ZSPR_PROP + 16);
+            } else {
+                hz_tile = (id == 0x16 || id == 0x6A) ? (ZSPR_PROP + 16) : (ZSPR_PROP + 20);
+            }
             hw_put_sprite16(sx, sy, hz_tile, 0x08 | hz_pal);
         }
         return 1;

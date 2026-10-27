@@ -105,6 +105,7 @@ void *safe_set_bytes(void *dst, uint8_t val, uint16_t n);
 
 /* Verified Common Sprite Tile Slots in VRAM Bank 0 (`32..127` — 96 tiles, 0 padding!) */
 #define SPR_TILE_RING        32   /* 32..35  (4 x 8x8 spinning ring frames 0..3) */
+#define BKG_RING_TILE_BASE   240  /* BG VBK=1 tiles 240..255 reserved for 16 ring-quadrant masks; art frame streams separately */
 #define SPR_TILE_MONITOR     36   /* 36..55  (5 x 16x16 2x2 monitors: +0 Ring, +4 Shoes, +8 Shield, +12 Invinc, +16 1UP) */
 #define SPR_TILE_SPRING      56   /* 56..63  (2 x 16x16 2x2 springs: +0 Vertical, +4 Horizontal) */
 #define SPR_TILE_SPIKES      64   /* 64..67  (1 x 16x16 2x2 3-spike steel cluster) */
@@ -238,6 +239,7 @@ extern volatile uint8_t g_game_mode;
 extern volatile uint8_t g_next_mode;
 extern volatile uint8_t g_mode_init_done;
 extern volatile uint16_t g_frame_counter;
+extern volatile uint8_t g_invinc_vblanks_pending;
 extern volatile uint8_t g_cur_act;
 extern volatile uint8_t g_cur_ss;
 extern volatile uint8_t g_demo_mode;
@@ -336,6 +338,9 @@ void hw_load_fullscreen_screen(uint8_t scr_idx);
 void hw_load_act(uint8_t act_idx);
 void hw_refresh_full_viewport(void);
 void hw_stream_viewport_delta(int16_t old_cx, int16_t old_cy);
+void hw_begin_bkg_rings(void);
+void hw_queue_bkg_ring(int16_t world_x, int16_t world_y);
+void hw_flush_bkg_rings(void);
 void hw_set_underwater_palette(uint8_t underwater) BANKED;
 void hw_step_palette_cycle(void) BANKED;
 void hw_animate_level_gfx(void);

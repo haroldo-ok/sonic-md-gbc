@@ -63,6 +63,7 @@ static void sonic_exit_roll(void) {
 
 void physics_init_sonic(int16_t sx, int16_t sy) BANKED {
     memset(&g_sonic, 0, sizeof(g_sonic));
+    g_invinc_vblanks_pending = 0;
     g_sonic.x = sx;
     g_sonic.y = sy;
     g_sonic.x_sub = (int32_t)sx << 8;
@@ -569,10 +570,6 @@ void physics_update_level(void) BANKED {
     }
 
     if (g_sonic.invuln > 0) g_sonic.invuln--;
-    if (g_sonic.invinc > 0) {
-        g_sonic.invinc--;
-        if (g_sonic.invinc == 0) hw_play_bgm(g_ram_act.music_id);
-    }
     if (g_sonic.shoes > 0) g_sonic.shoes--;
     if (g_sonic.lock_ctrl > 0) g_sonic.lock_ctrl--;
 
@@ -611,6 +608,8 @@ void physics_update_level(void) BANKED {
     /* Ground vs Airborne Movement & Full 360° Slope Physics (`01 Sonic.asm`) */
     if (g_sonic.on_ground) {
         int16_t sin_a = hw_sin(g_sonic.angle);
+        int16_t cos_a = 0;
+        uint8_t cos_cached = 0;
         g_sonic.jumping = 0;
         if (!g_sonic.rolling) {
             g_sonic.gsp += (sin_a * 32) >> 8;
@@ -701,8 +700,10 @@ void physics_update_level(void) BANKED {
 
             /* 360-Degree Rotated Push Wall Sensor (`Sonic_CalcRoomAhead`) */
             if (g_sonic.gsp != 0) {
-                g_sonic.xsp = (int16_t)(((int32_t)g_sonic.gsp * hw_cos(g_sonic.angle)) >> 8);
-                g_sonic.ysp = (int16_t)(((int32_t)g_sonic.gsp * hw_sin(g_sonic.angle)) >> 8);
+                cos_a = hw_cos(g_sonic.angle);
+                cos_cached = 1;
+                g_sonic.xsp = (int16_t)(((int32_t)g_sonic.gsp * cos_a) >> 8);
+                g_sonic.ysp = (int16_t)(((int32_t)g_sonic.gsp * sin_a) >> 8);
                 if (g_sonic.gsp > 0) {
                     int16_t wd = sonic_calc_room_ahead((uint8_t)(g_sonic.angle - 0x40));
                     if (wd < 0) {
@@ -728,8 +729,9 @@ void physics_update_level(void) BANKED {
             /* Jump Perpendicular to Current Slope Angle (`Sonic_Jump`) */
             if (pressed & (J_A | J_B)) {
                 int16_t j = g_sonic.underwater ? SONIC_UW_JMP : SONIC_JMP;
-                g_sonic.xsp = (int16_t)(((int32_t)g_sonic.gsp * hw_cos(g_sonic.angle) - (int32_t)j * hw_sin(g_sonic.angle)) >> 8);
-                g_sonic.ysp = (int16_t)(((int32_t)g_sonic.gsp * hw_sin(g_sonic.angle) - (int32_t)j * hw_cos(g_sonic.angle)) >> 8);
+                if (!cos_cached) cos_a = hw_cos(g_sonic.angle);
+                g_sonic.xsp = (int16_t)(((int32_t)g_sonic.gsp * cos_a - (int32_t)j * sin_a) >> 8);
+                g_sonic.ysp = (int16_t)(((int32_t)g_sonic.gsp * sin_a - (int32_t)j * cos_a) >> 8);
                 g_sonic.on_ground = 0;
                 g_sonic.jumping = 1;
                 sonic_enter_roll(0);
