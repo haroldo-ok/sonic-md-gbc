@@ -21,6 +21,183 @@ void objects_reset_for_act(void) BANKED {
     g_boss_defeated = 0;
 }
 
+
+/* ===================================================================================================
+ * Collectible stage rings rendered as CGB background tiles (moved out of fixed bank 0).
+ *
+ * Every frame each visible ring contributes one quadrant to four adjacent BG cells. Cells are kept in two
+ * alternating sets (`cur` = being filled this frame, `prev` = what is currently on screen). Each set has a
+ * 1 KiB direct-lookup grid in the otherwise unused level-mode SRAM window `$A000..$A7FF` (the Special Stage
+ * maze lives there only inside Special Stages). A grid entry is trusted only if it points back at a cell with
+ * the same position, so stale data (e.g. from a Special Stage) can never be misread and nothing needs clearing.
+ * This replaces the former O(n^2) list scans and per-cell VRAM reads with O(1) lookups; the flush only touches
+ * VRAM for cells that appeared, vanished, changed quadrant mask, or sit in a column/row that terrain streaming
+ * just rewrote.
+ * =================================================================================================== */
+#define MAX_BG_RING_CELLS (MAX_ACTIVE_OBJS * 4U)
+#define RING_GRID(set) ((uint8_t *)(0xA000U + ((uint16_t)(set) << 10)))
+#define RING_VRAM(pos) ((volatile uint8_t *)(0x9800U + (uint16_t)(pos)))
+
+uint8_t g_ring_force_redraw = 1;
+uint8_t g_ring_dirty_col[4];
+uint8_t g_ring_dirty_row[4];
+static uint16_t s_rc[2][MAX_BG_RING_CELLS]; /* bits 0..4 x, 5..9 y, 10..13 quadrant mask */
+static uint8_t s_rn[2];
+static uint8_t s_rcur;
+static const uint8_t s_bitmask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
+
+static void hw_begin_bkg_rings(void) {
+    s_rn[s_rcur] = 0;
+}
+
+/* Add one quadrant bit to the cell at `POS`: grid hit -> OR the mask; miss -> append (trusting nothing stale). */
+#define RING_ADD(POS, BITS)                                                               \
+    do {                                                                                  \
+        uint16_t p_ = (POS);                                                              \
+        uint8_t j_ = grid[p_];                                                            \
+        if (j_ < n && (cells[j_] & 0x03FFU) == p_) {                                      \
+            cells[j_] |= (BITS);                                                          \
+        } else if (n < MAX_BG_RING_CELLS) {                                               \
+            grid[p_] = n;                                                                 \
+            cells[n++] = (uint16_t)(p_ | (BITS));                                         \
+        }                                                                                 \
+    } while (0)
+
+static void hw_queue_bkg_ring(int16_t world_x, int16_t world_y) {
+    uint8_t x, y, xm, ym;
+    uint16_t row, rowm;
+    uint16_t *cells;
+    uint8_t *grid;
+    uint8_t n;
+    /* Only populate the 32x32 world tile window around the visible viewport. */
+    if (world_x < g_cam_x - 16 || world_x > g_cam_x + 336 ||
+        world_y < g_cam_y - 16 || world_y > g_cam_y + 288) return;
+    x = (uint8_t)(((uint16_t)world_x >> 4) & 31U);
+    y = (uint8_t)(((uint16_t)world_y >> 4) & 31U);
+    xm = (uint8_t)((x + 31U) & 31U);
+    ym = (uint8_t)((y + 31U) & 31U);
+    row = (uint16_t)y << 5;
+    rowm = (uint16_t)ym << 5;
+    cells = s_rc[s_rcur];
+    grid = RING_GRID(s_rcur);
+    n = s_rn[s_rcur];
+    /* Each ring contributes one quadrant to each of four adjacent BG tiles. */
+    RING_ADD(rowm | xm, 0x0400U);
+    RING_ADD(rowm | x,  0x0800U);
+    RING_ADD(row | xm,  0x1000U);
+    RING_ADD(row | x,   0x2000U);
+    s_rn[s_rcur] = n;
+}
+
+/* Remove the overlay tile (if still ours) at BG cell `pos`. */
+static void ring_clear_cell(uint16_t pos) {
+    volatile uint8_t *p = RING_VRAM(pos);
+    uint8_t old;
+    VBK_REG = 0;
+    while (STAT_REG & STATF_BUSY) {}
+    old = *p;
+    if (old >= BKG_RING_TILE_BASE) {
+        while (STAT_REG & STATF_BUSY) {}
+        *p = 0;
+        VBK_REG = 1;
+        while (STAT_REG & STATF_BUSY) {}
+        *p = 0;
+        VBK_REG = 0;
+    }
+}
+
+void hw_ring_reset(void) BANKED {
+    uint8_t cur = s_rcur, prv = (uint8_t)(cur ^ 1U);
+    uint8_t i, pn = s_rn[prv];
+    if (pn) {
+        vsync();
+        rRAMB = 1;
+        for (i = 0; i < pn; i++) ring_clear_cell((uint16_t)(s_rc[prv][i] & 0x03FFU));
+    }
+    s_rn[0] = s_rn[1] = 0;
+    g_ring_force_redraw = 1;
+}
+
+void hw_flush_bkg_rings(void) BANKED {
+    uint8_t cur = s_rcur, prv = (uint8_t)(cur ^ 1U);
+    uint16_t *nc = s_rc[cur], *pc = s_rc[prv];
+    uint8_t *ng = RING_GRID(cur), *pg = RING_GRID(prv);
+    uint8_t nn = s_rn[cur], pn = s_rn[prv];
+    uint8_t force = g_ring_force_redraw;
+    uint8_t unchanged = 0;
+    uint8_t i, j;
+    uint16_t *cp;
+
+    VBK_REG = 0;
+
+    /* Fast path: identical cell list (same order, same quadrant masks), nothing streamed over it, no forced redraw.
+       This is the common case while the camera is not crossing a tile boundary. */
+    if (!force && nn == pn &&
+        !(g_ring_dirty_col[0] | g_ring_dirty_col[1] | g_ring_dirty_col[2] | g_ring_dirty_col[3] |
+          g_ring_dirty_row[0] | g_ring_dirty_row[1] | g_ring_dirty_row[2] | g_ring_dirty_row[3])) {
+        uint16_t *a = nc, *b = pc;
+        for (i = nn; i != 0U; i--) {
+            if (*a++ != *b++) break;
+        }
+        unchanged = (i == 0U);
+    }
+
+    if (!unchanged) {
+        /* Remove cells whose last contributing stage ring was collected or streamed out. */
+        cp = pc;
+        for (i = pn; i != 0U; i--) {
+            uint16_t pos = (uint16_t)(*cp++ & 0x03FFU);
+            j = ng[pos];
+            if (j < nn && (nc[j] & 0x03FFU) == pos) continue;
+            ring_clear_cell(pos);
+        }
+    }
+
+    /* Ring art animation (rewriting the 16 shared BG tile patterns) is DMA'd at the start of VBlank by
+       `flush_vblank_hdma()` in bank 0; map entries never change for it. */
+
+    if (!unchanged) {
+        /* Draw only new / changed cells and cells on columns/rows that terrain streaming just rewrote. */
+        cp = nc;
+        for (i = nn; i != 0U; i--) {
+            uint16_t cell = *cp++;
+            uint16_t pos = (uint16_t)(cell & 0x03FFU);
+            uint8_t x = (uint8_t)pos & 31U;
+            uint8_t y = (uint8_t)(pos >> 5);
+            volatile uint8_t *p;
+            uint8_t old, tile;
+            if (!force) {
+                j = pg[pos];
+                if (j < pn && pc[j] == cell &&
+                    !(g_ring_dirty_col[x >> 3] & s_bitmask[x & 7U]) &&
+                    !(g_ring_dirty_row[y >> 3] & s_bitmask[y & 7U])) continue;
+            }
+            p = RING_VRAM(pos);
+            tile = (uint8_t)(BKG_RING_TILE_BASE + (cell >> 10));
+            while (STAT_REG & STATF_BUSY) {}
+            old = *p;
+            if (old == 0U || old >= BKG_RING_TILE_BASE) { /* existing terrain wins */
+                if (old != tile) {
+                    while (STAT_REG & STATF_BUSY) {}
+                    *p = tile;
+                }
+                /* Attributes live in VRAM bank 1; rewrite to clear stale terrain attrs. */
+                VBK_REG = 1;
+                while (STAT_REG & STATF_BUSY) {}
+                *p = 0x0BU; /* Bank 1, palette 3: sky-matched zero + warm ring colors */
+                VBK_REG = 0;
+            }
+        }
+    }
+
+    g_ring_force_redraw = 0;
+    g_ring_dirty_col[0] = g_ring_dirty_col[1] = g_ring_dirty_col[2] = g_ring_dirty_col[3] = 0;
+    g_ring_dirty_row[0] = g_ring_dirty_row[1] = g_ring_dirty_row[2] = g_ring_dirty_row[3] = 0;
+    s_rcur = prv;     /* what we just drew is now "prev"; refill the other set next frame */
+    s_rn[prv] = 0;
+    VBK_REG = 0;
+}
+
 static uint8_t is_badnik_id(uint8_t id) {
     return (id == 0x1E || id == 0x1F || id == 0x22 || id == 0x2B || id == 0x2C ||
             id == 0x2D || id == 0x40 || id == 0x42 || id == 0x43 || id == 0x4D ||

@@ -856,7 +856,10 @@ void physics_update_level(void) BANKED {
 
     if (!g_signpost_passed) {
         g_level_frames++;
-        if ((g_level_frames % 60) == 0) g_hud_dirty = 1;
+        if (++g_level_sec_div >= 60U) {
+            g_level_sec_div = 0;
+            g_hud_dirty = 1;
+        }
         if (g_level_frames >= 36000) {
             sonic_hurt_or_kill(1);
             return;

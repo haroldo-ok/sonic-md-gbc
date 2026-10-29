@@ -42,6 +42,9 @@ Key architectural optimizations responsible for these gains:
    - `hw_scan_spawn_objects()` exits immediately in `< 10` cycles unless `|g_cam_x - s_last_scan_cam_x| >= 8`, staging `ox, oy, oid, osub` into stack locals before invoking `spawn_try_place_b127()` in Bank `127`.
    - `step_one_active_obj()` performs immediate screen-space bounding-box early-out (`sx < -16 || sx > 176 || sy < -24 || sy > 152`) for standard Rings (`0x25`) and Badniks before running `O(N)` collision or `Map_*` sprite emission, and `hw_clear_remaining_oam()` clears only previously populated OAM slots (`g_oam_next .. s_prev_oam_used`) rather than all `40` entries every frame.
 
+**Frame-time pass (all six zones, run-right scenarios, `bench.py` over PyBoy):** mean gameplay rate rose from `33.3 FPS` to `41.8 FPS` across GHZ/MZ/SYZ/LZ/SLZ/SBZ and the Special Stage, with no change to game logic or visuals (VRAM BG-map comparison at identical camera positions matches on the run scenarios). Main changes: the ring BG overlay is now O(n) with a 4-set grid lookup, per-cell change detection, dirty column/row masks, a no-change fast path and a GDMA ring-frame tile upload, and it lives in bank 2 (bank 0 has ~1.2 KB spare); `osc_step_all` uses literal step/limit constants; the HUD seconds counter no longer divides; Sonic and multi-tile sprites write OAM directly with one visibility test per row.
+
+
 ### 3. Parallax-Free Levels, Collectible BG-Tile Rings & `9.26 kHz` `"SEGA"` Intro Voice
 - **Parallax layer removed; foreground and non-parallax visuals retained (`src/main.c`)**:
   - World-span rendering no longer fills empty foreground cells from the independently scrolling parallax layout. The foreground map, HUD, zone palette, and existing non-parallax screen/level visuals remain intact.

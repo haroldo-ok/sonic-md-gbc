@@ -92,11 +92,6 @@ void add_score_points(uint16_t pts) BANKED {
 }
 
 /* Authentic `_inc/Oscillatory Routines.asm` (`OscillateNumInit` & `OscillateNumDo` — 2x delta every 2nd frame) */
-static const uint8_t s_osc_freq[16]  = { 4, 4, 4, 4, 8, 16, 16, 8, 4, 4, 4, 6, 10, 14, 4, 4 };
-static const uint16_t s_osc_limit[16] = {
-    0x10, 0x18, 0x20, 0x30, 0x20, 0x08, 0x40, 0x40,
-    0x50, 0x50, 0x20, 0x30, 0x50, 0x70, 0x10, 0x10
-};
 
 void osc_reset(void) BANKED {
     g_osc_dir = 0;
@@ -133,27 +128,48 @@ void hw_step_palette_cycle(void) BANKED {
     g_pal_cycles++;
 }
 
+/* One oscillator step (`OscillateNumDo`): bounce oscillator IDX between 0 and LIM by STEP; direction bit MASK of D.
+   Values never exceed 0x90 (init 0x80, limits <= 0x70, steps <= 16) and the high byte is always 0, so only the low
+   byte is touched and all arithmetic is 8-bit. IDX/STEP/LIM are literals, so every access is a direct address. */
+#define OSC_N(IDX, STEP, LIM, D, MASK)                                   \
+    do {                                                                 \
+        uint8_t v = ((uint8_t *)g_osc_val)[(IDX) * 2U];                  \
+        if (!(D & (MASK))) {                                             \
+            v += (STEP);                                                 \
+            if (v >= (LIM)) D |= (MASK);                                 \
+        } else if (v > (STEP)) {                                         \
+            v -= (STEP);                                                 \
+        } else {                                                         \
+            v = 0;                                                       \
+            D &= (uint8_t)~(MASK);                                       \
+        }                                                                \
+        ((uint8_t *)g_osc_val)[(IDX) * 2U] = v;                          \
+    } while (0)
+
+/* Per-oscillator step sizes {4,4,4,4,8,16,16,8,4,4,4,6,10,14,4,4} and limits
+   {0x10,0x18,0x20,0x30,0x20,0x08,0x40,0x40,0x50,0x50,0x20,0x30,0x50,0x70,0x10,0x10} unrolled below. */
 void osc_step_all(void) BANKED {
-    uint8_t i;
-    uint16_t bit = 1U;
-    uint16_t dir = g_osc_dir;
+    uint8_t lo, hi;
     if (g_paused) return;
-    for (i = 0; i < 16; i++, bit <<= 1) {
-        uint8_t step = s_osc_freq[i];
-        uint16_t v = g_osc_val[i];
-        if (!(dir & bit)) {
-            v += step;
-            if (v >= s_osc_limit[i]) dir |= bit;
-        } else {
-            if (v > step) v -= step;
-            else {
-                v = 0;
-                dir &= (uint16_t)~bit;
-            }
-        }
-        g_osc_val[i] = v;
-    }
-    g_osc_dir = dir;
+    lo = (uint8_t)g_osc_dir;
+    hi = (uint8_t)(g_osc_dir >> 8);
+    OSC_N( 0,  4, 0x10, lo, 0x01);
+    OSC_N( 1,  4, 0x18, lo, 0x02);
+    OSC_N( 2,  4, 0x20, lo, 0x04);
+    OSC_N( 3,  4, 0x30, lo, 0x08);
+    OSC_N( 4,  8, 0x20, lo, 0x10);
+    OSC_N( 5, 16, 0x08, lo, 0x20);
+    OSC_N( 6, 16, 0x40, lo, 0x40);
+    OSC_N( 7,  8, 0x40, lo, 0x80);
+    OSC_N( 8,  4, 0x50, hi, 0x01);
+    OSC_N( 9,  4, 0x50, hi, 0x02);
+    OSC_N(10,  4, 0x20, hi, 0x04);
+    OSC_N(11,  6, 0x30, hi, 0x08);
+    OSC_N(12, 10, 0x50, hi, 0x10);
+    OSC_N(13, 14, 0x70, hi, 0x20);
+    OSC_N(14,  4, 0x10, hi, 0x40);
+    OSC_N(15,  4, 0x10, hi, 0x80);
+    g_osc_dir = (uint16_t)(((uint16_t)hi << 8) | lo);
 }
 
 /* Authentic `_inc/DynamicLevelEvents.asm`: Dynamic Camera Boundary Locks & Zone Events */

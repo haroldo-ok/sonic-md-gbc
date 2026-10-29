@@ -289,6 +289,7 @@ extern uint8_t g_emeralds;
 extern uint8_t g_unlocked_act;
 extern uint8_t g_ss_got_emerald;
 extern uint16_t g_level_frames;
+extern uint8_t g_level_sec_div; /* g_level_frames % 60, kept incrementally (avoids a software divide every frame) */
 extern uint8_t g_hud_dirty;
 extern uint8_t g_next_ring_life;
 
@@ -338,9 +339,8 @@ void hw_load_fullscreen_screen(uint8_t scr_idx);
 void hw_load_act(uint8_t act_idx);
 void hw_refresh_full_viewport(void);
 void hw_stream_viewport_delta(int16_t old_cx, int16_t old_cy);
-void hw_begin_bkg_rings(void);
-void hw_queue_bkg_ring(int16_t world_x, int16_t world_y);
-void hw_flush_bkg_rings(void);
+void hw_upload_ring_frame(uint8_t frame);
+extern uint8_t g_ring_last_frame;
 void hw_set_underwater_palette(uint8_t underwater) BANKED;
 void hw_step_palette_cycle(void) BANKED;
 void hw_animate_level_gfx(void);
@@ -373,6 +373,12 @@ void sonic_hurt_or_kill(uint8_t instant_kill) BANKED;
 /* Bank 2: Level Objects & All 16 Sonic 1 Badnik AIs (`src/objects.c`) */
 void objects_reset_for_act(void) BANKED;
 void objects_update_and_draw(void) BANKED;
+/* Collectible-ring BG-tile overlay (state + logic in bank 2; terrain streaming marks dirty columns/rows). */
+void hw_flush_bkg_rings(void) BANKED;
+void hw_ring_reset(void) BANKED;
+extern uint8_t g_ring_force_redraw;
+extern uint8_t g_ring_dirty_col[4];
+extern uint8_t g_ring_dirty_row[4];
 
 /* Bank 3: Screens, 360° Special Stages, Results, 9-Card Credits, Try Again & Secret JP Credits (`src/screens_and_ss.c`) */
 void screens_init_mode(uint8_t mode) BANKED;

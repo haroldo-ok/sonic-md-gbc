@@ -74,7 +74,6 @@ int16_t g_dyn_top_bound = 0;
 int16_t g_dyn_bottom_bound = 0x0300;
 uint16_t g_osc_val[16];
 uint16_t g_osc_dir = 0;
-static uint8_t s_ring_force_redraw = 1;
 
 SonicState g_sonic;
 ActiveObj g_objs[MAX_ACTIVE_OBJS];
@@ -95,6 +94,7 @@ uint8_t g_emeralds = 0;
 uint8_t g_unlocked_act = 0;
 uint8_t g_ss_got_emerald = 0;
 uint16_t g_level_frames = 0;
+uint8_t g_level_sec_div = 0;
 uint8_t g_hud_dirty = 1;
 uint8_t g_next_ring_life = 1;
 
@@ -552,30 +552,51 @@ void hw_clear_remaining_oam(void) {
 }
 
 void hw_put_sprite8(int16_t sx, int16_t sy, uint8_t tile, uint8_t attr) {
-    OAM_item_t *it;
-    if (g_oam_next >= 40) return;
-    if (sx <= -8 || sx >= 160 || sy <= -8 || sy >= 128) return;
-    it = &shadow_OAM[g_oam_next++];
-    it->y = (uint8_t)(sy + 16);
-    it->x = (uint8_t)(sx + 8);
-    it->tile = tile;
-    it->prop = attr;
+    uint8_t n = g_oam_next;
+    uint8_t *o;
+    if (n >= 40U) return;
+    /* Visible iff -8 < sx < 160 and -8 < sy < 128: one unsigned compare per axis instead of two signed ones. */
+    if ((uint16_t)(sx + 7) > 166U || (uint16_t)(sy + 7) > 134U) return;
+    g_oam_next = (uint8_t)(n + 1U);
+    o = (uint8_t *)shadow_OAM + ((uint16_t)n << 2);
+    *o++ = (uint8_t)((uint8_t)sy + 16U);   /* OAM y */
+    *o++ = (uint8_t)((uint8_t)sx + 8U);    /* OAM x */
+    *o++ = tile;
+    *o = attr;
 }
 
 void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr) {
-    uint8_t cx, src_cx, t_top, t_bot;
-    for (cx = 0; cx < ncols; cx++) {
-        src_cx = (attr & 0x20) ? (uint8_t)(ncols - 1u - cx) : cx;
+    /* Same result as emitting 2*ncols `hw_put_sprite8` calls (column by column, top then bottom), but the per-row
+       visibility test is done once and OAM bytes are written directly, so no call/argument overhead per 8x8 piece. */
+    uint8_t n = g_oam_next;
+    uint8_t *o;
+    uint8_t cx, src_cx, t_top, t_bot, ox, first, second;
+    uint8_t oy0 = (uint8_t)((uint8_t)sy + 16U);
+    uint8_t oy1 = (uint8_t)((uint8_t)sy + 24U);
+    uint8_t ok0 = ((uint16_t)(sy + 7) <= 134U);
+    uint8_t ok1 = ((uint16_t)(sy + 15) <= 134U);
+    uint8_t flip_x = (uint8_t)(attr & 0x20U);
+    uint8_t flip_y = (uint8_t)(attr & 0x40U);
+    int16_t x = sx;
+    if (n >= 40U || (!ok0 && !ok1)) return;
+    o = (uint8_t *)shadow_OAM + ((uint16_t)n << 2);
+    for (cx = 0; cx < ncols; cx++, x += 8) {
+        if ((uint16_t)(x + 7) > 166U) continue; /* whole column is off-screen horizontally */
+        src_cx = flip_x ? (uint8_t)(ncols - 1U - cx) : cx;
         t_top = (uint8_t)(base_tile + (uint8_t)(src_cx << 1));
-        t_bot = (uint8_t)(t_top + 1u);
-        if (attr & 0x40) {
-            hw_put_sprite8((int16_t)(sx + (int16_t)(cx << 3)), sy, t_bot, attr);
-            hw_put_sprite8((int16_t)(sx + (int16_t)(cx << 3)), (int16_t)(sy + 8), t_top, attr);
-        } else {
-            hw_put_sprite8((int16_t)(sx + (int16_t)(cx << 3)), sy, t_top, attr);
-            hw_put_sprite8((int16_t)(sx + (int16_t)(cx << 3)), (int16_t)(sy + 8), t_bot, attr);
+        t_bot = (uint8_t)(t_top + 1U);
+        if (flip_y) { first = t_bot; second = t_top; } else { first = t_top; second = t_bot; }
+        ox = (uint8_t)((uint8_t)x + 8U);
+        if (ok0 && n < 40U) {
+            *o++ = oy0; *o++ = ox; *o++ = first; *o++ = attr;
+            n++;
+        }
+        if (ok1 && n < 40U) {
+            *o++ = oy1; *o++ = ox; *o++ = second; *o++ = attr;
+            n++;
         }
     }
+    g_oam_next = n;
 }
 
 void hw_put_sprite16(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t attr) {
@@ -805,6 +826,9 @@ static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
     sp->is_col = is_col;
     sp->vx = (uint8_t)wx0 & 31U;
     sp->vy = (uint8_t)wy0 & 31U;
+    /* Terrain streaming overwrites BG cells here; ring overlay must be re-applied on this column/row only. */
+    if (is_col) g_ring_dirty_col[sp->vx >> 3] |= (uint8_t)(1U << (sp->vx & 7U));
+    else        g_ring_dirty_row[sp->vy >> 3] |= (uint8_t)(1U << (sp->vy & 7U));
     blocks_to_tiles_batch(bw_buf, n, sp->t, sp->a);
     SWITCH_ROM(prev);
 }
@@ -816,7 +840,7 @@ void hw_refresh_full_viewport(void) {
     int16_t wx0 = (g_cam_x >> 4) - 1;
     int16_t wy0 = (g_cam_y >> 4) - 1;
     uint8_t r;
-    s_ring_force_redraw = 1;
+    g_ring_force_redraw = 1;
     s_vscroll_cnt = 0;
     for (r = 0; r < 20; r++) {
         draw_world_row(wx0, wy0 + r);
@@ -841,8 +865,6 @@ void hw_stream_viewport_delta(int16_t old_cam_x, int16_t old_cam_y) {
         return;
     }
 
-    if (old_tx != new_tx || old_ty != new_ty) s_ring_force_redraw = 1;
-
     while (old_tx < new_tx) {
         old_tx++;
         draw_world_col(old_tx + 20, new_ty - 1);
@@ -863,131 +885,15 @@ void hw_stream_viewport_delta(int16_t old_cam_x, int16_t old_cam_y) {
     SCY_REG = (uint8_t)(g_cam_y >> 1);
 }
 
-#define MAX_BG_RING_CELLS (MAX_ACTIVE_OBJS * 4U) /* every active object may be a ring; four cells per ring */
-/* Pack 5-bit tile X, 5-bit tile Y, and the 4-bit quadrant mask into 16 bits. */
-static uint16_t s_ring_cells_a[MAX_BG_RING_CELLS], s_ring_cells_b[MAX_BG_RING_CELLS];
-static uint16_t *s_ring_prev_cells = s_ring_cells_a;
-static uint16_t *s_ring_next_cells = s_ring_cells_b;
-static uint8_t s_ring_prev_count, s_ring_next_count;
-static uint8_t s_ring_last_frame = 0xFF;
-
-static uint8_t ring_cell_index(const uint16_t *cells, uint8_t count, uint8_t x, uint8_t y) {
-    uint8_t i;
-    uint16_t pos = (uint16_t)(((uint16_t)(y & 31U) << 5) | (x & 31U));
-    for (i = 0; i < count; i++)
-        if ((cells[i] & 0x03FFU) == pos) return i;
-    return 0xFF;
-}
-
-static void ring_cell_add(uint8_t x, uint8_t y, uint8_t bit) {
-    uint8_t i = ring_cell_index(s_ring_next_cells, s_ring_next_count, x, y);
-    if (i == 0xFF) {
-        if (s_ring_next_count >= MAX_BG_RING_CELLS) return;
-        i = s_ring_next_count++;
-        s_ring_next_cells[i] = (uint16_t)(((uint16_t)(y & 31U) << 5) | (x & 31U));
-    }
-    s_ring_next_cells[i] |= (uint16_t)((uint16_t)bit << 10);
-}
-
-void hw_begin_bkg_rings(void) {
-    s_ring_next_count = 0;
-}
-
-void hw_queue_bkg_ring(int16_t world_x, int16_t world_y) {
-    uint8_t x, y;
-    /* Only populate the 32×32 world tile window around the visible viewport. */
-    if (world_x < g_cam_x - 16 || world_x > g_cam_x + 336 ||
-        world_y < g_cam_y - 16 || world_y > g_cam_y + 288) return;
-    x = (uint8_t)(((uint16_t)world_x >> 4) & 31U);
-    y = (uint8_t)(((uint16_t)world_y >> 4) & 31U);
-    /* Each ring contributes one quadrant to each of four adjacent BG tiles. */
-    ring_cell_add((x + 31U) & 31U, (y + 31U) & 31U, 1U);
-    ring_cell_add(x, (y + 31U) & 31U, 2U);
-    ring_cell_add((x + 31U) & 31U, y, 4U);
-    ring_cell_add(x, y, 8U);
-}
-
-void hw_flush_bkg_rings(void) {
-    uint8_t i, frame = (uint8_t)((g_frame_counter >> 3) & 3U);
-    uint8_t prev_bank;
-    VBK_REG = 0;
-
-    /* Remove cells whose last contributing stage ring was collected or streamed out. */
-    for (i = 0; i < s_ring_prev_count; i++) {
-        uint16_t old = s_ring_prev_cells[i];
-        uint8_t old_x = (uint8_t)(old & 31U);
-        uint8_t old_y = (uint8_t)((old >> 5) & 31U);
-        if (ring_cell_index(s_ring_next_cells, s_ring_next_count, old_x, old_y) == 0xFF) {
-            uint8_t tile = get_bkg_tile_xy(old_x, old_y);
-            if (tile >= BKG_RING_TILE_BASE) {
-                set_bkg_tile_xy(old_x, old_y, 0);
-                VBK_REG = 1;
-                set_bkg_attribute_xy(old_x, old_y, 0);
-                VBK_REG = 0;
-            }
-            s_ring_force_redraw = 1;
-        }
-    }
-
-    if (frame != s_ring_last_frame) {
-        s_ring_force_redraw = 1;
-        prev_bank = CURRENT_BANK;
-        SWITCH_ROM(4);
-        VBK_REG = 1;
-        set_bkg_data(BKG_RING_TILE_BASE, 16, ring_bg_tiles + ((uint16_t)frame << 8));
-        VBK_REG = 0;
-        SWITCH_ROM(prev_bank);
-        s_ring_last_frame = frame;
-    }
-
-    /* Compare the desired tile IDs with VRAM once per cell; this replaces per-ring scans of both cell lists. */
-    for (i = 0; i < s_ring_next_count; i++) {
-        uint16_t cell = s_ring_next_cells[i];
-        uint8_t cell_x = (uint8_t)(cell & 31U);
-        uint8_t cell_y = (uint8_t)((cell >> 5) & 31U);
-        uint8_t old_tile = get_bkg_tile_xy(cell_x, cell_y);
-        uint8_t tile = (uint8_t)(BKG_RING_TILE_BASE + (cell >> 10));
-        if ((old_tile == 0U || old_tile >= BKG_RING_TILE_BASE) && old_tile != tile) {
-            s_ring_force_redraw = 1;
-            break;
-        }
-    }
-
-    if (s_ring_force_redraw) {
-        /* Write one composite background tile per occupied cell; existing terrain wins. */
-        for (i = 0; i < s_ring_next_count; i++) {
-            uint16_t cell = s_ring_next_cells[i];
-            uint8_t cell_x = (uint8_t)(cell & 31U);
-            uint8_t cell_y = (uint8_t)((cell >> 5) & 31U);
-            uint8_t old_tile = get_bkg_tile_xy(cell_x, cell_y);
-            uint8_t tile = (uint8_t)(BKG_RING_TILE_BASE + (cell >> 10));
-            if (old_tile == 0U || old_tile >= BKG_RING_TILE_BASE) {
-                if (old_tile != tile) set_bkg_tile_xy(cell_x, cell_y, tile);
-                /* Attributes live in VRAM bank 1; rewrite even when tile IDs match to clear stale terrain attrs. */
-                VBK_REG = 1;
-                set_bkg_attribute_xy(cell_x, cell_y, 0x0BU); /* Bank 1, palette 3: sky-matched zero + warm ring colors */
-                VBK_REG = 0;
-            }
-        }
-        s_ring_force_redraw = 0;
-    }
-
-    {
-        uint16_t *tmp = s_ring_prev_cells;
-        s_ring_prev_cells = s_ring_next_cells;
-        s_ring_next_cells = tmp;
-        s_ring_prev_count = s_ring_next_count;
-    }
-    s_ring_next_count = 0;
-    VBK_REG = 0;
-}
+/* Ring-overlay state/logic lives in bank 2 (`src/objects.c`); only the bank-4 tile upload must stay in fixed bank 0. */
+uint8_t g_ring_last_frame = 0xFF;
 
 static void reload_common_hud_and_sprites(void) {
     SWITCH_ROM(4);
     VBK_REG = 1;
     set_bkg_data(80, 48, hud_font_tiles);
     set_bkg_data(BKG_RING_TILE_BASE, 16, ring_bg_tiles);
-    s_ring_last_frame = 0xFF;
+    g_ring_last_frame = 0xFF;
     VBK_REG = 0;
     set_sprite_data(32, 64, common_sprite_tiles);
     set_sprite_data(96, 32, common_sprite_tiles + 1024);
@@ -1005,23 +911,7 @@ void hw_load_act(uint8_t act_idx) {
     g_cur_act = act_idx;
 
     /* Clear any previous act's ring overlay from wrapped BG-map cells before streaming new art. */
-    if (s_ring_prev_count) {
-        vsync();
-        rRAMB = 1;
-        VBK_REG = 0;
-        for (hold = 0; hold < s_ring_prev_count; hold++) {
-            uint16_t cell = s_ring_prev_cells[hold];
-            uint8_t cell_x = (uint8_t)(cell & 31U);
-            uint8_t cell_y = (uint8_t)((cell >> 5) & 31U);
-            if (get_bkg_tile_xy(cell_x, cell_y) >= BKG_RING_TILE_BASE) {
-                set_bkg_tile_xy(cell_x, cell_y, 0);
-                VBK_REG = 1;
-                set_bkg_attribute_xy(cell_x, cell_y, 0);
-                VBK_REG = 0;
-            }
-        }
-    }
-    s_ring_prev_count = s_ring_next_count = 0;
+    hw_ring_reset();
 
     SWITCH_ROM(8);
     __critical {
@@ -1092,6 +982,7 @@ void hw_load_act(uint8_t act_idx) {
         sx = (int16_t)g_ram_act.start_x;
         sy = (int16_t)g_ram_act.start_y;
         g_level_frames = 0;
+        g_level_sec_div = 0;
     }
     g_rings = 0;
     g_next_ring_life = 1;
@@ -1412,7 +1303,33 @@ static void gdma_transfer(uint16_t src, uint8_t dst_hi, uint8_t blocks_m1) {
     HDMA5_REG = blocks_m1;
 }
 
+/* Upload the 16 animated ring-quadrant BG tiles (`BKG_RING_TILE_BASE`.., VRAM bank 1, 256 bytes).
+   Called right after VBlank starts, so a single general-purpose DMA (16-byte blocks, CPU halted ~1/20th of the
+   time a STAT-polling `set_bkg_data` needs) replaces ~21k cycles of byte-by-byte copying. The source table is
+   16-byte aligned in bank 4; fall back to `set_bkg_data` if that ever stops being true. */
+void hw_upload_ring_frame(uint8_t frame) {
+    uint8_t prev = CURRENT_BANK;
+    const uint8_t *src = ring_bg_tiles + ((uint16_t)frame << 8);
+    SWITCH_ROM(4);
+    VBK_REG = 1;
+    if (((uint16_t)src & 0x0FU) == 0U && BKG_RING_TILE_BASE >= 128U) {
+        gdma_transfer((uint16_t)src, (uint8_t)(0x88U + ((BKG_RING_TILE_BASE - 128U) >> 4)), 15U);
+    } else {
+        set_bkg_data(BKG_RING_TILE_BASE, 16, src);
+    }
+    VBK_REG = 0;
+    SWITCH_ROM(prev);
+}
+
 static void flush_vblank_hdma(void) {
+    /* Animated ring tiles: DMA them first thing in VBlank, while VRAM is guaranteed accessible. */
+    if (g_game_mode == GM_LEVEL && !g_paused) {
+        uint8_t rf = (uint8_t)((g_frame_counter >> 3) & 3U);
+        if (rf != g_ring_last_frame) {
+            hw_upload_ring_frame(rf);
+            g_ring_last_frame = rf;
+        }
+    }
     if (s_vscroll_cnt) {
         flush_vscroll_b127(s_vscroll_cnt);
         s_vscroll_cnt = 0;
@@ -1568,17 +1485,27 @@ void hw_draw_sonic_sprite(void) {
     SWITCH_ROM(9);
     off = sonic_spr_offsets[g_sonic.frame < 89 ? g_sonic.frame : 1];
     cnt = sonic_spr_blob[off];
-    for (i = 0; i < cnt && g_oam_next < 40; i++) {
-        uint16_t p = off + 1 + ((uint16_t)i << 2);
-        int8_t dy = (int8_t)sonic_spr_blob[p];
-        int8_t dx = (int8_t)sonic_spr_blob[p + 1];
-        uint8_t lt = sonic_spr_blob[p + 2];
-        uint8_t fl = sonic_spr_blob[p + 3];
-        int16_t fx = s_sonic_rot_fx ? (scr_x - dx - 8) : (scr_x + dx);
-        int16_t fy = s_sonic_rot_fy ? (scr_y - dy - 8) : (scr_y + dy);
-        uint8_t attr = fl ^ (s_sonic_rot_fx ? 0x20 : 0) ^ (s_sonic_rot_fy ? 0x40 : 0);
-        if (g_sonic.loop_plane) attr |= 0x80;
-        hw_put_sprite8(fx, fy, (uint8_t)(lt + s_cur_sonic_base), attr);
+    {
+        const uint8_t *q = &sonic_spr_blob[off + 1U];
+        uint8_t n = g_oam_next;
+        uint8_t *o = (uint8_t *)shadow_OAM + ((uint16_t)n << 2);
+        uint8_t rfx = s_sonic_rot_fx, rfy = s_sonic_rot_fy;
+        uint8_t xor_attr = (uint8_t)((rfx ? 0x20U : 0U) ^ (rfy ? 0x40U : 0U));
+        uint8_t or_attr = g_sonic.loop_plane ? 0x80U : 0U;
+        uint8_t base = s_cur_sonic_base;
+        for (i = 0; i < cnt && n < 40U; i++, q += 4) {
+            int8_t dy = (int8_t)q[0];
+            int8_t dx = (int8_t)q[1];
+            int16_t fx = rfx ? (int16_t)(scr_x - dx - 8) : (int16_t)(scr_x + dx);
+            int16_t fy = rfy ? (int16_t)(scr_y - dy - 8) : (int16_t)(scr_y + dy);
+            if ((uint16_t)(fx + 7) > 166U || (uint16_t)(fy + 7) > 134U) continue;
+            *o++ = (uint8_t)((uint8_t)fy + 16U);
+            *o++ = (uint8_t)((uint8_t)fx + 8U);
+            *o++ = (uint8_t)(q[2] + base);
+            *o++ = (uint8_t)((q[3] ^ xor_attr) | or_attr);
+            n++;
+        }
+        g_oam_next = n;
     }
     SWITCH_ROM(prev);
 
