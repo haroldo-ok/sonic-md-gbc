@@ -591,7 +591,7 @@ void screens_update_mode(uint8_t mode) BANKED {
             hw_print_win(0, 0, dbg_row);
         } else if (g_hud_dirty && !g_paused) {
             g_hud_dirty = 0;
-            hw_update_hud();
+            hw_update_hud_deferred();
         }
         return;
     }

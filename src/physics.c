@@ -61,6 +61,81 @@ static void sonic_exit_roll(void) {
     }
 }
 
+
+/* Exact `(int16_t)(((int32_t)a * c) >> 8)` for |c| <= 256 (sin/cos), without the `__mullong` runtime call:
+   16x8 shift-add on |a|,|c| then the sign is applied with floor rounding (identical to an arithmetic shift).
+   sdcccall(1): a in DE, c in BC, result in BC. */
+static int16_t mul_trig(int16_t a, int16_t c) __naked {
+    (void)a; (void)c;
+    __asm
+    ld   a, d
+    xor  a, b
+    push af
+    bit  7, d
+    jr   z, 101$
+    xor  a, a
+    sub  a, e
+    ld   e, a
+    ld   a, #0
+    sbc  a, d
+    ld   d, a
+101$:
+    bit  7, b
+    jr   z, 102$
+    xor  a, a
+    sub  a, c
+    ld   c, a
+    ld   a, #0
+    sbc  a, b
+    ld   b, a
+102$:
+    ld   a, b
+    or   a, a
+    jr   z, 103$
+    ld   h, d
+    ld   l, e
+    ld   b, #0
+    jr   106$
+103$:
+    ld   hl, #0
+    xor  a, a
+    ld   b, #8
+104$:
+    add  hl, hl
+    rla
+    sla  c
+    jr   nc, 105$
+    add  hl, de
+    adc  a, #0
+105$:
+    dec  b
+    jr   nz, 104$
+    ld   b, l
+    ld   l, h
+    ld   h, a
+106$:
+    pop  af
+    bit  7, a
+    jr   z, 107$
+    ld   a, b
+    or   a, a
+    jr   z, 108$
+    inc  hl
+108$:
+    xor  a, a
+    sub  a, l
+    ld   c, a
+    ld   a, #0
+    sbc  a, h
+    ld   b, a
+    ret
+107$:
+    ld   c, l
+    ld   b, h
+    ret
+    __endasm;
+}
+
 void physics_init_sonic(int16_t sx, int16_t sy) BANKED {
     memset(&g_sonic, 0, sizeof(g_sonic));
     g_invinc_vblanks_pending = 0;
@@ -263,6 +338,19 @@ static int16_t sonic_calc_room_ahead(uint8_t move_ang) {
         return hw_find_wall(d2, (d3 - 10) ^ 0x0F, 14, 0x0800, -16, &dummy);
     }
     return hw_find_wall(d2, d3 + 10, 14, 0, 16, &dummy);
+}
+
+/* `PlatformObject` / `Solid_Landed` -> `Sonic_ResetOnFloor` for objects (bridge, platforms, ledge, rock, walls). */
+void physics_land_on_object(void) BANKED {
+    if (!g_sonic.on_ground) {
+        sonic_exit_roll();
+        g_sonic.on_ground = 1;
+        g_sonic.gsp = g_sonic.xsp;
+        g_sonic.air_combo = 0;
+    }
+    g_sonic.jumping = 0;
+    g_sonic.angle = 0;
+    g_sonic.ysp = 0;
 }
 
 /* Exact `Sonic_AnglePos` (`Sonic AnglePos.asm` lines 10-431): full 4-quadrant ground tracking! */
@@ -702,8 +790,8 @@ void physics_update_level(void) BANKED {
             if (g_sonic.gsp != 0) {
                 cos_a = hw_cos(g_sonic.angle);
                 cos_cached = 1;
-                g_sonic.xsp = (int16_t)(((int32_t)g_sonic.gsp * cos_a) >> 8);
-                g_sonic.ysp = (int16_t)(((int32_t)g_sonic.gsp * sin_a) >> 8);
+                g_sonic.xsp = mul_trig(g_sonic.gsp, cos_a);
+                g_sonic.ysp = mul_trig(g_sonic.gsp, sin_a);
                 if (g_sonic.gsp > 0) {
                     int16_t wd = sonic_calc_room_ahead((uint8_t)(g_sonic.angle - 0x40));
                     if (wd < 0) {
@@ -814,7 +902,9 @@ void physics_update_level(void) BANKED {
 
     /* Full 4-Quadrant Ground & Air Collision + Authentic `Sonic_Loops` S-Tunnel & 360-Loop Engine! */
     if (g_sonic.on_ground) {
-        sonic_ground_sensors(pad);
+        /* Standing on an object: `Sonic_AnglePos` is skipped (`btst #3,obStatus`); the object pins Sonic. */
+        if (g_stand_obj != 0 && !g_stand_obj->active) g_stand_obj = 0;
+        if (g_stand_obj == 0) sonic_ground_sensors(pad);
     } else {
         sonic_air_sensors();
     }

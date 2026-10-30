@@ -33,7 +33,7 @@ Key architectural optimizations responsible for these gains:
    - Replaced per-frame `360`-cell full-viewport Software Trigonometric Rasterization + blocking `set_bkg_tiles()` loops with **4-way field-interleaved incremental affine stepping** (`u += cos_a; v -= sin_a;` — zero per-cell multiplies) writing directly into a `16`-byte-aligned `1,024`-byte buffer (`s_ss_dma_raw`) paired with **`76`-entry LUTs** (`s_ss_tile_lut[76]`, `s_ss_pal_lut[76]`) instead of `if/else` chains.
    - Streamed the `5`-row field strip directly into `$9800` (`VBK=0` tiles + `VBK=1` attributes) inside VBlank with an unrolled 4-byte copy loop, taking Special Stages from `13.0 FPS` to a locked **`57.5–58.5 FPS`**.
 2. **Non-Overlapping MBC5 Fast RAM Map (`rRAMB = 1` `$A000–$BFFF`) & Zero-Bank-Switch Terrain Collision (`src/main.c`)**:
-   - Caches the active foreground layout (`s_fg_ram` at `$B000`), row pointers (`s_fg_rows[32]`), pre-resolved chunk-bank pointers (`s_zone_chunk_ptrs[16]`), and both `640`-byte collision tables (`s_col_ram` at `$B400`). The former parallax layout is no longer copied or rendered; `$B200..$B3FF` is no longer allocated to a background layout. Internal WRAM remains below the project’s `$1D00` stack-safety ceiling (`l__DATA = 0x1C80` in the current default build).
+   - Caches the active foreground layout (`s_fg_ram` at `$B000`), row pointers (`s_fg_rows[32]`), pre-resolved chunk-bank pointers (`s_zone_chunk_ptrs[16]`), and both `640`-byte collision tables (`s_col_ram` at `$B400`). The former parallax layout is no longer copied or rendered; `$B200..$B3FF` is no longer allocated to a background layout. Internal WRAM remains below the project’s `$1D00` stack-safety ceiling (`l__DATA = 0x1CE2` in the current default build).
    - Added `1`-block metatile result memoization (`s_cached_d4`, `s_cached_blk`) in `get_chunk_block16()` so adjacent floor/wall sensor probes within the same `16×16` block avoid repeated MBC5 ROM bank switches.
 3. **2-Slot LRU Sonic `Map_Sonic` Tile Cache in CGB VRAM (`src/main.c`)**:
    - Expanded Sonic's OAM VRAM allocation from a single `16`-tile slot (`0..15`) to **dual `16`-tile LRU slots (`0..15` and `16..31`)**, eliminating `256`-byte `set_sprite_data()` uploads on `2`-frame run/roll animation cycles while cutting active uploads in half (`2 × 128` bytes).
@@ -42,7 +42,33 @@ Key architectural optimizations responsible for these gains:
    - `hw_scan_spawn_objects()` exits immediately in `< 10` cycles unless `|g_cam_x - s_last_scan_cam_x| >= 8`, staging `ox, oy, oid, osub` into stack locals before invoking `spawn_try_place_b127()` in Bank `127`.
    - `step_one_active_obj()` performs immediate screen-space bounding-box early-out (`sx < -16 || sx > 176 || sy < -24 || sy > 152`) for standard Rings (`0x25`) and Badniks before running `O(N)` collision or `Map_*` sprite emission, and `hw_clear_remaining_oam()` clears only previously populated OAM slots (`g_oam_next .. s_prev_oam_used`) rather than all `40` entries every frame.
 
-**Frame-time pass (all six zones, run-right scenarios, `bench.py` over PyBoy):** mean gameplay rate rose from `33.3 FPS` to `41.8 FPS` across GHZ/MZ/SYZ/LZ/SLZ/SBZ and the Special Stage, with no change to game logic or visuals (VRAM BG-map comparison at identical camera positions matches on the run scenarios). Main changes: the ring BG overlay is now O(n) with a 4-set grid lookup, per-cell change detection, dirty column/row masks, a no-change fast path and a GDMA ring-frame tile upload, and it lives in bank 2 (bank 0 has ~1.2 KB spare); `osc_step_all` uses literal step/limit constants; the HUD seconds counter no longer divides; Sonic and multi-tile sprites write OAM directly with one visibility test per row.
+**Frame-time passes (2026-10, all six zones + Special Stage, `tools/perf_bench.py` over PyBoy, 240 VBlanks holding right with jumps; Special Stage counts only frames spent inside the stage):**
+
+| Scenario | Original | After pass 1 | After pass 2 (current) |
+|---|---:|---:|---:|
+| Green Hill 1 run | 30.8 FPS | 40.2 FPS | **56.5 FPS** |
+| Green Hill 1 idle | 39.0 FPS | 59.0 FPS | **60.0 FPS** |
+| Marble 1 run | 31.5 FPS | 41.2 FPS | **57.2 FPS** |
+| Spring Yard 1 run | 26.2 FPS | 28.2 FPS | **53.8 FPS** |
+| Labyrinth 1 run | 29.0 FPS | 38.5 FPS | **58.8 FPS** |
+| Star Light 1 run | 27.5 FPS | 36.2 FPS | **49.2 FPS** |
+| Scrap Brain 1 run | 27.5 FPS | 36.2 FPS | **53.8 FPS** |
+| Special Stage | 55.0 FPS | 55.0 FPS | **58.4 FPS** |
+| **Mean** | **33.3 FPS** | **41.8 FPS** | **56.0 FPS** |
+
+Game logic and output are unchanged: a deterministic harness (`MAP=1 tools/compare_trace.py`) injects the same input into `g_joy` at the start of every game update in both ROMs and compares, after every update, `g_sonic` (minus the VBlank-timed invincibility counter), the ring count, both VRAM banks (`$8000..$9FFE`: tile data, BG map and window/HUD), shadow OAM, the object table and lost rings. Of 46 scripted and random-input runs of 900 updates across all acts, 44 match the original exactly; the other two (Green Hill 3 random input) differ only after Sonic picks up invincibility, whose timer counts VBlanks rather than updates, so it ends at a different update when the game runs faster.
+
+What changed:
+- **Pass 1:** the ring BG overlay became O(n) (grid lookup, per-cell change detection, dirty column/row masks, no-change fast path, GDMA ring-art upload) and moved to bank 2; `osc_step_all` uses literal step/limit constants; the HUD seconds counter no longer divides; Sonic and multi-tile sprites write OAM directly.
+- **Pass 2:**
+  - Hand-written SM83 assembly (inside the C files, behind the same C prototypes) for the hottest leaf routines: the terrain collision sampler, `memcpy` (`safe_copy_bytes`), 8x8 / 16x16 / multi-column sprite emitters, Sonic's sprite pieces and DPLC tile copy, the block-to-tile resolver, terrain span copies and VRAM span writers, the ring cell builder and flush loops, the active-object scan and pre-filter, and the spawn-list walker.
+  - Collision sampler inputs moved from an 8-argument call to fixed WRAM slots with 8-bit math; `(gsp * cos) >> 8` uses an exact 16x8 multiply instead of `__mullong`.
+  - Rings: the per-frame ring cell list is rebuilt only when the sequence of visible rings changes; ring objects take a lean path that skips the generic object function's stack frame.
+  - Object spawning: the scan resumes from a cursor instead of the start of the list, and the "already spawned" test uses a validated per-entry slot hint (SRAM `$A800`) before falling back to the full check.
+  - Terrain streaming copies whole chunk runs instead of looking up the chunk for every cell.
+  - The level HUD is converted to tiles during the update and written at the start of the next VBlank (no per-byte STAT stalls mid-frame); any other window write flushes it first, so window contents are unchanged.
+- Limits: bank 0 ends at `0x3A62` (about 1.4 KB free), WRAM `l__DATA = 0x1CE2` (below the `0x1D00` ceiling). New level-mode SRAM bank 1 uses: `$A800..$A9FF` spawn hints, `$B200..$B22F` ring sequence, `$B240..$B267` pending HUD rows.
+- Tests: two timing-sensitive e2e tests were fixed (the music-while-stalled test placed its spin loop inside the live stack; the spring test used a 19-byte object stride and assumed how far the camera follows in a fixed number of VBlanks). The remaining 4 failures are the same as on the original ROM (missing `vendor/s1disasm`, level-select REV toggle, GHZ3 capsule spawn).
 
 
 ### 3. Parallax-Free Levels, Collectible BG-Tile Rings & `9.26 kHz` `"SEGA"` Intro Voice
@@ -64,6 +90,17 @@ Key architectural optimizations responsible for these gains:
 - **MZ/SYZ/SBZ prop scaling**: `render_mapped_sprite_2bpp(..., half_scale_crop=True)` samples exact `2×2` source pixels per output pixel and center-crops oversized maps instead of non-uniformly squeezing them into `16×16`, preserving texture geometry.
 - **Spring Yard spikeball routing (`src/bosses_and_gimmicks.c`)**: corrected the object-to-tile dispatch: SYZ `0x57` small rotating spikeballs use prop `+16`, while `0x58` large spikeballs use prop `+4`. Previously the small ball was drawn from the roller-block art and the large ball from the small-ball art. Both now have distinct, crisp spiked-ball tiles. The Scrap Brain saw (`0x6A`) and electrical arc (`0x6E`) also have distinct, legible SBZ tiles.
 - **Verification**: the default `sonic.gbc` and its `rom/` mirror build without bank-overflow warnings; all **`10 / 10` PyBoy tests pass** (`pytest -q tests/test_e2e_emulator.py`), including feature checks, the 1200-VBlank invincibility duration check, and a dedicated 30 Hz pacing probe. The optional `sonic-30fps.gbc` produced 60 gameplay updates across 120 VBlanks while the audio ISR remained at 120 ticks; sampled frames passed the anti-black/white checks. The original 9-case end-to-end suite is not yet fully clean when run against the 30 Hz variant (3 timing-sensitive cases fail), so the regular ROM remains the default. See `verification/sonic_30fps_ghz.png` and `verification/sprite_fixes_atlas.png`.
+
+### 5. VRAM-Timing Fixes & Green Hill Interactive Props
+- **Corrupted sprite frames / background tiles / level-select cursor**: these came from VRAM, OAM and HDMA writes landing outside VBlank (mode 3 writes are dropped on real hardware and in accurate emulators). `flush_vblank_hdma` was reordered so general-purpose DMA only starts with enough VBlank left, `vram_run` in `dle_osc_sram.c` waits for a safe STAT mode, and the cursor is written from the VBlank queue. A strict mGBA build that logs every dropped write now reports **0 dropped writes** across GHZ1-3, MZ1, SYZ1, LZ1, SLZ1 and SBZ1 (`tests/ghz/` has the sweep inputs).
+- **Green Hill props now behave like Sonic 1** (`src/ghz_objects.c`, bank 127; art from `tools/ghz_props.py` -> `generated/ghz_props.h`, `generated/ghz_pals.h`; 28 sprite tiles at `ZSPR_PROP`):
+  - **Swinging bridge (`0x11`)**: log nudge/sine bend tables, Sonic rides the sagging surface and can walk off either end.
+  - **Moving platforms (`0x18`)**: horizontal, vertical, falling and stepping subtypes, with ground-carry and the S1 landing window.
+  - **Crumbling ledge (`0x1A`)**: S1 height map, 7-frame delay, 25 fragments with the original delay table.
+  - **Stone blocks (`0x1C`)**: solid top and sides, Sonic can stand on them.
+  - **Smash wall (`0x3B`)**: breaks only when Sonic rolls at speed >= `$480`, into 8 falling fragments.
+  - Sonic standing on an object is tracked in `g_stand_obj`; ground sensors are skipped while it is set, as in the original `Sonic_AnglePos`.
+- **Verification**: `python3 tests/ghz/run_tests.py sonic.gbc sonic.noi new` (13 checks: bridge, 3 platform kinds, ledge, rock, wall) all pass, as do the 9 regular PyBoy tests. Known compromises: 0x15 swinging platforms in GHZ2 still use the old placeholder art, and `l__DATA` is within about 20 bytes of its `0x1D00` limit, so new globals need to be traded against existing ones.
 
 ---
 
@@ -121,6 +158,7 @@ sonic-gbc/
 │   ├── objects.c                   # Bank 2: Fast screen-culled Rings, Monitors, V/H Springs, 24×24 Signpost (`0x0D`), Badniks & shots
 │   ├── screens_and_ss.c            # Bank 3: Boot -> Level Select, Title Sonic OAM pupils, 58.5 FPS Rotating Special Stages, Credits
 │   ├── bosses_and_gimmicks.c       # Bank 126: All 6 Zone Bosses (`GHZ3..FZ`), Zone gimmicks/props & cut `s1disasm` objects
+│   ├── ghz_objects.c               # Bank 127: Green Hill bridge, moving/falling platforms, crumbling ledge, stone blocks & smash walls
 │   └── dle_osc_sram.c              # Bank 127: `DynamicLevelEvents`, 512-slot spawner, 16-ch oscillators & MBC5 SRAM save
 ├── tools/
 │   ├── convert_all.py              # Master converter across all Zones, Acts, physics tables, Special Stages & audio
@@ -133,6 +171,7 @@ sonic-gbc/
 │   └── sega_twds_durs.json         # Hardware-calibrated step timing table for `sega.wav` Delta-Sigma encoding
 ├── generated/                      # Pre-generated C bank sources (`bank_004`..`bank_125`), headers & SHA-256 manifest
 ├── tests/
+│   ├── ghz/                        # PyBoy Green Hill prop checks (`run_tests.py`) and harness
 │   └── test_e2e_emulator.py        # 9-suite headless PyBoy CGB hardware, audio, BG integrity, pupils & FPS test suite
 └── verification/                   # Hardware telemetry (`e2e_emulator_report.json`) & live emulated screenshots (`*.png`)
 ```

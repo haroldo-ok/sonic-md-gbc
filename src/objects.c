@@ -1,5 +1,6 @@
 #pragma bank 2
 #include "engine.h"
+#include <stddef.h>
 #include <string.h>
 
 static uint8_t box_overlap(int16_t ax, int16_t ay, int16_t aw, int16_t ah,
@@ -15,6 +16,7 @@ void objects_reset_for_act(void) BANKED {
     memset(g_objs, 0, sizeof(g_objs));
     memset(g_lost_rings, 0, sizeof(g_lost_rings));
     memset(g_obj_taken, 0, sizeof(g_obj_taken));
+    ghz_objects_reset();
     g_signpost_passed = 0;
     g_act_clear_done = 0;
     g_boss_active = 0;
@@ -44,49 +46,193 @@ uint8_t g_ring_dirty_row[4];
 static uint16_t s_rc[2][MAX_BG_RING_CELLS]; /* bits 0..4 x, 5..9 y, 10..13 quadrant mask */
 static uint8_t s_rn[2];
 static uint8_t s_rcur;
-static const uint8_t s_bitmask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
+
+/* Per-frame sequence of queued ring cells (x | y << 5), kept in free level-mode SRAM ($B200..$B3FF). Stage rings
+   do not move, so while the camera stays inside the same tiles the sequence repeats exactly; building the four-cell
+   overlay list is then deferred and, if the whole sequence matches what is already on screen, skipped entirely. */
+#define RING_SEQ ((uint16_t *)0xB200U)
+static uint8_t s_seq_n;      /* length of the sequence whose cells are currently drawn (s_rc[prev]) */
+static uint8_t s_seq_k;      /* rings queued so far this frame */
+static uint8_t s_seq_match;  /* 1 while every ring queued this frame equals RING_SEQ[k] (cells not built yet) */
 
 static void hw_begin_bkg_rings(void) {
     s_rn[s_rcur] = 0;
+    s_seq_k = 0;
+    s_seq_match = 1;
 }
 
-/* Add one quadrant bit to the cell at `POS`: grid hit -> OR the mask; miss -> append (trusting nothing stale). */
-#define RING_ADD(POS, BITS)                                                               \
-    do {                                                                                  \
-        uint16_t p_ = (POS);                                                              \
-        uint8_t j_ = grid[p_];                                                            \
-        if (j_ < n && (cells[j_] & 0x03FFU) == p_) {                                      \
-            cells[j_] |= (BITS);                                                          \
-        } else if (n < MAX_BG_RING_CELLS) {                                               \
-            grid[p_] = n;                                                                 \
-            cells[n++] = (uint16_t)(p_ | (BITS));                                         \
-        }                                                                                 \
-    } while (0)
+/* Cell-list builder (hand-written). For each queued ring key (x | y << 5) it adds one quadrant bit to each of the
+   four cells (rowm|xm: 0x0400, rowm|x: 0x0800, row|xm: 0x1000, row|x: 0x2000), where xm/rowm are the previous
+   column/row modulo 32. Adding: grid[pos] = j is trusted only if j < n and cells[j] holds pos (then OR the bit);
+   otherwise, while n < MAX_BG_RING_CELLS, append pos|bit and point grid[pos] at it. */
+typedef char ring_cells_check[(MAX_BG_RING_CELLS == 96U) ? 1 : -1];
+static uint16_t *s_rb_cells;
+static uint8_t *s_rb_grid;
+static uint8_t s_rb_n, s_rb_bit, s_rb_cnt, s_rb_x, s_rb_xm, s_rb_row_lo, s_rb_row_hi, s_rb_rowm_lo, s_rb_rowm_hi;
+/* sdcccall(1): seq in DE, cnt in A. */
+static void ring_build_asm(const uint16_t *seq, uint8_t cnt) __naked {
+    (void)seq; (void)cnt;
+    __asm
+    or   a, a
+    ret  z
+    ld   (_s_rb_cnt), a
+1101$:
+    ld   a, (de)
+    inc  de
+    ld   c, a
+    ld   a, (de)
+    inc  de
+    push de
+    ld   b, a
+    ld   a, c
+    and  a, #0xE0
+    ld   l, a
+    ld   (_s_rb_row_lo), a
+    ld   a, b
+    and  a, #0x03
+    ld   h, a
+    ld   (_s_rb_row_hi), a
+    ld   a, l
+    sub  a, #0x20
+    ld   e, a
+    ld   (_s_rb_rowm_lo), a
+    ld   a, h
+    sbc  a, #0
+    and  a, #0x03
+    ld   d, a
+    ld   (_s_rb_rowm_hi), a
+    ld   a, c
+    and  a, #31
+    ld   (_s_rb_x), a
+    dec  a
+    and  a, #31
+    ld   (_s_rb_xm), a
+    or   a, e
+    ld   e, a
+    ld   a, #0x04
+    call 1150$
+    ld   a, (_s_rb_rowm_lo)
+    ld   e, a
+    ld   a, (_s_rb_rowm_hi)
+    ld   d, a
+    ld   a, (_s_rb_x)
+    or   a, e
+    ld   e, a
+    ld   a, #0x08
+    call 1150$
+    ld   a, (_s_rb_row_lo)
+    ld   e, a
+    ld   a, (_s_rb_row_hi)
+    ld   d, a
+    ld   a, (_s_rb_xm)
+    or   a, e
+    ld   e, a
+    ld   a, #0x10
+    call 1150$
+    ld   a, (_s_rb_row_lo)
+    ld   e, a
+    ld   a, (_s_rb_row_hi)
+    ld   d, a
+    ld   a, (_s_rb_x)
+    or   a, e
+    ld   e, a
+    ld   a, #0x20
+    call 1150$
+    pop  de
+    ld   a, (_s_rb_cnt)
+    dec  a
+    ld   (_s_rb_cnt), a
+    jr   nz, 1101$
+    ret
+1150$:
+    ld   (_s_rb_bit), a
+    ld   a, (_s_rb_grid)
+    add  a, e
+    ld   l, a
+    ld   a, (_s_rb_grid + 1)
+    adc  a, d
+    ld   h, a
+    ld   c, (hl)
+    ld   a, (_s_rb_n)
+    ld   b, a
+    ld   a, c
+    cp   a, b
+    jr   nc, 1152$
+    push hl
+    ld   l, c
+    ld   h, #0
+    add  hl, hl
+    ld   a, (_s_rb_cells)
+    add  a, l
+    ld   l, a
+    ld   a, (_s_rb_cells + 1)
+    adc  a, h
+    ld   h, a
+    ld   a, (hl+)
+    cp   a, e
+    jr   nz, 1151$
+    ld   a, (hl)
+    and  a, #0x03
+    cp   a, d
+    jr   nz, 1151$
+    ld   a, (_s_rb_bit)
+    or   a, (hl)
+    ld   (hl), a
+    pop  hl
+    ret
+1151$:
+    pop  hl
+1152$:
+    ld   a, b
+    cp   a, #96
+    ret  nc
+    ld   (hl), b
+    ld   l, b
+    ld   h, #0
+    add  hl, hl
+    ld   a, (_s_rb_cells)
+    add  a, l
+    ld   l, a
+    ld   a, (_s_rb_cells + 1)
+    adc  a, h
+    ld   h, a
+    ld   (hl), e
+    inc  hl
+    ld   a, (_s_rb_bit)
+    or   a, d
+    ld   (hl), a
+    ld   a, b
+    inc  a
+    ld   (_s_rb_n), a
+    ret
+    __endasm;
+}
+
+/* Build the four overlay cells of `cnt` queued rings from RING_SEQ[first..]. */
+static void ring_build_cells(uint8_t first, uint8_t cnt) {
+    s_rb_cells = s_rc[s_rcur];
+    s_rb_grid = RING_GRID(s_rcur);
+    s_rb_n = s_rn[s_rcur];
+    ring_build_asm(&RING_SEQ[first], cnt);
+    s_rn[s_rcur] = s_rb_n;
+}
 
 static void hw_queue_bkg_ring(int16_t world_x, int16_t world_y) {
-    uint8_t x, y, xm, ym;
-    uint16_t row, rowm;
-    uint16_t *cells;
-    uint8_t *grid;
-    uint8_t n;
+    uint16_t key;
+    uint8_t k = s_seq_k;
     /* Only populate the 32x32 world tile window around the visible viewport. */
-    if (world_x < g_cam_x - 16 || world_x > g_cam_x + 336 ||
-        world_y < g_cam_y - 16 || world_y > g_cam_y + 288) return;
-    x = (uint8_t)(((uint16_t)world_x >> 4) & 31U);
-    y = (uint8_t)(((uint16_t)world_y >> 4) & 31U);
-    xm = (uint8_t)((x + 31U) & 31U);
-    ym = (uint8_t)((y + 31U) & 31U);
-    row = (uint16_t)y << 5;
-    rowm = (uint16_t)ym << 5;
-    cells = s_rc[s_rcur];
-    grid = RING_GRID(s_rcur);
-    n = s_rn[s_rcur];
-    /* Each ring contributes one quadrant to each of four adjacent BG tiles. */
-    RING_ADD(rowm | xm, 0x0400U);
-    RING_ADD(rowm | x,  0x0800U);
-    RING_ADD(row | xm,  0x1000U);
-    RING_ADD(row | x,   0x2000U);
-    s_rn[s_rcur] = n;
+    if ((uint16_t)(world_x - g_cam_x + 16) > 352U || (uint16_t)(world_y - g_cam_y + 16) > 304U) return;
+    key = (uint16_t)((((uint16_t)world_x >> 4) & 31U) | (((uint16_t)world_y << 1) & 0x03E0U));
+    if (s_seq_match) {
+        if (k < s_seq_n && RING_SEQ[k] == key) { s_seq_k = (uint8_t)(k + 1U); return; }
+        /* Diverged from the drawn sequence: materialize the matching prefix, then continue normally. */
+        s_seq_match = 0;
+        s_seq_n = 0;   /* RING_SEQ is being overwritten: it no longer describes what is on screen */
+        ring_build_cells(0, k);
+    }
+    RING_SEQ[k] = key;
+    s_seq_k = (uint8_t)(k + 1U);
+    ring_build_cells(k, 1);
 }
 
 /* Remove the overlay tile (if still ours) at BG cell `pos`. */
@@ -106,6 +252,212 @@ static void ring_clear_cell(uint16_t pos) {
     }
 }
 
+/* Draw one overlay cell (existing terrain wins; attribute rewritten to clear stale terrain attrs). */
+static void ring_draw_cell(uint16_t cell) {
+    uint16_t pos = (uint16_t)(cell & 0x03FFU);
+    volatile uint8_t *p = RING_VRAM(pos);
+    uint8_t old, tile = (uint8_t)(BKG_RING_TILE_BASE + (cell >> 10));
+    while (STAT_REG & STATF_BUSY) {}
+    old = *p;
+    if (old == 0U || old >= BKG_RING_TILE_BASE) {
+        if (old != tile) {
+            while (STAT_REG & STATF_BUSY) {}
+            *p = tile;
+        }
+        VBK_REG = 1;
+        while (STAT_REG & STATF_BUSY) {}
+        *p = 0x0BU; /* Bank 1, palette 3: sky-matched zero + warm ring colors */
+        VBK_REG = 0;
+    }
+}
+
+static uint16_t *s_fl_pc, *s_fl_nc;
+static uint8_t *s_fl_pg, *s_fl_ng;
+static uint8_t s_fl_pn, s_fl_nn, s_fl_force, s_fl_k;
+
+/* For every previous cell whose position is not in the new set (new grid lookup validated against the new list),
+   call ring_clear_cell(pos). */
+static void ring_remove_loop(void) __naked {
+    __asm
+    ld   a, (_s_fl_pn)
+    or   a, a
+    ret  z
+    ld   (_s_fl_k), a
+    ld   hl, #_s_fl_pc
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+1201$:
+    ld   a, (hl+)
+    ld   e, a
+    ld   a, (hl+)
+    and  a, #0x03
+    ld   d, a
+    push hl
+    ld   a, (_s_fl_ng)
+    add  a, e
+    ld   l, a
+    ld   a, (_s_fl_ng + 1)
+    adc  a, d
+    ld   h, a
+    ld   c, (hl)
+    ld   a, (_s_fl_nn)
+    ld   b, a
+    ld   a, c
+    cp   a, b
+    jr   nc, 1205$
+    ld   l, c
+    ld   h, #0
+    add  hl, hl
+    ld   a, (_s_fl_nc)
+    add  a, l
+    ld   l, a
+    ld   a, (_s_fl_nc + 1)
+    adc  a, h
+    ld   h, a
+    ld   a, (hl+)
+    cp   a, e
+    jr   nz, 1205$
+    ld   a, (hl)
+    and  a, #0x03
+    cp   a, d
+    jr   z, 1206$
+1205$:
+    call _ring_clear_cell
+1206$:
+    pop  hl
+    ld   a, (_s_fl_k)
+    dec  a
+    ld   (_s_fl_k), a
+    jr   nz, 1201$
+    ret
+    __endasm;
+}
+
+/* For every new cell: unless forced, skip it when the previous set holds the identical cell (prev grid lookup
+   validated against the previous list) and neither its column nor its row is marked dirty; else ring_draw_cell. */
+static void ring_draw_loop(void) __naked {
+    __asm
+    ld   a, (_s_fl_nn)
+    or   a, a
+    ret  z
+    ld   (_s_fl_k), a
+    ld   hl, #_s_fl_nc
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+1301$:
+    ld   a, (hl+)
+    ld   e, a
+    ld   a, (hl+)
+    ld   d, a
+    push hl
+    ld   a, (_s_fl_force)
+    or   a, a
+    jp   nz, 1305$
+    ld   a, d
+    and  a, #0x03
+    ld   b, a
+    ld   a, (_s_fl_pg)
+    add  a, e
+    ld   l, a
+    ld   a, (_s_fl_pg + 1)
+    adc  a, b
+    ld   h, a
+    ld   c, (hl)
+    ld   a, (_s_fl_pn)
+    ld   b, a
+    ld   a, c
+    cp   a, b
+    jr   nc, 1305$
+    ld   l, c
+    ld   h, #0
+    add  hl, hl
+    ld   a, (_s_fl_pc)
+    add  a, l
+    ld   l, a
+    ld   a, (_s_fl_pc + 1)
+    adc  a, h
+    ld   h, a
+    ld   a, (hl+)
+    cp   a, e
+    jr   nz, 1305$
+    ld   a, (hl)
+    cp   a, d
+    jr   nz, 1305$
+    ld   a, e
+    and  a, #31
+    ld   c, a
+    rrca
+    rrca
+    rrca
+    and  a, #0x03
+    ld   hl, #_g_ring_dirty_col
+    add  a, l
+    ld   l, a
+    ld   a, #0
+    adc  a, h
+    ld   h, a
+    ld   a, c
+    and  a, #7
+    ld   c, a
+    ld   a, #1
+    inc  c
+1302$:
+    dec  c
+    jr   z, 1303$
+    add  a, a
+    jr   1302$
+1303$:
+    and  a, (hl)
+    jr   nz, 1305$
+    ld   a, d
+    and  a, #0x03
+    add  a, a
+    add  a, a
+    add  a, a
+    ld   c, a
+    ld   a, e
+    swap a
+    rrca
+    and  a, #7
+    or   a, c
+    ld   c, a
+    rrca
+    rrca
+    rrca
+    and  a, #0x03
+    ld   hl, #_g_ring_dirty_row
+    add  a, l
+    ld   l, a
+    ld   a, #0
+    adc  a, h
+    ld   h, a
+    ld   a, c
+    and  a, #7
+    ld   c, a
+    ld   a, #1
+    inc  c
+1307$:
+    dec  c
+    jr   z, 1308$
+    add  a, a
+    jr   1307$
+1308$:
+    and  a, (hl)
+    jr   z, 1306$
+1305$:
+    call _ring_draw_cell
+1306$:
+    pop  hl
+    ld   a, (_s_fl_k)
+    dec  a
+    ld   (_s_fl_k), a
+    jp   nz, 1301$
+    ret
+    __endasm;
+}
+
 void hw_ring_reset(void) BANKED {
     uint8_t cur = s_rcur, prv = (uint8_t)(cur ^ 1U);
     uint8_t i, pn = s_rn[prv];
@@ -115,6 +467,7 @@ void hw_ring_reset(void) BANKED {
         for (i = 0; i < pn; i++) ring_clear_cell((uint16_t)(s_rc[prv][i] & 0x03FFU));
     }
     s_rn[0] = s_rn[1] = 0;
+    s_seq_n = 0; s_seq_k = 0; s_seq_match = 1;
     g_ring_force_redraw = 1;
 }
 
@@ -122,19 +475,31 @@ void hw_flush_bkg_rings(void) BANKED {
     uint8_t cur = s_rcur, prv = (uint8_t)(cur ^ 1U);
     uint16_t *nc = s_rc[cur], *pc = s_rc[prv];
     uint8_t *ng = RING_GRID(cur), *pg = RING_GRID(prv);
-    uint8_t nn = s_rn[cur], pn = s_rn[prv];
+    uint8_t nn, pn = s_rn[prv];
     uint8_t force = g_ring_force_redraw;
     uint8_t unchanged = 0;
-    uint8_t i, j;
-    uint16_t *cp;
+    uint8_t i;
+    uint8_t dirty = (uint8_t)(g_ring_dirty_col[0] | g_ring_dirty_col[1] | g_ring_dirty_col[2] | g_ring_dirty_col[3] |
+                              g_ring_dirty_row[0] | g_ring_dirty_row[1] | g_ring_dirty_row[2] | g_ring_dirty_row[3]);
+
+    if (s_seq_match) {
+        if (s_seq_k == s_seq_n && !force && !dirty) {
+            /* Exactly the rings already on screen and nothing streamed over them: no VRAM work, keep the drawn set. */
+            s_seq_k = 0;
+            return;
+        }
+        ring_build_cells(0, s_seq_k);   /* deferred build of the (prefix-)matching sequence */
+    }
+    s_seq_n = s_seq_k;
+    s_seq_k = 0;
+    s_seq_match = 1;
+    nn = s_rn[cur];
 
     VBK_REG = 0;
 
     /* Fast path: identical cell list (same order, same quadrant masks), nothing streamed over it, no forced redraw.
        This is the common case while the camera is not crossing a tile boundary. */
-    if (!force && nn == pn &&
-        !(g_ring_dirty_col[0] | g_ring_dirty_col[1] | g_ring_dirty_col[2] | g_ring_dirty_col[3] |
-          g_ring_dirty_row[0] | g_ring_dirty_row[1] | g_ring_dirty_row[2] | g_ring_dirty_row[3])) {
+    if (!force && nn == pn && !dirty) {
         uint16_t *a = nc, *b = pc;
         for (i = nn; i != 0U; i--) {
             if (*a++ != *b++) break;
@@ -143,51 +508,13 @@ void hw_flush_bkg_rings(void) BANKED {
     }
 
     if (!unchanged) {
-        /* Remove cells whose last contributing stage ring was collected or streamed out. */
-        cp = pc;
-        for (i = pn; i != 0U; i--) {
-            uint16_t pos = (uint16_t)(*cp++ & 0x03FFU);
-            j = ng[pos];
-            if (j < nn && (nc[j] & 0x03FFU) == pos) continue;
-            ring_clear_cell(pos);
-        }
-    }
-
-    /* Ring art animation (rewriting the 16 shared BG tile patterns) is DMA'd at the start of VBlank by
-       `flush_vblank_hdma()` in bank 0; map entries never change for it. */
-
-    if (!unchanged) {
-        /* Draw only new / changed cells and cells on columns/rows that terrain streaming just rewrote. */
-        cp = nc;
-        for (i = nn; i != 0U; i--) {
-            uint16_t cell = *cp++;
-            uint16_t pos = (uint16_t)(cell & 0x03FFU);
-            uint8_t x = (uint8_t)pos & 31U;
-            uint8_t y = (uint8_t)(pos >> 5);
-            volatile uint8_t *p;
-            uint8_t old, tile;
-            if (!force) {
-                j = pg[pos];
-                if (j < pn && pc[j] == cell &&
-                    !(g_ring_dirty_col[x >> 3] & s_bitmask[x & 7U]) &&
-                    !(g_ring_dirty_row[y >> 3] & s_bitmask[y & 7U])) continue;
-            }
-            p = RING_VRAM(pos);
-            tile = (uint8_t)(BKG_RING_TILE_BASE + (cell >> 10));
-            while (STAT_REG & STATF_BUSY) {}
-            old = *p;
-            if (old == 0U || old >= BKG_RING_TILE_BASE) { /* existing terrain wins */
-                if (old != tile) {
-                    while (STAT_REG & STATF_BUSY) {}
-                    *p = tile;
-                }
-                /* Attributes live in VRAM bank 1; rewrite to clear stale terrain attrs. */
-                VBK_REG = 1;
-                while (STAT_REG & STATF_BUSY) {}
-                *p = 0x0BU; /* Bank 1, palette 3: sky-matched zero + warm ring colors */
-                VBK_REG = 0;
-            }
-        }
+        /* Remove cells whose last contributing stage ring was collected or streamed out, then draw only new /
+           changed cells and cells on columns/rows that terrain streaming just rewrote (hand-written loops). */
+        s_fl_pc = pc; s_fl_pn = pn; s_fl_pg = pg;
+        s_fl_nc = nc; s_fl_nn = nn; s_fl_ng = ng;
+        s_fl_force = force;
+        ring_remove_loop();
+        ring_draw_loop();
     }
 
     g_ring_force_redraw = 0;
@@ -415,28 +742,200 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
     hw_put_sprite16(sx, sy, spr + anim_off, 0x08 | pal | (o->vx > 0 ? 0x20 : 0));
 }
 
+/* Stage ring (`0x25`, not exploding): same checks, in the same order, as the generic `step_one_active_obj`
+   path, but without its large prologue/stack frame. Rings are the majority of active objects. */
+static void step_ring_obj(ActiveObj *o) {
+    int16_t dx = o->x - g_cam_x;
+    int16_t sx, sy;
+    if ((uint16_t)(dx + 160) > 640U) { o->active = 0; return; }
+    sx = dx >> 1;
+    sy = (o->y - g_cam_y) >> 1;
+    if ((uint16_t)(sx + 20) > 200U || (uint16_t)(sy + 24) > 176U) return;
+    if (!g_sonic.dead) {
+        int16_t rdx = g_sonic.x - o->x;
+        if ((uint16_t)(rdx + 17) < 35U) {
+            int16_t rdy = g_sonic.y - o->y;
+            if ((uint16_t)(rdy + 23) < 47U) {
+                g_rings++;
+                g_score += 10;
+                g_hud_dirty = 1;
+                hw_play_sfx(SFX_RING);
+                g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
+                o->active = 0;
+                return;
+            }
+        }
+    }
+    hw_queue_bkg_ring(o->x, o->y);
+}
+
+/* First active slot at or after `o` (or &g_objs[MAX_ACTIVE_OBJS]). Inactive slots are skipped in a tight loop.
+   sdcccall(1): o in DE, result in BC. */
+typedef char active_obj_size_check[(sizeof(ActiveObj) == 20U && MAX_ACTIVE_OBJS == 24 && MAX_LOST_RINGS == 8) ? 1 : -1];
+static ActiveObj *obj_next_active(ActiveObj *o) __naked {
+    (void)o;
+    __asm
+    ld   h, d
+    ld   l, e
+    ld   de, #20
+701$:
+    ld   a, l
+    cp   a, #<(_g_objs + 480)
+    jr   nz, 702$
+    ld   a, h
+    cp   a, #>(_g_objs + 480)
+    jr   z, 703$
+702$:
+    ld   a, (hl)
+    or   a, a
+    jr   nz, 703$
+    add  hl, de
+    jr   701$
+703$:
+    ld   b, h
+    ld   c, l
+    ret
+    __endasm;
+}
+
+/* Lean pre-pass for generic objects: the range-deactivation and off-viewport skip that used to open
+   `step_one_active_obj` (identical conditions, in the same order). Returns 1 when the object should run, with its
+   half-scale screen position in s_obj_sx / s_obj_sy. Keeping this out of the big function avoids paying its
+   38-byte stack frame for objects that are skipped. */
+static int16_t s_obj_sx, s_obj_sy;
+static uint8_t s_pf_id;
+/* Hand-written equivalent of:
+ *   dx = o->x - g_cam_x;
+ *   if ((uint16_t)(dx + 160) > 640 && id not in {3D,3E,0D,7C}) { o->active = 0; return 0; }
+ *   s_obj_sx = dx >> 1; s_obj_sy = (o->y - g_cam_y) >> 1;
+ *   if (((uint16_t)(sx + 20) > 200 || (uint16_t)(sy + 24) > 176) && id not in {3D,7A,71,85,0D,3E,4B,7D}) return 0;
+ *   return 1;
+ * ActiveObj layout: active +0, id +1, x +5, y +7. sdcccall(1): o in DE, result in A. */
+typedef char active_obj_layout_check[(offsetof(ActiveObj, id) == 1U && offsetof(ActiveObj, x) == 5U &&
+                                      offsetof(ActiveObj, y) == 7U) ? 1 : -1];
+static uint8_t obj_prefilter(ActiveObj *o) __naked {
+    (void)o;
+    __asm
+    ld   h, d
+    ld   l, e
+    inc  hl
+    ld   a, (hl)
+    ld   (_s_pf_id), a
+    push de
+    ld   bc, #4
+    add  hl, bc
+    ld   a, (_g_cam_x)
+    ld   c, a
+    ld   a, (_g_cam_x + 1)
+    ld   b, a
+    ld   a, (hl+)
+    sub  a, c
+    ld   e, a
+    ld   a, (hl+)
+    sbc  a, b
+    ld   d, a
+    ld   a, (_g_cam_y)
+    ld   c, a
+    ld   a, (_g_cam_y + 1)
+    ld   b, a
+    ld   a, (hl+)
+    sub  a, c
+    ld   c, a
+    ld   a, (hl)
+    sbc  a, b
+    ld   b, a
+    ld   hl, #160
+    add  hl, de
+    ld   a, h
+    cp   a, #2
+    jr   c, 720$
+    jr   nz, 721$
+    ld   a, l
+    cp   a, #0x81
+    jr   c, 720$
+721$:
+    ld   a, (_s_pf_id)
+    cp   a, #0x3D
+    jr   z, 720$
+    cp   a, #0x3E
+    jr   z, 720$
+    cp   a, #0x0D
+    jr   z, 720$
+    cp   a, #0x7C
+    jr   z, 720$
+    pop  hl
+    xor  a, a
+    ld   (hl), a
+    ret
+720$:
+    pop  hl
+    sra  d
+    rr   e
+    sra  b
+    rr   c
+    ld   hl, #_s_obj_sx
+    ld   (hl), e
+    inc  hl
+    ld   (hl), d
+    ld   hl, #_s_obj_sy
+    ld   (hl), c
+    inc  hl
+    ld   (hl), b
+    ld   hl, #20
+    add  hl, de
+    ld   a, h
+    or   a, a
+    jr   nz, 730$
+    ld   a, l
+    cp   a, #201
+    jr   nc, 730$
+    ld   hl, #24
+    add  hl, bc
+    ld   a, h
+    or   a, a
+    jr   nz, 730$
+    ld   a, l
+    cp   a, #177
+    jr   nc, 730$
+    ld   a, #1
+    ret
+730$:
+    ld   a, (_s_pf_id)
+    cp   a, #0x3D
+    jr   z, 731$
+    cp   a, #0x7A
+    jr   z, 731$
+    cp   a, #0x71
+    jr   z, 731$
+    cp   a, #0x85
+    jr   z, 731$
+    cp   a, #0x0D
+    jr   z, 731$
+    cp   a, #0x3E
+    jr   z, 731$
+    cp   a, #0x4B
+    jr   z, 731$
+    cp   a, #0x7D
+    jr   z, 731$
+    cp   a, #0x11
+    jr   z, 731$
+    cp   a, #0x18
+    jr   z, 731$
+    cp   a, #0x1A
+    jr   z, 731$
+    xor  a, a
+    ret
+731$:
+    ld   a, #1
+    ret
+    __endasm;
+}
+
 static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
     int16_t cam_x = g_cam_x;
     int16_t cam_y = g_cam_y;
-    int16_t sx, sy;
+    int16_t sx = s_obj_sx, sy = s_obj_sy;
     uint8_t id = o->id;
-
-    if (o->x < cam_x - 160 || o->x > cam_x + 480) {
-        if (id != 0x3D && id != 0x3E && id != 0x0D && id != 0x7C) {
-            o->active = 0;
-            return 0;
-        }
-    }
-
-    sx = (o->x - cam_x) >> 1;
-    sy = (o->y - cam_y) >> 1;
-
-    /* Skip invisible off-viewport objects cleanly while keeping active Boss (`0x3D`..`0x85`) & Goal (`0x0D`) alive */
-    if ((sx < -20 || sx > 180 || sy < -24 || sy > 152) &&
-        id != 0x3D && id != 0x7A && id != 0x71 && id != 0x85 &&
-        id != 0x0D && id != 0x3E && id != 0x4B && id != 0x7D) {
-        return 0;
-    }
 
     /* Explosion / Animal Release State (state == 99) */
     if (o->state == 99) {
@@ -782,6 +1281,13 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
         return 0;
         }
 
+        /* --- GREEN HILL INTERACTIVE PROPS (bridge, platforms, collapsing ledge, rock, smash walls, bridge stumps) --- */
+        if (g_ram_act.vset_idx == 0 &&
+            (id == 0x11 || id == 0x18 || id == 0x1A || id == 0x1C || id == 0x3B || id == 0x3C)) {
+            ghz_object(o, sx, sy);
+            return 0;
+        }
+
         /* --- FAST INLINE SCENERY PROP (`0x1C` Bridge Stump / Decoration) — ZERO cross-bank call! --- */
         if (id == 0x1C) {
             hw_put_sprite8(sx - 4, sy - 4, ZSPR_PROP, 0x08 | 6);
@@ -829,7 +1335,8 @@ void objects_update_and_draw(void) BANKED {
     }
 
     /* 3. Update & Draw Scattered Lost Rings (`37 Rings.asm`) — pointer walk (`0` software multiplies!) */
-    {
+    if (g_lost_rings[0].active | g_lost_rings[1].active | g_lost_rings[2].active | g_lost_rings[3].active |
+        g_lost_rings[4].active | g_lost_rings[5].active | g_lost_rings[6].active | g_lost_rings[7].active) {
         LostRing *r = g_lost_rings;
         for (i = 0; i < MAX_LOST_RINGS; i++, r++) {
             int16_t sx, sy;
@@ -868,10 +1375,11 @@ void objects_update_and_draw(void) BANKED {
     /* 4. Update & Draw Active Level Objects — pointer walk (`0` software `__mulint` per frame!) */
     hw_begin_bkg_rings();
     {
-        ActiveObj *o = g_objs;
-        for (i = 0; i < MAX_ACTIVE_OBJS; i++, o++) {
-            if (!o->active) continue;
-            if (step_one_active_obj(o, sonic_spinning)) return;
+        ActiveObj *o = obj_next_active(g_objs);
+        while (o != &g_objs[MAX_ACTIVE_OBJS]) {
+            if (o->id == 0x25 && o->state != 99) step_ring_obj(o);
+            else if (obj_prefilter(o) && step_one_active_obj(o, sonic_spinning)) return;
+            o = obj_next_active(o + 1);
         }
     }
 

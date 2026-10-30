@@ -262,6 +262,7 @@ void hw_fill_win_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t fill_t
     uint8_t row_t[20];
     uint8_t row_a[20];
     uint8_t i, ry;
+    if (g_hud_pend) hud_flush_pending();
     if (w > 20) w = 20;
     for (i = 0; i < w; i++) {
         row_t[i] = fill_tile;
@@ -300,17 +301,22 @@ void hw_fade_step(uint8_t step_idx) BANKED {
     set_bkg_palette(7, 1, faded);
 }
 
+/* Last `digits` decimal digits of `val`, zero padded (same output as the former %10 / /10 loop), using
+   subtraction instead of the software divide routines. */
 static void write_u16_digits(char *dst, uint16_t val, uint8_t digits) {
+    static const uint16_t pow10[5] = { 10000U, 1000U, 100U, 10U, 1U };
     uint8_t i;
-    for (i = digits; i > 0; i--) {
-        dst[i - 1] = (char)('0' + (val % 10));
-        val /= 10;
+    for (i = 0; i < 5U; i++) {
+        uint16_t p = pow10[i];
+        char c = '0';
+        while (val >= p) { val -= p; c++; }
+        if ((uint8_t)(5U - i) <= digits) dst[digits - (uint8_t)(5U - i)] = c;
     }
+    for (i = 5; i < digits; i++) dst[digits - 1U - i] = '0';
 }
 
-void hw_update_hud(void) BANKED {
-    char row0[21];
-    char row1[21];
+static uint8_t b127_ascii_tile(char c);
+static void hud_build(char *row0, char *row1) {
     uint16_t secs_total = g_level_frames / 60;
     uint8_t mins = (uint8_t)(secs_total / 60);
     uint8_t secs = (uint8_t)(secs_total % 60);
@@ -333,8 +339,29 @@ void hw_update_hud(void) BANKED {
         row1[16] = (char)('0' + em_cnt);
     }
 
+}
+
+void hw_update_hud(void) BANKED {
+    char row0[21];
+    char row1[21];
+    hud_build(row0, row1);
     hw_print_win(0, 0, row0);
     hw_print_win(0, 1, row1);
+}
+
+/* Level-mode HUD refresh: same two 20-cell window rows, but converted to tiles now and written to VRAM at the
+   start of the next VBlank by `flush_vblank_hdma()` (no per-byte STAT stalls mid-frame). Any other window write
+   flushes a pending HUD first, so the order of window writes is unchanged. */
+void hw_update_hud_deferred(void) BANKED {
+    char row0[21];
+    char row1[21];
+    uint8_t i;
+    hud_build(row0, row1);
+    for (i = 0; i < 20U; i++) {
+        g_hud_pend_t[i] = b127_ascii_tile(row0[i]);
+        g_hud_pend_t[20U + i] = b127_ascii_tile(row1[i]);
+    }
+    g_hud_pend = 1;
 }
 
 BANKREF(draw_transition_card_win_b127)
@@ -360,42 +387,45 @@ void draw_transition_card_win_b127(const char *line1, const char *line2, uint8_t
 
 BANKREF(spawn_try_place_b127)
 void spawn_try_place_b127(uint16_t idx, int16_t ox, int16_t oy, uint8_t oid, uint8_t osub) BANKED {
-    uint8_t already = 0, s, slot_out = 0xFF;
-    if (idx < 512U && oid != 0x0D && oid != 0x3E && oid != 0x4B &&
+    uint8_t s;
+    ActiveObj *o, *slot = 0;
+    uint8_t keep = (oid == 0x0D || oid == 0x3E || oid == 0x4B);
+    if (idx < 512U && !keep &&
         (g_obj_taken[idx >> 3] & (uint8_t)(1U << (idx & 7)))) return;
-    for (s = 0; s < MAX_ACTIVE_OBJS; s++) {
-        if (g_objs[s].active) {
-            if (g_objs[s].spawn_slot == idx && g_objs[s].base_x == ox) {
-                already = 1;
-                break;
-            }
-        } else if (slot_out == 0xFF) {
-            slot_out = s;
+    for (s = MAX_ACTIVE_OBJS, o = g_objs; s != 0U; s--, o++) {
+        if (o->active) {
+            if (o->spawn_slot == idx && o->base_x == ox) return;   /* already spawned */
+        } else if (!slot) {
+            slot = o;
         }
     }
-    if (!already && slot_out == 0xFF && (oid == 0x0D || oid == 0x3E || oid == 0x4B)) {
-        for (s = 0; s < MAX_ACTIVE_OBJS; s++) {
-            uint8_t eid = g_objs[s].id;
+    if (!slot && keep) {
+        for (s = MAX_ACTIVE_OBJS, o = g_objs; s != 0U; s--, o++) {
+            uint8_t eid = o->id;
             if (eid != 0x0D && eid != 0x3E && eid != 0x4B && eid != 0x3D) {
-                slot_out = s;
+                slot = o;
                 break;
             }
         }
     }
-    if (!already && slot_out != 0xFF) {
-        g_objs[slot_out].active = 1;
-        g_objs[slot_out].id = oid;
-        g_objs[slot_out].subtype = osub;
-        g_objs[slot_out].spawn_slot = idx;
-        g_objs[slot_out].x = ox;
-        g_objs[slot_out].y = oy;
-        g_objs[slot_out].base_x = ox;
-        g_objs[slot_out].base_y = oy;
-        g_objs[slot_out].vx = -0x80;
-        g_objs[slot_out].vy = 0;
-        g_objs[slot_out].state = 0;
-        g_objs[slot_out].timer = 0;
-        g_objs[slot_out].hp = 1;
+    if (slot) {
+        uint8_t si = 0;
+        const ActiveObj *q = g_objs;
+        while (q != slot) { q++; si++; }
+        SPAWN_HINT[idx & 511U] = si;
+        slot->active = 1;
+        slot->id = oid;
+        slot->subtype = osub;
+        slot->spawn_slot = idx;
+        slot->x = ox;
+        slot->y = oy;
+        slot->base_x = ox;
+        slot->base_y = oy;
+        slot->vx = -0x80;
+        slot->vy = 0;
+        slot->state = 0;
+        slot->timer = 0;
+        slot->hp = 1;
     }
 }
 
@@ -442,10 +472,46 @@ static uint8_t b127_ascii_tile(char c) {
     return 80;
 }
 
+/* Gated VRAM byte run: copy s_vcnt bytes from `ps` to `vd`, waiting for STAT mode 0/1 (or VBlank lines
+   144..152) immediately before EACH write. The check and the store are only a few instructions apart, so the
+   store always lands inside the same HBlank/OAM-scan window; a C `while (STAT & BUSY) {}; vdst[i] = ...` loop has
+   a much longer gap, and writes that land in mode 3 are dropped on real hardware (and in accurate emulators), which
+   showed up as a flickering / stale level-select cursor. sdcccall(1): vd in DE, ps in BC. */
+static uint8_t s_vcnt;
+static void vram_run(volatile uint8_t *vd, const uint8_t *ps) __naked {
+    (void)vd; (void)ps;
+    __asm
+    ld   h, d
+    ld   l, e
+    ld   d, b
+    ld   e, c
+    ld   a, (_s_vcnt)
+    ld   b, a
+321$:
+    ldh  a, (0x44)
+    cp   a, #144
+    jr   c, 322$
+    cp   a, #153
+    jr   c, 323$
+322$:
+    ldh  a, (0x41)
+    and  a, #0x02
+    jr   nz, 322$
+323$:
+    ld   a, (de)
+    inc  de
+    ld   (hl+), a
+    dec  b
+    jr   nz, 321$
+    ret
+    __endasm;
+}
+
 BANKREF(print_win_ram_b127)
 void print_win_ram_b127(uint8_t x, uint8_t y, const char *ram_str) BANKED {
     uint8_t row_t[20], row_a[20];
-    uint8_t i, n = 0;
+    uint8_t n = 0;
+    if (g_hud_pend) hud_flush_pending();
     while (ram_str[n] != '\0' && (uint8_t)(x + n) < 20U) {
         row_t[n] = b127_ascii_tile(ram_str[n]);
         row_a[n] = 0x08U | 7U;
@@ -453,10 +519,11 @@ void print_win_ram_b127(uint8_t x, uint8_t y, const char *ram_str) BANKED {
     }
     if (n > 0U) {
         volatile uint8_t *vdst = (volatile uint8_t *)(0x9C00U + ((uint16_t)y << 5) + x);
+        s_vcnt = n;
         VBK_REG = 1;
-        for (i = 0; i < n; i++) { while (STAT_REG & STATF_BUSY) {} vdst[i] = row_a[i]; }
+        vram_run(vdst, row_a);
         VBK_REG = 0;
-        for (i = 0; i < n; i++) { while (STAT_REG & STATF_BUSY) {} vdst[i] = row_t[i]; }
+        vram_run(vdst, row_t);
     }
 }
 
@@ -468,22 +535,92 @@ typedef struct {
     uint8_t a[23];
 } VScrollSpanB127;
 
+/* Hand-written span writers (same per-byte rule as before: outside VBlank (LY < 144 or LY == 153) wait for
+   STAT mode 0/1 before each VRAM write; column steps +32 with wrap inside the 32x32 map, row steps +1 with wrap
+   inside the 32-cell line). sdcccall(1): vd in DE, ps in BC. */
+static void vram_col20(volatile uint8_t *vd, const uint8_t *ps) __naked {
+    (void)vd; (void)ps;
+    __asm
+    ld   h, d
+    ld   l, e
+    ld   d, b
+    ld   e, c
+    ld   b, #20
+301$:
+    ldh  a, (0x44)
+    cp   a, #144
+    jr   c, 302$
+    cp   a, #153
+    jr   c, 303$
+302$:
+    ldh  a, (0x41)
+    and  a, #0x02
+    jr   nz, 302$
+303$:
+    ld   a, (de)
+    inc  de
+    ld   (hl), a
+    ld   a, l
+    add  a, #32
+    ld   l, a
+    jr   nc, 304$
+    inc  h
+    ld   a, h
+    cp   a, #0x9C
+    jr   c, 304$
+    sub  a, #4
+    ld   h, a
+304$:
+    dec  b
+    jr   nz, 301$
+    ret
+    __endasm;
+}
+
+static void vram_row23(volatile uint8_t *vd, const uint8_t *ps) __naked {
+    (void)vd; (void)ps;
+    __asm
+    ld   h, d
+    ld   l, e
+    ld   d, b
+    ld   e, c
+    ld   b, #23
+311$:
+    ldh  a, (0x44)
+    cp   a, #144
+    jr   c, 312$
+    cp   a, #153
+    jr   c, 313$
+312$:
+    ldh  a, (0x41)
+    and  a, #0x02
+    jr   nz, 312$
+313$:
+    ld   a, (de)
+    inc  de
+    ld   (hl), a
+    ld   a, l
+    and  a, #31
+    cp   a, #31
+    ld   a, l
+    jr   z, 314$
+    inc  a
+    ld   l, a
+    jr   315$
+314$:
+    sub  a, #31
+    ld   l, a
+315$:
+    dec  b
+    jr   nz, 311$
+    ret
+    __endasm;
+}
+
 static void write_vram_span_b127(uint8_t vx, uint8_t vy, uint8_t is_col, const uint8_t *ps) {
     volatile uint8_t *vd = (volatile uint8_t *)(0x9800U + ((uint16_t)vy << 5) + vx);
-    uint8_t n;
-    if (is_col) {
-        for (n = 20U; n != 0U; n--) {
-            if (LY_REG < 144U || LY_REG >= 153U) { while (STAT_REG & STATF_BUSY) {} }
-            *vd = *ps++;
-            vd = ((uint16_t)vd < 0x9BE0U) ? (vd + 32) : (vd - 0x03E0U);
-        }
-    } else {
-        for (n = 23U; n != 0U; n--) {
-            if (LY_REG < 144U || LY_REG >= 153U) { while (STAT_REG & STATF_BUSY) {} }
-            *vd = *ps++;
-            vd = (((uint8_t)(uint16_t)vd & 31U) != 31U) ? (vd + 1) : (vd - 31);
-        }
-    }
+    if (is_col) vram_col20(vd, ps);
+    else        vram_row23(vd, ps);
 }
 
 BANKREF(flush_vscroll_b127)

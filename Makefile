@@ -10,7 +10,7 @@ ROM_OUT  := sonic.gbc
 CFLAGS   := -msm83:gb -Wf--max-allocs-per-node -Wf1500 -Iinclude -Isrc -Igenerated
 LDFLAGS  := -msm83:gb -Wm-yC -Wm-ynSONIC1GBC -Wl-yt0x1B -Wl-yo128 -Wl-ya4 -Wl-j -Wl-m
 
-ENGINE_SRCS := src/main.c src/physics.c src/objects.c src/screens_and_ss.c src/bosses_and_gimmicks.c src/dle_osc_sram.c
+ENGINE_SRCS := src/main.c src/physics.c src/objects.c src/screens_and_ss.c src/bosses_and_gimmicks.c src/dle_osc_sram.c src/ghz_objects.c
 GEN_SRCS    := $(sort $(wildcard generated/*.c))
 
 ENGINE_OBJS := $(patsubst src/%.c,$(OBJ_DIR)/src_%.o,$(ENGINE_SRCS))
@@ -26,7 +26,7 @@ assets:
 	$(PYTHON) tools/convert_all.py
 	$(PYTHON) tools/build_complete_supplement.py
 
-$(OBJ_DIR)/src_%.o: src/%.c src/engine.h generated/assets.h generated/supplement.h
+$(OBJ_DIR)/src_%.o: src/%.c src/engine.h generated/assets.h generated/supplement.h generated/ghz_props.h generated/ghz_pals.h
 	@mkdir -p $(OBJ_DIR)
 	@if [ -d "$(CURDIR)/tools/gbdk" ]; then chmod -R +x "$(CURDIR)/tools/gbdk"; fi
 	$(LCC) $(CFLAGS) -c -o $@ $<

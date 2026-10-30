@@ -1371,7 +1371,7 @@ def test_interrupt_driven_music_playback_when_main_loop_stalled():
     1. Across 180 live gameplay frames (`3.0s`), `g_sound_isr_ticks` advances 1:1 with every hardware VBlank (`180`).
     2. When `g_paused == 1` in `GM_LEVEL`, the ISR mutes output (`NR51 == 0`) & holds BGM position (`delta_events == 0`),
        and immediately unmutes & resumes right from that beat when `g_paused == 0`!
-    3. Even when the main CPU loop is completely frozen in an infinite WRAM `JR -2` (`0x18 0xFE`) spin loop at `0xDF80`
+    3. Even when the main CPU loop is completely frozen in an infinite WRAM `JR -2` (`0x18 0xFE`) spin loop in free WRAM (between `_DATA` and the stack)
        for 120 full hardware frames (`2.0s`, `g_frame_counter` delta == `0`!), the SM83 hardware interrupt continues
        firing `120` times, advancing `g_sound_events` and synthesizing full non-silent 4-channel Green Hill Zone music!
     """
@@ -1420,10 +1420,15 @@ def test_interrupt_driven_music_playback_when_main_loop_stalled():
         assert pb.memory[0xFF25] == 0xFF, f"Expected NR51 unmuted on unpause, got 0x{pb.memory[0xFF25]:02X}"
         assert ((read_u16(pb, sym_ev) - ev_paused_start) & 0xFFFF) >= 3, "BGM did not resume after unpause!"
 
-        # 3. MIC-DROP PROOF: Freeze `main()` completely in an infinite `JR -2` (`0x18 0xFE`) loop at `0xDF80`!
-        pb.memory[0xDF80] = 0x18  # `JR rel8`
-        pb.memory[0xDF81] = 0xFE  # `-2` (infinite spin loop — `main()` NEVER executes another instruction!)
-        pb.register_file.PC = 0xDF80
+        # 3. MIC-DROP PROOF: Freeze `main()` completely in an infinite `JR -2` (`0x18 0xFE`) loop placed in the free
+        #    WRAM gap between the end of `_DATA` and the stack. (It used to sit at `0xDF80`, which is inside the live
+        #    stack whenever the hijack lands mid-update with a deep call chain; the ISR's own pushes then overwrote
+        #    the spin loop and resumed `main()`.)
+        spin = 0xDE00
+        assert 0xC0A0 + syms["l__DATA"] <= spin - 16, "spin-loop address overlaps _DATA"
+        pb.memory[spin] = 0x18      # `JR rel8`
+        pb.memory[spin + 1] = 0xFE  # `-2` (infinite spin loop — `main()` NEVER executes another instruction!)
+        pb.register_file.PC = spin
         fc_frozen_start = read_u16(pb, sym_fc)
         isr_frozen_start = read_u16(pb, sym_isr)
         ev_frozen_start = read_u16(pb, sym_ev)
@@ -1466,7 +1471,7 @@ def test_spring_kinematics_match_original_s1disasm():
     sym_objs = syms["_g_objs"]
     sym_cam_x = syms["_g_cam_x"]
     sym_cam_y = syms["_g_cam_y"]
-    OBJ_SIZE = 19
+    OBJ_SIZE = 20  # sizeof(ActiveObj) (was 19, which cleared the wrong bytes of every other slot)
 
     def read_s16(pb, addr):
         v = read_u16(pb, addr)
@@ -1556,6 +1561,15 @@ def test_spring_kinematics_match_original_s1disasm():
         assert dx_right >= 180, f"0x10 Right Horizontal Spring too weak: moved right only {dx_right}px!"
 
         # 5. Upside-Down Ceiling Spring (`0xA0` = `0x20 | (2 << 6)`): Y-flipped sprite + `+0x1000` Downward launch!
+        # The right spring above flings Sonic (and then the camera) far to the right; how far the camera has
+        # followed after a fixed number of VBlanks depends on the frame rate. Hold Sonic at x = 260 until the
+        # camera has caught up, so the spring is placed on screen regardless of how fast the game runs.
+        for _ in range(90):
+            cy = read_s16(pb, sym_cam_y) + 128
+            set_sonic_pos(pb, 260, cy + 4, 0, 0, 0)
+            pb.tick()
+            if abs(read_s16(pb, sym_cam_x) - (260 - 160)) <= 24:
+                break
         cy = read_s16(pb, sym_cam_y) + 128
         set_sonic_pos(pb, 260, cy + 4, 0, -0x0200, 0)
         clear_and_place_spring(pb, 260, cy, 0xA0)

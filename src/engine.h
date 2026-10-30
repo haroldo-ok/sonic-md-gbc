@@ -335,6 +335,15 @@ void hw_put_sprite16(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t attr);
 void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr);
 void hw_show_transition_card(const char *line1, const char *line2, uint8_t act_num);
 void hw_update_hud(void) BANKED;
+void hw_update_hud_deferred(void) BANKED;
+extern uint8_t g_hud_pend;
+/* Pending HUD tile rows (2 x 20) live in level-mode SRAM bank 1 at $B240..$B267 (free since the parallax plane
+   was removed; $B200..$B22F holds the ring sequence). */
+#define g_hud_pend_t ((uint8_t *)0xB240U)
+void hud_flush_pending(void);
+/* Level-mode SRAM bank 1 $A800..$A9FF: per spawn-list index, the g_objs slot it was last placed in (a validated
+   hint only; any stale value is harmless). */
+#define SPAWN_HINT ((uint8_t *)0xA800U)
 void hw_load_fullscreen_screen(uint8_t scr_idx);
 void hw_load_act(uint8_t act_idx);
 void hw_refresh_full_viewport(void);
@@ -369,6 +378,14 @@ void hw_scan_spawn_objects(void);
 void physics_init_sonic(int16_t sx, int16_t sy) BANKED;
 void physics_update_level(void) BANKED;
 void sonic_hurt_or_kill(uint8_t instant_kill) BANKED;
+
+/* Bank 127: Green Hill interactive props — bridge, platforms, collapsing ledge, rock, smash wall (`src/ghz_objects.c`).
+   `g_stand_obj` is the object Sonic currently stands on (S1 `status_on_object`): while set, the ground sensors are
+   skipped (S1 `Sonic_AnglePos` bails out on objects) and the object keeps Sonic glued to its surface. */
+extern ActiveObj *g_stand_obj;
+void ghz_objects_reset(void) BANKED;
+void ghz_object(ActiveObj *o, int16_t sx, int16_t sy) BANKED;
+void physics_land_on_object(void) BANKED;
 
 /* Bank 2: Level Objects & All 16 Sonic 1 Badnik AIs (`src/objects.c`) */
 void objects_reset_for_act(void) BANKED;

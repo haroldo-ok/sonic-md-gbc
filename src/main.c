@@ -1,4 +1,6 @@
 #include "engine.h"
+#include "ghz_pals.h"
+#include <stddef.h>
 
 #ifndef SONIC_GAMEPLAY_30FPS
 #define SONIC_GAMEPLAY_30FPS 0
@@ -7,21 +9,83 @@
 /* Interrupt-safe `memcpy` replacement: GBDK's default `___memcpy` loads
  * hardware `SP = src` without disabling `IME`, which corrupts `SP` and RAM if
  * our `60 Hz` `hw_sound_isr` or `5,461 Hz` `hw_sega_pcm_tim_isr` fires mid-copy! */
-void *safe_copy_bytes(void *dst, const void *src, uint16_t n) {
-    uint8_t *d = (uint8_t *)dst;
-    const uint8_t *s = (const uint8_t *)src;
-    while (n >= 8U) {
-        d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
-        d[4] = s[4]; d[5] = s[5]; d[6] = s[6]; d[7] = s[7];
-        d += 8;
-        s += 8;
-        n -= 8U;
-    }
-    while (n != 0U) {
-        *d++ = *s++;
-        n--;
-    }
-    return dst;
+void *safe_copy_bytes(void *dst, const void *src, uint16_t n) __naked {
+    /* Forward byte copy, 8x unrolled, no SP tricks (interrupt-safe). sdcccall(1): dst DE, src BC, n at [SP+2];
+       returns dst in BC; callee pops 2 bytes. */
+    (void)dst; (void)src; (void)n;
+    __asm
+    ldhl sp, #2
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+    push de
+    push hl
+    ld   h, b
+    ld   l, c
+    pop  bc
+    ld   a, c
+    and  a, #7
+    push af
+    srl  b
+    rr   c
+    srl  b
+    rr   c
+    srl  b
+    rr   c
+    ld   a, b
+    or   a, c
+    jr   z, 603$
+    ld   a, c
+    or   a, a
+    jr   z, 601$
+    inc  b
+601$:
+602$:
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    dec  c
+    jr   nz, 602$
+    dec  b
+    jr   nz, 602$
+603$:
+    pop  af
+    or   a, a
+    jr   z, 605$
+    ld   c, a
+604$:
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    dec  c
+    jr   nz, 604$
+605$:
+    pop  bc
+    pop  hl
+    pop  af
+    jp   (hl)
+    __endasm;
 }
 
 void *safe_set_bytes(void *dst, uint8_t val, uint16_t n) {
@@ -551,56 +615,378 @@ void hw_clear_remaining_oam(void) {
     s_prev_oam_used = g_oam_next ? g_oam_next : 1;
 }
 
-void hw_put_sprite8(int16_t sx, int16_t sy, uint8_t tile, uint8_t attr) {
-    uint8_t n = g_oam_next;
-    uint8_t *o;
-    if (n >= 40U) return;
-    /* Visible iff -8 < sx < 160 and -8 < sy < 128: one unsigned compare per axis instead of two signed ones. */
-    if ((uint16_t)(sx + 7) > 166U || (uint16_t)(sy + 7) > 134U) return;
-    g_oam_next = (uint8_t)(n + 1U);
-    o = (uint8_t *)shadow_OAM + ((uint16_t)n << 2);
-    *o++ = (uint8_t)((uint8_t)sy + 16U);   /* OAM y */
-    *o++ = (uint8_t)((uint8_t)sx + 8U);    /* OAM x */
-    *o++ = tile;
-    *o = attr;
+/* One 8x8 sprite into shadow OAM (visible iff -8 < sx < 160 and -8 < sy < 128). Hand-written: this is called
+   for most object pieces every frame. sdcccall(1): sx in DE, sy in BC, tile at [SP+2], attr at [SP+3]; the callee
+   pops the two stack bytes. shadow_OAM is 256-byte aligned (OAM DMA requirement). */
+void hw_put_sprite8(int16_t sx, int16_t sy, uint8_t tile, uint8_t attr) __naked {
+    (void)sx; (void)sy; (void)tile; (void)attr;
+    __asm
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jr   nc, 401$
+    ld   hl, #7
+    add  hl, de
+    ld   a, h
+    or   a, a
+    jr   nz, 401$
+    ld   a, l
+    cp   a, #167
+    jr   nc, 401$
+    ld   hl, #7
+    add  hl, bc
+    ld   a, h
+    or   a, a
+    jr   nz, 401$
+    ld   a, l
+    cp   a, #135
+    jr   nc, 401$
+    ld   a, (_g_oam_next)
+    ld   l, a
+    inc  a
+    ld   (_g_oam_next), a
+    ld   a, l
+    add  a, a
+    add  a, a
+    ld   l, a
+    ld   h, #(_shadow_OAM >> 8)
+    ld   a, c
+    add  a, #16
+    ld   (hl+), a
+    ld   a, e
+    add  a, #8
+    ld   (hl+), a
+    ld   d, h
+    ld   e, l
+    ldhl sp, #2
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl)
+    ld   (de), a
+401$:
+    pop  hl
+    pop  af
+    jp   (hl)
+    __endasm;
 }
 
-void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr) {
-    /* Same result as emitting 2*ncols `hw_put_sprite8` calls (column by column, top then bottom), but the per-row
-       visibility test is done once and OAM bytes are written directly, so no call/argument overhead per 8x8 piece. */
-    uint8_t n = g_oam_next;
-    uint8_t *o;
-    uint8_t cx, src_cx, t_top, t_bot, ox, first, second;
-    uint8_t oy0 = (uint8_t)((uint8_t)sy + 16U);
-    uint8_t oy1 = (uint8_t)((uint8_t)sy + 24U);
-    uint8_t ok0 = ((uint16_t)(sy + 7) <= 134U);
-    uint8_t ok1 = ((uint16_t)(sy + 15) <= 134U);
-    uint8_t flip_x = (uint8_t)(attr & 0x20U);
-    uint8_t flip_y = (uint8_t)(attr & 0x40U);
-    int16_t x = sx;
-    if (n >= 40U || (!ok0 && !ok1)) return;
-    o = (uint8_t *)shadow_OAM + ((uint16_t)n << 2);
-    for (cx = 0; cx < ncols; cx++, x += 8) {
-        if ((uint16_t)(x + 7) > 166U) continue; /* whole column is off-screen horizontally */
-        src_cx = flip_x ? (uint8_t)(ncols - 1U - cx) : cx;
-        t_top = (uint8_t)(base_tile + (uint8_t)(src_cx << 1));
-        t_bot = (uint8_t)(t_top + 1U);
-        if (flip_y) { first = t_bot; second = t_top; } else { first = t_top; second = t_bot; }
-        ox = (uint8_t)((uint8_t)x + 8U);
-        if (ok0 && n < 40U) {
-            *o++ = oy0; *o++ = ox; *o++ = first; *o++ = attr;
-            n++;
-        }
-        if (ok1 && n < 40U) {
-            *o++ = oy1; *o++ = ox; *o++ = second; *o++ = attr;
-            n++;
-        }
-    }
-    g_oam_next = n;
+/* Same result as emitting 2*ncols `hw_put_sprite8` calls (column by column, top then bottom; X/Y flips mirror the
+   column order / swap top and bottom tiles). Hand-written; scratch state lives in c2_*.
+   sdcccall(1): sx in DE, sy in BC, base_tile [SP+2], ncols [SP+3], attr [SP+4]; callee pops 3 bytes. */
+static uint8_t c2_ok0, c2_ok1, c2_oy0, c2_oy1, c2_base, c2_ncols, c2_attr, c2_cx;
+void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr) __naked {
+    (void)sx; (void)sy; (void)base_tile; (void)ncols; (void)attr;
+    __asm
+    ld   hl, #7
+    add  hl, bc
+    ld   a, h
+    or   a, a
+    jr   nz, 410$
+    ld   a, l
+    cp   a, #135
+    jr   nc, 410$
+    ld   a, #1
+    jr   411$
+410$:
+    xor  a, a
+411$:
+    ld   (_c2_ok0), a
+    ld   hl, #15
+    add  hl, bc
+    ld   a, h
+    or   a, a
+    jr   nz, 412$
+    ld   a, l
+    cp   a, #135
+    jr   nc, 412$
+    ld   a, #1
+    jr   413$
+412$:
+    xor  a, a
+413$:
+    ld   (_c2_ok1), a
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jp   nc, 499$
+    ld   a, (_c2_ok0)
+    ld   h, a
+    ld   a, (_c2_ok1)
+    or   a, h
+    jp   z, 499$
+    ld   a, c
+    add  a, #16
+    ld   (_c2_oy0), a
+    add  a, #8
+    ld   (_c2_oy1), a
+    ldhl sp, #2
+    ld   a, (hl+)
+    ld   (_c2_base), a
+    ld   a, (hl+)
+    ld   (_c2_ncols), a
+    ld   a, (hl)
+    ld   (_c2_attr), a
+    xor  a, a
+    ld   (_c2_cx), a
+420$:
+    ld   a, (_c2_ncols)
+    ld   b, a
+    ld   a, (_c2_cx)
+    cp   a, b
+    jp   z, 499$
+    ld   hl, #7
+    add  hl, de
+    ld   a, h
+    or   a, a
+    jp   nz, 430$
+    ld   a, l
+    cp   a, #167
+    jp   nc, 430$
+    ld   a, (_c2_attr)
+    and  a, #0x20
+    ld   a, (_c2_cx)
+    jr   z, 421$
+    ld   c, a
+    ld   a, b
+    dec  a
+    sub  a, c
+421$:
+    add  a, a
+    ld   c, a
+    ld   a, (_c2_base)
+    add  a, c
+    ld   c, a
+    ld   b, a
+    inc  b
+    ld   a, (_c2_attr)
+    and  a, #0x40
+    jr   z, 422$
+    ld   a, c
+    ld   c, b
+    ld   b, a
+422$:
+    push de
+    ld   a, e
+    add  a, #8
+    ld   e, a
+    ld   a, (_c2_ok0)
+    or   a, a
+    jr   z, 423$
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jr   nc, 423$
+    ld   l, a
+    inc  a
+    ld   (_g_oam_next), a
+    ld   a, l
+    add  a, a
+    add  a, a
+    ld   l, a
+    ld   h, #(_shadow_OAM >> 8)
+    ld   a, (_c2_oy0)
+    ld   (hl+), a
+    ld   a, e
+    ld   (hl+), a
+    ld   a, c
+    ld   (hl+), a
+    ld   a, (_c2_attr)
+    ld   (hl), a
+423$:
+    ld   a, (_c2_ok1)
+    or   a, a
+    jr   z, 424$
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jr   nc, 424$
+    ld   l, a
+    inc  a
+    ld   (_g_oam_next), a
+    ld   a, l
+    add  a, a
+    add  a, a
+    ld   l, a
+    ld   h, #(_shadow_OAM >> 8)
+    ld   a, (_c2_oy1)
+    ld   (hl+), a
+    ld   a, e
+    ld   (hl+), a
+    ld   a, b
+    ld   (hl+), a
+    ld   a, (_c2_attr)
+    ld   (hl), a
+424$:
+    pop  de
+430$:
+    ld   a, (_c2_cx)
+    inc  a
+    ld   (_c2_cx), a
+    ld   hl, #8
+    add  hl, de
+    ld   d, h
+    ld   e, l
+    jp   420$
+499$:
+    pop  hl
+    add  sp, #3
+    jp   (hl)
+    __endasm;
 }
 
-void hw_put_sprite16(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t attr) {
-    hw_put_sprite_cols2rows(sx - 8, sy - 8, base_tile, 2u, attr);
+/* 16x16 sprite centred on (sx, sy): exactly hw_put_sprite_cols2rows(sx - 8, sy - 8, base_tile, 2, attr), unrolled
+   for two columns. sdcccall(1): sx DE, sy BC, base_tile [SP+2], attr [SP+3]; callee pops 2 bytes. */
+void hw_put_sprite16(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t attr) __naked {
+    (void)sx; (void)sy; (void)base_tile; (void)attr;
+    __asm
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jp   nc, 909$
+    ld   h, b
+    ld   l, c
+    dec  hl
+    ld   a, h
+    or   a, a
+    jr   nz, 901$
+    ld   a, l
+    cp   a, #135
+    jr   nc, 901$
+    ld   a, #1
+    jr   902$
+901$:
+    xor  a, a
+902$:
+    ld   (_c2_ok0), a
+    ld   hl, #7
+    add  hl, bc
+    ld   a, h
+    or   a, a
+    jr   nz, 903$
+    ld   a, l
+    cp   a, #135
+    jr   nc, 903$
+    ld   a, #1
+    jr   904$
+903$:
+    xor  a, a
+904$:
+    ld   (_c2_ok1), a
+    ld   h, a
+    ld   a, (_c2_ok0)
+    or   a, h
+    jp   z, 909$
+    ld   a, c
+    add  a, #8
+    ld   (_c2_oy0), a
+    add  a, #8
+    ld   (_c2_oy1), a
+    ldhl sp, #2
+    ld   a, (hl+)
+    ld   (_c2_base), a
+    ld   a, (hl)
+    ld   (_c2_attr), a
+    ld   h, d
+    ld   l, e
+    dec  hl
+    ld   a, h
+    or   a, a
+    jr   nz, 906$
+    ld   a, l
+    cp   a, #167
+    jr   nc, 906$
+    ld   b, e
+    ld   a, (_c2_attr)
+    and  a, #0x20
+    ld   a, #0
+    jr   z, 905$
+    ld   a, #2
+905$:
+    call 950$
+906$:
+    ld   hl, #7
+    add  hl, de
+    ld   a, h
+    or   a, a
+    jr   nz, 909$
+    ld   a, l
+    cp   a, #167
+    jr   nc, 909$
+    ld   a, e
+    add  a, #8
+    ld   b, a
+    ld   a, (_c2_attr)
+    and  a, #0x20
+    ld   a, #2
+    jr   z, 907$
+    ld   a, #0
+907$:
+    call 950$
+909$:
+    pop  hl
+    pop  af
+    jp   (hl)
+950$:
+    push de
+    ld   c, a
+    ld   a, (_c2_base)
+    add  a, c
+    ld   c, a
+    ld   d, a
+    inc  d
+    ld   a, (_c2_attr)
+    and  a, #0x40
+    jr   z, 951$
+    ld   a, c
+    ld   c, d
+    ld   d, a
+951$:
+    ld   e, b
+    ld   a, (_c2_ok0)
+    or   a, a
+    jr   z, 952$
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jr   nc, 952$
+    ld   l, a
+    inc  a
+    ld   (_g_oam_next), a
+    ld   a, l
+    add  a, a
+    add  a, a
+    ld   l, a
+    ld   h, #(_shadow_OAM >> 8)
+    ld   a, (_c2_oy0)
+    ld   (hl+), a
+    ld   a, e
+    ld   (hl+), a
+    ld   a, c
+    ld   (hl+), a
+    ld   a, (_c2_attr)
+    ld   (hl), a
+952$:
+    ld   a, (_c2_ok1)
+    or   a, a
+    jr   z, 953$
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jr   nc, 953$
+    ld   l, a
+    inc  a
+    ld   (_g_oam_next), a
+    ld   a, l
+    add  a, a
+    add  a, a
+    ld   l, a
+    ld   h, #(_shadow_OAM >> 8)
+    ld   a, (_c2_oy1)
+    ld   (hl+), a
+    ld   a, e
+    ld   (hl+), a
+    ld   a, d
+    ld   (hl+), a
+    ld   a, (_c2_attr)
+    ld   (hl), a
+953$:
+    pop  de
+    ret
+    __endasm;
 }
 
 BANKREF_EXTERN(draw_transition_card_win_b127)
@@ -674,19 +1060,17 @@ void hw_load_fullscreen_screen(uint8_t scr_idx) {
 static const uint8_t *s_zone_chunk_ptrs[16];
 
 /* MBC5 SRAM Bank 1 (`rRAMB = 1`) runtime map after removing the parallax BG plane:
- *   `0xA000..0xAFFF`: Special Stage 64x64 maze
+ *   `0xA000..0xAFFF`: Special Stage 64x64 maze (Special Stage only); in level mode:
+ *       `0xA000..0xA7FF` ring-overlay cell grids (objects.c), `0xA800..0xA9FF` spawn slot hints
  *   `0xB000..0xB1FF`: active foreground level layout only
- *   `0xB200..0xB3FF`: no longer copied/used for parallax background layouts
- *   `0xB400..0xB8FF`: full primary + secondary collision tables
- *   `0xBC00..0xBFFF`: VBlank span queue
- * Internal WRAM `_DATA` remains at `0x1B1E` with `> 990` bytes of stack headroom. */
+ *   `0xB200..0xB22F`: ring-overlay cell sequence (objects.c); `0xB240..0xB267`: pending HUD tile rows
+ *   `0xB400..0xBBFF`: primary (`+0`) and secondary (`+0x400`) collision tables
+ *   `0xBC00..0xBFFF`: VBlank span queue */
 
 #define s_fg_ram  ((uint8_t *)0xB000U)
 #define s_col_ram ((uint8_t *)0xB400U)
 static const uint8_t *s_fg_rows[32];
-static uint16_t s_cached_d4 = 0xFFFF;
-static uint16_t s_cached_col_key = 0xFFFF;
-static uint8_t s_cached_cid = 0;
+static uint8_t s_cached_chunk = 0xFF, s_cached_tile, s_cached_d4l, s_cached_d4h, s_cached_cid2;
 static uint8_t s_scan_force = 1;
 static uint8_t s_scache_frame[2] = { 0xFF, 0xFF };
 static uint8_t s_cur_sonic_base = 0;
@@ -740,24 +1124,80 @@ uint16_t hw_get_chunk_word(int16_t world_x, int16_t world_y, uint8_t loop_alt) {
 }
 
 /* Fast 2-pass span resolver (`is_col=1`: 20-tile column; `is_col=0`: 23-tile row) — zero FG/BG bank ping-pong! */
-static void blocks_to_tiles_batch(const uint16_t *bw_buf, uint8_t count, uint8_t *out_t, uint8_t *out_a) {
-    uint8_t i;
+/* Block words -> (tile, attr) pairs. Hand-written loop; attrs are stored 23 bytes after the tiles
+   (`VScrollSpan.a` directly follows `VScrollSpan.t[23]`). Per entry: bidx = bw & 0x3FF; 0 or >= num_m16 -> (0,0);
+   else tile = map16[2*bidx], attr = (map16[2*bidx+1] & 0x7F) ^ ((bw >> 11 & 1) << 5 | (bw >> 12 & 1) << 6). */
+static uint8_t s_bt_cnt, s_bt_hi, s_bt_nml, s_bt_nmh;
+static const uint8_t *s_bt_map16;
+static void bt_core(const uint8_t *src, uint8_t *out_t) __naked {
+    (void)src; (void)out_t;
+    __asm
+501$:
+    ld   a, (_s_bt_cnt)
+    or   a, a
+    ret  z
+    dec  a
+    ld   (_s_bt_cnt), a
+    ld   a, (de)
+    inc  de
+    ld   l, a
+    ld   a, (de)
+    inc  de
+    ld   (_s_bt_hi), a
+    and  a, #0x03
+    ld   h, a
+    or   a, l
+    jr   z, 510$
+    ld   a, (_s_bt_nmh)
+    cp   a, h
+    jr   c, 510$
+    jr   nz, 502$
+    ld   a, (_s_bt_nml)
+    cp   a, l
+    jr   c, 510$
+    jr   z, 510$
+502$:
+    add  hl, hl
+    ld   a, (_s_bt_map16)
+    add  a, l
+    ld   l, a
+    ld   a, (_s_bt_map16 + 1)
+    adc  a, h
+    ld   h, a
+    ld   a, (hl+)
+    ld   (bc), a
+    ld   a, (hl)
+    and  a, #0x7F
+    ld   l, a
+    ld   a, (_s_bt_hi)
+    and  a, #0x18
+    add  a, a
+    add  a, a
+    xor  a, l
+    ld   hl, #23
+    add  hl, bc
+    ld   (hl), a
+    inc  bc
+    jr   501$
+510$:
+    xor  a, a
+    ld   (bc), a
+    ld   hl, #23
+    add  hl, bc
+    ld   (hl), a
+    inc  bc
+    jr   501$
+    __endasm;
+}
+
+static void blocks_to_tiles_batch(const uint16_t *bw_buf, uint8_t count, uint8_t *out_t) {
     uint16_t nm16 = g_ram_vset.num_m16;
-    const uint8_t *map16 = g_ram_vset.map16;
+    s_bt_cnt = count;
+    s_bt_nml = (uint8_t)nm16;
+    s_bt_nmh = (uint8_t)(nm16 >> 8);
+    s_bt_map16 = g_ram_vset.map16;
     SWITCH_ROM(g_ram_vset.meta_bank);
-    for (i = 0; i < count; i++) {
-        uint16_t bw = bw_buf[i];
-        uint16_t bidx = bw & 0x03FF;
-        if (bidx == 0 || bidx >= nm16) {
-            out_t[i] = 0;
-            out_a[i] = 0;
-        } else {
-            const uint8_t *mptr = &map16[bidx << 1];
-            uint8_t flip = ((bw & 0x0800) ? 0x20 : 0) | ((bw & 0x1000) ? 0x40 : 0);
-            out_t[i] = mptr[0];
-            out_a[i] = (mptr[1] & 0x7F) ^ flip;
-        }
-    }
+    bt_core((const uint8_t *)bw_buf, out_t);
 }
 
 typedef struct {
@@ -770,13 +1210,75 @@ typedef struct {
 #define s_vscroll_q ((VScrollSpan *)0xBC00U)
 static uint8_t s_vscroll_cnt = 0;
 
+/* Span copy helpers for enqueue_world_span: copy s_sp_cnt (>= 1) block words from src (column: stride 16 words,
+   row: contiguous) to dst, or zero-fill. sdcccall(1): dst in DE, src in BC. */
+static uint8_t s_sp_cnt;
+static void span_copy_col(uint16_t *dst, const uint16_t *src) __naked {
+    (void)dst; (void)src;
+    __asm
+    ld   h, b
+    ld   l, c
+    ld   a, (_s_sp_cnt)
+    ld   c, a
+1501$:
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl-)
+    ld   (de), a
+    inc  de
+    ld   a, l
+    add  a, #32
+    ld   l, a
+    jr   nc, 1502$
+    inc  h
+1502$:
+    dec  c
+    jr   nz, 1501$
+    ret
+    __endasm;
+}
+static void span_copy_row(uint16_t *dst, const uint16_t *src) __naked {
+    (void)dst; (void)src;
+    __asm
+    ld   h, b
+    ld   l, c
+    ld   a, (_s_sp_cnt)
+    ld   c, a
+1511$:
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    dec  c
+    jr   nz, 1511$
+    ret
+    __endasm;
+}
+static void span_zero(uint16_t *dst) __naked {
+    (void)dst;
+    __asm
+    ld   h, d
+    ld   l, e
+    ld   a, (_s_sp_cnt)
+    ld   c, a
+    xor  a, a
+1521$:
+    ld   (hl+), a
+    ld   (hl+), a
+    dec  c
+    jr   nz, 1521$
+    ret
+    __endasm;
+}
+
 static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
     uint8_t prev = CURRENT_BANK;
     uint8_t n = is_col ? 20U : 23U;
     uint16_t bw_buf[23];
     VScrollSpan *sp;
-    uint8_t i, cur_cx = 0xFF, cur_cy = 0xFF;
-    const uint16_t *fcptr = 0;
 
     if (s_vscroll_cnt >= 8U) {
         rRAMB = 1;
@@ -785,37 +1287,45 @@ static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
     }
 
     {
-        int16_t wx = wx0;
-        int16_t wy = wy0;
-        int16_t wx_step = is_col ? 0 : 1;
-        int16_t wy_step = is_col ? 1 : 0;
-        for (i = 0; i < n; i++) {
-            uint16_t bw = 0;
-            if (wx >= 0 && wy >= 0) {
-                uint8_t cx = (uint8_t)((uint16_t)wx >> 4);
-                uint8_t cy = (uint8_t)((uint16_t)wy >> 4);
-                if (cx < g_ram_act.fg_w && cy < g_ram_act.fg_h) {
-                    if (cx != cur_cx || cy != cur_cy) {
-                        uint8_t cid;
-                        cur_cx = cx;
-                        cur_cy = cy;
-                        cid = s_fg_rows[cy][cx] & 0x7FU;
+        /* Walk the span one chunk-run at a time: inside a 16x16-block chunk the block index just advances by
+           16 (column) or 1 (row), so each run is a strided copy. Out-of-range cells produce 0 as before. */
+        uint16_t *dst = bw_buf;
+        uint8_t left = n;
+        int16_t wx = wx0, wy = wy0;
+        while (left) {
+            int16_t mv = is_col ? wy : wx;   /* coordinate that advances along the span */
+            int16_t fx = is_col ? wx : wy;   /* coordinate fixed for the whole span */
+            uint8_t seg;
+            const uint16_t *src = 0;
+            if (mv < 0) {
+                seg = (mv < -(int16_t)left) ? left : (uint8_t)(-mv);
+            } else {
+                seg = (uint8_t)(16U - ((uint8_t)mv & 0x0FU));
+                if (seg > left) seg = left;
+                if (fx >= 0) {
+                    uint8_t cx = (uint8_t)((uint16_t)wx >> 4);
+                    uint8_t cy = (uint8_t)((uint16_t)wy >> 4);
+                    if (cx < g_ram_act.fg_w && cy < g_ram_act.fg_h) {
+                        uint8_t cid = s_fg_rows[cy][cx] & 0x7FU;
                         if (cid > 0U && cid <= g_ram_vset.num_chunks) {
-                            uint8_t pg = (cid - 1U) >> 4;
-                            SWITCH_ROM(g_ram_vset.chunk_base_bank + pg);
-                            fcptr = (const uint16_t *)s_zone_chunk_ptrs[pg & 15U] + ((uint16_t)((cid - 1U) & 0x0FU) << 8);
-                        } else {
-                            fcptr = 0;
+                            uint8_t pg = (uint8_t)((cid - 1U) >> 4);
+                            SWITCH_ROM((uint8_t)(g_ram_vset.chunk_base_bank + pg));
+                            src = (const uint16_t *)s_zone_chunk_ptrs[pg & 15U] + ((uint16_t)((cid - 1U) & 0x0FU) << 8) +
+                                  (uint8_t)((((uint8_t)wy & 0x0FU) << 4) | ((uint8_t)wx & 0x0FU));
                         }
-                    }
-                    if (fcptr) {
-                        bw = fcptr[(uint8_t)((((uint8_t)wy & 0x0FU) << 4) | ((uint8_t)wx & 0x0FU))];
                     }
                 }
             }
-            bw_buf[i] = bw;
-            wx += wx_step;
-            wy += wy_step;
+            s_sp_cnt = seg;
+            if (src) {
+                if (is_col) span_copy_col(dst, src);
+                else        span_copy_row(dst, src);
+            } else {
+                span_zero(dst);
+            }
+            dst += seg;
+            left = (uint8_t)(left - seg);
+            if (is_col) wy += seg; else wx += seg;
         }
     }
 
@@ -829,7 +1339,7 @@ static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
     /* Terrain streaming overwrites BG cells here; ring overlay must be re-applied on this column/row only. */
     if (is_col) g_ring_dirty_col[sp->vx >> 3] |= (uint8_t)(1U << (sp->vx & 7U));
     else        g_ring_dirty_row[sp->vy >> 3] |= (uint8_t)(1U << (sp->vy & 7U));
-    blocks_to_tiles_batch(bw_buf, n, sp->t, sp->a);
+    blocks_to_tiles_batch(bw_buf, n, sp->t);
     SWITCH_ROM(prev);
 }
 
@@ -936,9 +1446,7 @@ void hw_load_act(uint8_t act_idx) {
     for (hold = 0; hold < 32; hold++) {
         s_fg_rows[hold] = &s_fg_ram[(uint16_t)hold * g_ram_act.fg_w];
     }
-    s_cached_d4 = 0xFFFF;
-    s_cached_col_key = 0xFFFF;
-    s_cached_cid = 0;
+    s_cached_chunk = 0xFF;
     SWITCH_ROM(g_ram_vset.meta_bank);
     rRAMB = 1;
     memset(s_col_ram, 0, 2048U);
@@ -1010,6 +1518,7 @@ void hw_load_act(uint8_t act_idx) {
     memcpy(pal_ram, g_ram_vset.bg_pal, sizeof(pal_ram));
     set_bkg_palette(0, 8, pal_ram);
     set_sprite_palette(0, 8, g_default_obj_pals);
+    if (g_ram_act.vset_idx == 0) set_sprite_palette(6, 2, g_ghz_obj_pal67);   /* GHZ: dirt/wood + grass for bridge, ledge, platforms */
     hw_play_bgm(g_ram_act.music_id);
     hw_refresh_full_viewport();
 
@@ -1139,122 +1648,351 @@ uint8_t hw_read_demo_input(uint8_t demo_idx) {
  * LITERAL INSTRUCTION-FOR-INSTRUCTION PORT OF SEGA GENESIS SONIC 1 COLLISION ENGINE
  * (`vendor/s1disasm/_incObj/sub FindNearestTile & FindFloor & FindWall.asm`)
  * ============================================================================================ */
-static uint8_t sample_col_height(int16_t d2, int16_t d3, uint8_t solid_bit, uint16_t d6,
-                                 uint8_t loop_f, uint8_t rotated, uint8_t *a4, int16_t *out_d0) {
-    uint8_t prev, cx, cy, chunk_id, page_idx, cid, tile_idx;
-    uint16_t d4, cache_key;
-    int16_t idx_coord;
+/* Inputs/outputs of the sampler live in fixed WRAM slots instead of an 8-argument call: SDCC spills every
+   stack argument, and direct-address globals are several times cheaper on the SM83. Semantics are unchanged. */
+static int16_t s_cs_d2, s_cs_d3;
+static uint8_t s_cs_solid_mask;   /* (1 << solid_bit) >> 8: solid_bit is always 12..15 */
+static uint8_t s_cs_d6h;          /* high byte of d6: only bits 0x10 (0x1000) / 0x08 (0x0800) are tested */
+static uint8_t s_cs_loop;
+static uint8_t *s_cs_a4;
+static int8_t s_cs_d0;
 
-    if (d3 < 0 || d2 < 0) return 0;
-    cx = (uint8_t)((uint16_t)d3 >> 8);
-    cy = (uint8_t)((uint16_t)d2 >> 8);
-    if (cx >= g_ram_act.fg_w || cy >= g_ram_act.fg_h) return 0;
-
-    prev = CURRENT_BANK;
-    chunk_id = s_fg_rows[cy][cx];
-    if (chunk_id & 0x80) {
-        chunk_id &= 0x7F;
-        if (loop_f) {
-            chunk_id++;
-            if (chunk_id == 0x29) chunk_id = 0x51;
-        }
-    }
-    if (chunk_id == 0 || chunk_id > g_ram_vset.num_chunks) {
-        SWITCH_ROM(prev);
-        return 0;
-    }
-    chunk_id--;
-    tile_idx = (uint8_t)(((uint8_t)d2 & 0xF0U) | (((uint8_t)d3 >> 4) & 0x0FU));
-    cache_key = ((uint16_t)chunk_id << 8) | tile_idx;
-    if (cache_key == s_cached_col_key) {
-        d4 = s_cached_d4;
-        cid = s_cached_cid;
-    } else {
-        page_idx = chunk_id >> 4;
-        SWITCH_ROM(g_ram_vset.chunk_base_bank + page_idx);
-        d4 = ((const uint16_t *)s_zone_chunk_ptrs[page_idx & 15U])[
-            ((uint16_t)(chunk_id & 0x0FU) << 8) | tile_idx];
-        cid = ((d4 & 0x07FFU) != 0U) ? s_col_ram[d4 & 0x03FFU] : 0U;
-        s_cached_col_key = cache_key;
-        s_cached_d4 = d4;
-        s_cached_cid = cid;
-    }
-
-    if ((d4 & 0x07FFU) == 0U || (d4 & ((uint16_t)1U << solid_bit)) == 0U || cid == 0U) {
-        SWITCH_ROM(prev);
-        return 0;
-    }
-    SWITCH_ROM(5);
-    if (a4) {
-        uint8_t ang = s1_angle_map[cid];
-        if (!rotated) {
-            if (d4 & 0x0800) ang = (uint8_t)(0 - ang);
-            if (d4 & 0x1000) ang = (uint8_t)((uint8_t)(0 - (uint8_t)(ang + 0x40)) - 0x40);
-        } else {
-            if (d4 & 0x1000) ang = (uint8_t)((uint8_t)(0 - (uint8_t)(ang + 0x40)) - 0x40);
-            if (d4 & 0x0800) ang = (uint8_t)(0 - ang);
-        }
-        *a4 = ang;
-    }
-    if (!rotated) {
-        idx_coord = (d4 & 0x0800) ? ~d3 : d3;
-        *out_d0 = (int16_t)s1_coll_normal[((uint16_t)cid << 4) + (idx_coord & 0x0F)];
-        if ((d4 ^ d6) & 0x1000) *out_d0 = -(*out_d0);
-    } else {
-        idx_coord = (d4 & 0x1000) ? ~d2 : d2;
-        *out_d0 = (int16_t)s1_coll_rotated[((uint16_t)cid << 4) + (idx_coord & 0x0F)];
-        if ((d4 ^ d6) & 0x0800) *out_d0 = -(*out_d0);
-    }
-    SWITCH_ROM(prev);
-    return 1;
+/* Hand-written collision sampler; same steps as the original C version:
+ *   cy = d2 >> 8, cx = d3 >> 8 (negative or outside fg_w x fg_h -> 0); chunk = s_fg_rows[cy][cx]
+ *   (bit 7: loop chunk, +1 on the loop plane with 0x29 -> 0x51); 0 or > num_chunks -> 0; chunk--
+ *   tile = (d2 & 0xF0) | (d3 lo >> 4); d4 = chunk table word (one-entry cache); cid = col_ram[d4 & 0x3FF] if
+ *   d4 & 0x7FF; no cid / solid bit clear / empty -> 0. Then (bank 5) the angle (flip order depends on `rotated`,
+ *   using -(a+0x40)-0x40 == (-a)^0x80) and the height from the normal or rotated table, negated when the flip
+ *   bit of d4 ^ d6 is set. sdcccall(1): rotated in A, result in A. */
+typedef char col_layout_check[(offsetof(ActDesc, fg_w) == 10U && offsetof(ActDesc, fg_h) == 11U &&
+                               offsetof(VisualSetDesc, chunk_base_bank) == 14U &&
+                               offsetof(VisualSetDesc, num_chunks) == 15U) ? 1 : -1];
+static uint8_t s_cs_rot, s_cs_prev;
+static uint8_t sample_col_height_g(uint8_t rotated) __naked {
+    (void)rotated;
+    __asm
+    ld   (_s_cs_rot), a
+    ld   a, (_s_cs_d2 + 1)
+    ld   b, a
+    ld   a, (_s_cs_d3 + 1)
+    ld   c, a
+    or   a, b
+    and  a, #0x80
+    jp   nz, 1499$
+    ld   a, (_g_ram_act + 10)
+    ld   d, a
+    ld   a, c
+    cp   a, d
+    jp   nc, 1499$
+    ld   a, (_g_ram_act + 11)
+    ld   d, a
+    ld   a, b
+    cp   a, d
+    jp   nc, 1499$
+    ld   l, b
+    ld   h, #0
+    add  hl, hl
+    ld   de, #_s_fg_rows
+    add  hl, de
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+    ld   e, c
+    ld   d, #0
+    add  hl, de
+    ld   a, (hl)
+    bit  7, a
+    jr   z, 1401$
+    and  a, #0x7F
+    ld   e, a
+    ld   a, (_s_cs_loop)
+    or   a, a
+    ld   a, e
+    jr   z, 1401$
+    inc  a
+    cp   a, #0x29
+    jr   nz, 1401$
+    ld   a, #0x51
+1401$:
+    or   a, a
+    jp   z, 1499$
+    ld   e, a
+    ld   a, (_g_ram_vset + 15)
+    cp   a, e
+    jp   c, 1499$
+    dec  e
+    ld   a, (_s_cs_d3)
+    swap a
+    and  a, #0x0F
+    ld   d, a
+    ld   a, (_s_cs_d2)
+    and  a, #0xF0
+    or   a, d
+    ld   d, a
+    ldh  a, (__current_bank + 0)
+    ld   (_s_cs_prev), a
+    ld   a, (_s_cached_chunk)
+    cp   a, e
+    jr   nz, 1410$
+    ld   a, (_s_cached_tile)
+    cp   a, d
+    jr   nz, 1410$
+    ld   a, (_s_cached_d4l)
+    ld   c, a
+    ld   a, (_s_cached_d4h)
+    ld   b, a
+    ld   a, (_s_cached_cid2)
+    jr   1420$
+1410$:
+    ld   a, e
+    swap a
+    and  a, #0x0F
+    ld   l, a
+    ld   a, (_g_ram_vset + 14)
+    add  a, l
+    ldh  (__current_bank + 0), a
+    ld   (#0x2000), a
+    ld   h, #0
+    add  hl, hl
+    ld   bc, #_s_zone_chunk_ptrs
+    add  hl, bc
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+    ld   a, e
+    and  a, #0x0F
+    add  a, a
+    add  a, h
+    ld   h, a
+    ld   a, d
+    add  a, a
+    jr   nc, 1411$
+    inc  h
+1411$:
+    add  a, l
+    ld   l, a
+    jr   nc, 1412$
+    inc  h
+1412$:
+    ld   a, (hl+)
+    ld   c, a
+    ld   b, (hl)
+    ld   a, b
+    and  a, #0x07
+    or   a, c
+    jr   z, 1413$
+    ld   a, b
+    and  a, #0x03
+    add  a, #0xB4
+    ld   h, a
+    ld   l, c
+    ld   a, (hl)
+1413$:
+    ld   (_s_cached_cid2), a
+    ld   a, e
+    ld   (_s_cached_chunk), a
+    ld   a, d
+    ld   (_s_cached_tile), a
+    ld   a, c
+    ld   (_s_cached_d4l), a
+    ld   a, b
+    ld   (_s_cached_d4h), a
+    ld   a, (_s_cached_cid2)
+1420$:
+    or   a, a
+    jp   z, 1498$
+    ld   e, a
+    ld   a, (_s_cs_solid_mask)
+    and  a, b
+    jp   z, 1498$
+    ld   a, b
+    and  a, #0x07
+    or   a, c
+    jp   z, 1498$
+    ld   a, #5
+    ldh  (__current_bank + 0), a
+    ld   (#0x2000), a
+    ld   hl, #_s_cs_a4
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+    or   a, h
+    jr   z, 1440$
+    push hl
+    ld   hl, #_s1_angle_map
+    ld   a, l
+    add  a, e
+    ld   l, a
+    jr   nc, 1421$
+    inc  h
+1421$:
+    ld   d, (hl)
+    ld   a, (_s_cs_rot)
+    or   a, a
+    jr   nz, 1425$
+    bit  3, b
+    jr   z, 1422$
+    xor  a, a
+    sub  a, d
+    ld   d, a
+1422$:
+    bit  4, b
+    jr   z, 1430$
+    xor  a, a
+    sub  a, d
+    xor  a, #0x80
+    ld   d, a
+    jr   1430$
+1425$:
+    bit  4, b
+    jr   z, 1426$
+    xor  a, a
+    sub  a, d
+    xor  a, #0x80
+    ld   d, a
+1426$:
+    bit  3, b
+    jr   z, 1430$
+    xor  a, a
+    sub  a, d
+    ld   d, a
+1430$:
+    pop  hl
+    ld   (hl), d
+1440$:
+    ld   a, (_s_cs_rot)
+    or   a, a
+    jr   nz, 1450$
+    ld   a, (_s_cs_d3)
+    bit  3, b
+    jr   z, 1441$
+    cpl
+1441$:
+    and  a, #0x0F
+    ld   d, a
+    ld   l, e
+    ld   h, #0
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   a, l
+    or   a, d
+    ld   l, a
+    push bc
+    ld   bc, #_s1_coll_normal
+    add  hl, bc
+    pop  bc
+    ld   d, (hl)
+    ld   a, (_s_cs_d6h)
+    xor  a, b
+    and  a, #0x10
+    jr   z, 1460$
+    xor  a, a
+    sub  a, d
+    ld   d, a
+    jr   1460$
+1450$:
+    ld   a, (_s_cs_d2)
+    bit  4, b
+    jr   z, 1451$
+    cpl
+1451$:
+    and  a, #0x0F
+    ld   d, a
+    ld   l, e
+    ld   h, #0
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   a, l
+    or   a, d
+    ld   l, a
+    push bc
+    ld   bc, #_s1_coll_rotated
+    add  hl, bc
+    pop  bc
+    ld   d, (hl)
+    ld   a, (_s_cs_d6h)
+    xor  a, b
+    and  a, #0x08
+    jr   z, 1460$
+    xor  a, a
+    sub  a, d
+    ld   d, a
+1460$:
+    ld   a, d
+    ld   (_s_cs_d0), a
+    ld   a, (_s_cs_prev)
+    ldh  (__current_bank + 0), a
+    ld   (#0x2000), a
+    ld   a, #1
+    ret
+1498$:
+    ld   a, (_s_cs_prev)
+    ldh  (__current_bank + 0), a
+    ld   (#0x2000), a
+1499$:
+    xor  a, a
+    ret
+    __endasm;
 }
 
-static int16_t find_floor2_s1(int16_t d2, int16_t d3, uint8_t solid_bit, uint16_t d6, uint8_t loop_f, uint8_t *a4) {
-    int16_t d0 = 0, d1;
-    if (!sample_col_height(d2, d3, solid_bit, d6, loop_f, 0, a4, &d0) || d0 == 0) {
-        return (int16_t)(0x0F - (d2 & 0x0F));
-    }
-    if (d0 > 0) return (int16_t)(0x0F - ((d2 & 0x0F) + d0));
-    d1 = (d2 & 0x0F) + d0;
-    return (d1 >= 0) ? (int16_t)(0x0F - (d2 & 0x0F)) : ~d1;
+/* FindFloor2 / FindWall2: `lo` is the low nibble of the along-axis coordinate (d2 for floors, d3 for walls). */
+static int8_t find2_s1(uint8_t rotated, uint8_t lo) {
+    int8_t d0, d1;
+    if (!sample_col_height_g(rotated) || (d0 = s_cs_d0) == 0) return (int8_t)(0x0F - lo);
+    d1 = (int8_t)(lo + d0);
+    if (d0 > 0) return (int8_t)(0x0F - d1);
+    return (d1 >= 0) ? (int8_t)(0x0F - lo) : (int8_t)~d1;
+}
+
+static void cs_setup(uint8_t solid_bit, uint16_t d6, uint8_t *a4) {
+    s_cs_solid_mask = (uint8_t)(1U << (uint8_t)(solid_bit - 8U));
+    s_cs_d6h = (uint8_t)(d6 >> 8);
+    s_cs_a4 = a4;
+    s_cs_loop = g_sonic.loop_plane;
 }
 
 int16_t hw_find_floor(int16_t d2, int16_t d3, uint8_t solid_bit, uint16_t d6, int16_t a3, uint8_t *a4) {
-    uint8_t loop_f = g_sonic.loop_plane;
-    int16_t d0 = 0;
-    if (!sample_col_height(d2, d3, solid_bit, d6, loop_f, 0, a4, &d0) || d0 == 0) {
-        return find_floor2_s1(d2 + a3, d3, solid_bit, d6, loop_f, a4) + 16;
-    }
+    int8_t d0;
+    uint8_t lo = (uint8_t)d2 & 0x0FU;
+    cs_setup(solid_bit, d6, a4);
+    s_cs_d2 = d2; s_cs_d3 = d3;
+    if (!sample_col_height_g(0) || (d0 = s_cs_d0) == 0) goto next;
     if (d0 < 0) {
-        if (((d2 & 0x0F) + d0) >= 0) return find_floor2_s1(d2 + a3, d3, solid_bit, d6, loop_f, a4) + 16;
-        return find_floor2_s1(d2 - a3, d3, solid_bit, d6, loop_f, a4) - 16;
+        if ((int8_t)(lo + d0) >= 0) goto next;
+        goto back;
     }
-    if (d0 == 16) return find_floor2_s1(d2 - a3, d3, solid_bit, d6, loop_f, a4) - 16;
-    return (int16_t)(0x0F - ((d2 & 0x0F) + d0));
-}
-
-static int16_t find_wall2_s1(int16_t d2, int16_t d3, uint8_t solid_bit, uint16_t d6, uint8_t loop_f, uint8_t *a4) {
-    int16_t d0 = 0, d1;
-    if (!sample_col_height(d2, d3, solid_bit, d6, loop_f, 1, a4, &d0) || d0 == 0) {
-        return (int16_t)(0x0F - (d3 & 0x0F));
-    }
-    if (d0 > 0) return (int16_t)(0x0F - ((d3 & 0x0F) + d0));
-    d1 = (d3 & 0x0F) + d0;
-    return (d1 >= 0) ? (int16_t)(0x0F - (d3 & 0x0F)) : ~d1;
+    if (d0 == 16) goto back;
+    return (int16_t)(int8_t)(0x0F - (int8_t)(lo + d0));
+next:
+    s_cs_d2 = d2 + a3;
+    return (int16_t)find2_s1(0, (uint8_t)s_cs_d2 & 0x0FU) + 16;
+back:
+    s_cs_d2 = d2 - a3;
+    return (int16_t)find2_s1(0, (uint8_t)s_cs_d2 & 0x0FU) - 16;
 }
 
 int16_t hw_find_wall(int16_t d2, int16_t d3, uint8_t solid_bit, uint16_t d6, int16_t a3, uint8_t *a4) {
-    uint8_t loop_f = g_sonic.loop_plane;
-    int16_t d0 = 0;
-    if (!sample_col_height(d2, d3, solid_bit, d6, loop_f, 1, a4, &d0) || d0 == 0) {
-        return find_wall2_s1(d2, d3 + a3, solid_bit, d6, loop_f, a4) + 16;
-    }
+    int8_t d0;
+    uint8_t lo = (uint8_t)d3 & 0x0FU;
+    cs_setup(solid_bit, d6, a4);
+    s_cs_d2 = d2; s_cs_d3 = d3;
+    if (!sample_col_height_g(1) || (d0 = s_cs_d0) == 0) goto next;
     if (d0 < 0) {
-        if (((d3 & 0x0F) + d0) >= 0) return find_wall2_s1(d2, d3 + a3, solid_bit, d6, loop_f, a4) + 16;
-        return find_wall2_s1(d2, d3 - a3, solid_bit, d6, loop_f, a4) - 16;
+        if ((int8_t)(lo + d0) >= 0) goto next;
+        goto back;
     }
-    if (d0 == 16) return find_wall2_s1(d2, d3 - a3, solid_bit, d6, loop_f, a4) - 16;
-    return (int16_t)(0x0F - ((d3 & 0x0F) + d0));
+    if (d0 == 16) goto back;
+    return (int16_t)(int8_t)(0x0F - (int8_t)(lo + d0));
+next:
+    s_cs_d3 = d3 + a3;
+    return (int16_t)find2_s1(1, (uint8_t)s_cs_d3 & 0x0FU) + 16;
+back:
+    s_cs_d3 = d3 - a3;
+    return (int16_t)find2_s1(1, (uint8_t)s_cs_d3 & 0x0FU) - 16;
 }
 
 int16_t hw_floor_distance(int16_t px, int16_t py, uint8_t *out_angle) {
@@ -1321,18 +2059,66 @@ void hw_upload_ring_frame(uint8_t frame) {
     SWITCH_ROM(prev);
 }
 
+uint8_t g_hud_pend = 0;
+static uint8_t s_ring_upload_ok = 0;
+
+/* Write the pending HUD rows exactly as print_win_ram_b127 would (per row: 20 attrs 0x0F in VBK 1, then 20 tiles
+   in VBK 0, each write after STAT leaves mode 2/3). Leaves VBK = 0. */
+static void hud_write_rows(void) __naked {
+    __asm
+    ld   de, #0xB240
+    ld   hl, #0x9C00
+    call 801$
+    ld   hl, #0x9C20
+    call 801$
+    ret
+801$:
+    ld   a, #1
+    ldh  (0x4F), a
+    push hl
+    ld   b, #20
+802$:
+    ldh  a, (0x41)
+    and  a, #0x02
+    jr   nz, 802$
+    ld   a, #0x0F
+    ld   (hl+), a
+    dec  b
+    jr   nz, 802$
+    pop  hl
+    xor  a, a
+    ldh  (0x4F), a
+    ld   b, #20
+803$:
+    ldh  a, (0x41)
+    and  a, #0x02
+    jr   nz, 803$
+    ld   a, (de)
+    inc  de
+    ld   (hl+), a
+    dec  b
+    jr   nz, 803$
+    ret
+    __endasm;
+}
+
+void hud_flush_pending(void) {
+    if (!g_hud_pend) return;
+    g_hud_pend = 0;
+    hud_write_rows();
+}
+
 static void flush_vblank_hdma(void) {
-    /* Animated ring tiles: DMA them first thing in VBlank, while VRAM is guaranteed accessible. */
-    if (g_game_mode == GM_LEVEL && !g_paused) {
-        uint8_t rf = (uint8_t)((g_frame_counter >> 3) & 3U);
-        if (rf != g_ring_last_frame) {
-            hw_upload_ring_frame(rf);
-            g_ring_last_frame = rf;
-        }
-    }
-    if (s_vscroll_cnt) {
-        flush_vscroll_b127(s_vscroll_cnt);
-        s_vscroll_cnt = 0;
+    /* VBlank is only ~10 scanlines (~1.1 ms) long and VRAM writes made while the PPU is drawing (mode 3) are
+       silently dropped on real hardware. Anything that cannot wait for a safe STAT mode, i.e. the general-purpose
+       DMAs, therefore goes FIRST while the whole VBlank is still ahead; the CPU-driven spans / HUD rows below
+       wait for STAT mode 0/1 before every byte, so they stay correct even if they run past the end of VBlank. */
+    if (LCDC_REG & LCDCF_ON) {
+        /* The VBlank interrupt chain (music tick) occasionally runs long enough that vsync() returns after VBlank
+           is already over (LY < 144) or nearly over. A DMA started there would be dropped by the PPU, leaving
+           stale Sonic frames / ring tiles. Sit out one more frame instead of corrupting this one. */
+        uint8_t ly = LY_REG;
+        if (ly < 144U || ly > 148U) vsync();
     }
     if (s_dplc_pending_cnt) {
         uint16_t ssrc = ((uint16_t)s_dplc_raw + 15U) & 0xFFF0U;
@@ -1354,10 +2140,135 @@ static void flush_vblank_hdma(void) {
         gdma_transfer(s + 512U, 0x98, 31U);
         VBK_REG = 0;
     }
+    /* Animated ring tiles (general-purpose DMA, VBK 1). */
+    if (s_ring_upload_ok && g_game_mode == GM_LEVEL && !g_paused) {
+        uint8_t rf = (uint8_t)((g_frame_counter >> 3) & 3U);
+        if (rf != g_ring_last_frame) {
+            hw_upload_ring_frame(rf);
+            g_ring_last_frame = rf;
+        }
+    }
+    if (s_vscroll_cnt) {
+        flush_vscroll_b127(s_vscroll_cnt);
+        s_vscroll_cnt = 0;
+    }
+    if (g_hud_pend) hud_flush_pending();
+}
+
+/* Copy `cnt` 16-byte Sonic tiles listed in `st` (tile < 768: bank 6 part0, else bank 7 part1 at tile - 768) to
+   s_dp_dst. Switches ROM banks (keeping __current_bank in sync); the caller restores its bank.
+   sdcccall(1): st in DE, cnt in A. */
+static uint8_t *s_dp_dst;
+static uint8_t s_dp_cnt;
+static void dplc_copy(const uint16_t *st, uint8_t cnt) __naked {
+    (void)st; (void)cnt;
+    __asm
+    or   a, a
+    ret  z
+    ld   (_s_dp_cnt), a
+    ld   hl, #_s_dp_dst
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+    push hl
+1601$:
+    ld   a, (de)
+    inc  de
+    ld   l, a
+    ld   a, (de)
+    inc  de
+    ld   h, a
+    push de
+    ld   a, h
+    cp   a, #3
+    jr   nc, 1602$
+    ld   a, #6
+    ldh  (__current_bank + 0), a
+    ld   (#0x2000), a
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   de, #_sonic_tiles_part0
+    add  hl, de
+    jr   1603$
+1602$:
+    ld   a, #7
+    ldh  (__current_bank + 0), a
+    ld   (#0x2000), a
+    ld   de, #0xFD00
+    add  hl, de
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   de, #_sonic_tiles_part1
+    add  hl, de
+1603$:
+    pop  bc
+    pop  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    push de
+    ld   d, b
+    ld   e, c
+    ld   a, (_s_dp_cnt)
+    dec  a
+    ld   (_s_dp_cnt), a
+    jp   nz, 1601$
+    pop  de
+    ret
+    __endasm;
 }
 
 static void ensure_sonic_dplc_loaded(uint8_t frame) {
-    uint8_t prev, cnt, i, slot;
+    uint8_t prev, cnt, slot;
     uint16_t off;
     uint16_t st_list[32];
     uint8_t *dst;
@@ -1391,19 +2302,8 @@ static void ensure_sonic_dplc_loaded(uint8_t frame) {
     }
 
     dst = (uint8_t *)(((uint16_t)s_dplc_raw + 15U) & 0xFFF0U);
-    for (i = 0; i < cnt; i++) {
-        uint16_t st = st_list[i];
-        const uint8_t *src;
-        if (st < 768) {
-            SWITCH_ROM(6);
-            src = &sonic_tiles_part0[st << 4];
-        } else {
-            SWITCH_ROM(7);
-            src = &sonic_tiles_part1[(st - 768) << 4];
-        }
-        memcpy(dst, src, 16);
-        dst += 16;
-    }
+    s_dp_dst = dst;
+    dplc_copy(st_list, cnt);
     s_dplc_pending_dst = s_cur_sonic_base;
     s_dplc_pending_cnt = cnt;
     SWITCH_ROM(prev);
@@ -1470,6 +2370,87 @@ void hw_step_sonic_anim(void) {
     g_sonic.anim_timer = spd;
 }
 
+/* Fast emitter for fully visible Sonic pieces (see hw_draw_sonic_sprite): copies `cnt` 4-byte pieces from
+   `s_fe_src` to shadow OAM at `s_fe_dst`, then rewrites Y/X (`b + (d ^ m)`) and tile/attr in place. shadow_OAM is
+   256-byte aligned and 160 bytes long, so the end test only compares the low address byte. */
+static const uint8_t *s_fe_src;
+static uint8_t *s_fe_dst;
+static uint8_t s_fe_cnt, s_fe_end, s_fe_my, s_fe_by, s_fe_mx, s_fe_bx, s_fe_base, s_fe_xa, s_fe_oa;
+static void sonic_emit_fast(void) __naked {
+    __asm
+    ld   a, (_s_fe_cnt)
+    or   a, a
+    ret  z
+    add  a, a
+    add  a, a
+    ld   b, a
+    ld   hl, #_s_fe_dst
+    ld   a, (hl+)
+    ld   e, a
+    ld   d, (hl)
+    ld   hl, #_s_fe_src
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+201$:
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    dec  b
+    jr   nz, 201$
+    ld   a, (_s_fe_my)
+    ld   c, a
+    ld   a, (_s_fe_by)
+    ld   b, a
+    ld   a, (_s_fe_mx)
+    ld   e, a
+    ld   a, (_s_fe_bx)
+    ld   d, a
+    ld   hl, #_s_fe_dst
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+202$:
+    ld   a, (hl)
+    xor  a, c
+    add  a, b
+    ld   (hl+), a
+    ld   a, (hl)
+    xor  a, e
+    add  a, d
+    ld   (hl+), a
+    inc  hl
+    inc  hl
+    ld   a, (_s_fe_end)
+    cp   a, l
+    jr   nz, 202$
+    ld   a, (_s_fe_base)
+    ld   b, a
+    ld   a, (_s_fe_xa)
+    ld   c, a
+    ld   a, (_s_fe_oa)
+    ld   d, a
+    ld   hl, #_s_fe_dst
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+203$:
+    inc  hl
+    inc  hl
+    ld   a, (hl)
+    add  a, b
+    ld   (hl+), a
+    ld   a, (hl)
+    xor  a, c
+    or   a, d
+    ld   (hl+), a
+    ld   a, (_s_fe_end)
+    cp   a, l
+    jr   nz, 203$
+    ret
+    __endasm;
+}
+
 void hw_draw_sonic_sprite(void) {
     uint8_t prev, cnt, i;
     uint16_t off;
@@ -1493,6 +2474,28 @@ void hw_draw_sonic_sprite(void) {
         uint8_t xor_attr = (uint8_t)((rfx ? 0x20U : 0U) ^ (rfy ? 0x40U : 0U));
         uint8_t or_attr = g_sonic.loop_plane ? 0x80U : 0U;
         uint8_t base = s_cur_sonic_base;
+        /* Piece offsets in `sonic_spr_blob` are within dx,dy in [-16, 8] (both orientations land in
+           [scr-16, scr+8]), so with Sonic this far inside the screen every piece is visible: emit them with
+           pure 8-bit math. Flips use -d == ~d + 1. Otherwise fall back to the per-piece clipped loop. */
+        if ((uint16_t)(scr_x - 9) <= 142U && (uint16_t)(scr_y - 9) <= 110U) {
+            uint8_t room = (uint8_t)(40U - n);
+            if (n >= 40U) room = 0;
+            if (cnt > room) cnt = room;
+            s_fe_src = q;
+            s_fe_dst = o;
+            s_fe_cnt = cnt;
+            s_fe_end = (uint8_t)((uint8_t)(uint16_t)o + (uint8_t)(cnt << 2));
+            s_fe_my = rfy ? 0xFFU : 0U;
+            s_fe_by = (uint8_t)((uint8_t)scr_y + (rfy ? 9U : 16U));
+            s_fe_mx = rfx ? 0xFFU : 0U;
+            s_fe_bx = (uint8_t)((uint8_t)scr_x + (rfx ? 1U : 8U));
+            s_fe_base = base;
+            s_fe_xa = xor_attr;
+            s_fe_oa = or_attr;
+            sonic_emit_fast();
+            n = (uint8_t)(n + cnt);
+            cnt = 0;
+        }
         for (i = 0; i < cnt && n < 40U; i++, q += 4) {
             int8_t dy = (int8_t)q[0];
             int8_t dx = (int8_t)q[1];
@@ -1588,6 +2591,178 @@ static uint8_t s_last_scan_tag = 0xFF;
 extern const uint8_t rev00_ghz3_objs[];
 extern const uint8_t rev00_lz1_objs[];
 
+/* Spawn scan resumes from a cursor: entries [0, s_scan_skip) are known to be non-terminator entries with
+   x < s_scan_skip_min, so with min_x >= s_scan_skip_min the original loop would skip them without effect.
+   (A smaller min_x just rescans from the start; the result is identical to the original full scan.) */
+static uint16_t s_scan_skip = 0;
+static int16_t s_scan_skip_min = -32767;
+
+/* Spawn-list walker for hw_scan_spawn_objects (hand-written). From (s_sc_p, s_sc_idx) it applies the scan rules
+   (idx < 512, 0xFFFF terminator, x > max_x stops, x < min_x skipped and extends the s_scan_skip prefix, the taken
+   bit and the spawn-hint "already spawned" test) and stops at the next entry that needs spawn_try_place_b127,
+   returning 1, or returns 0 at the end. min/max are stored sign-biased (^0x8000) for unsigned compares. */
+static const uint8_t *s_sc_p;
+static uint16_t s_sc_idx, s_sc_minb, s_sc_maxb;
+static uint8_t s_sc_prefix;
+typedef char spawn_layout_check[(sizeof(ActiveObj) == 20U && offsetof(ActiveObj, spawn_slot) == 3U &&
+                                 offsetof(ActiveObj, base_x) == 9U && MAX_ACTIVE_OBJS == 24) ? 1 : -1];
+static uint8_t scan_next(void) __naked {
+    __asm
+    ld   hl, #_s_sc_p
+    ld   a, (hl+)
+    ld   h, (hl)
+    ld   l, a
+    ld   a, (_s_sc_idx)
+    ld   c, a
+    ld   a, (_s_sc_idx + 1)
+    ld   b, a
+1001$:
+    ld   a, b
+    cp   a, #2
+    jp   nc, 1090$
+    ld   a, (hl+)
+    ld   e, a
+    ld   a, (hl-)
+    ld   d, a
+    and  a, e
+    inc  a
+    jp   z, 1090$
+    ld   a, d
+    xor  a, #0x80
+    ld   d, a
+    push hl
+    ld   hl, #_s_sc_maxb
+    ld   a, (hl+)
+    sub  a, e
+    ld   a, (hl)
+    sbc  a, d
+    pop  hl
+    jp   c, 1090$
+    push hl
+    ld   hl, #_s_sc_minb
+    ld   a, e
+    sub  a, (hl)
+    inc  hl
+    ld   a, d
+    sbc  a, (hl)
+    pop  hl
+    jr   nc, 1010$
+    ld   a, (_s_sc_prefix)
+    or   a, a
+    jp   z, 1080$
+    ld   a, c
+    add  a, #1
+    ld   (_s_scan_skip), a
+    ld   a, b
+    adc  a, #0
+    ld   (_s_scan_skip + 1), a
+    jp   1080$
+1010$:
+    xor  a, a
+    ld   (_s_sc_prefix), a
+    push hl
+    ld   de, #4
+    add  hl, de
+    ld   a, (hl)
+    pop  hl
+    cp   a, #0x0D
+    jr   z, 1020$
+    cp   a, #0x3E
+    jr   z, 1020$
+    cp   a, #0x4B
+    jr   z, 1020$
+    push hl
+    ld   e, c
+    ld   d, b
+    srl  d
+    rr   e
+    srl  d
+    rr   e
+    srl  d
+    rr   e
+    ld   hl, #_g_obj_taken
+    add  hl, de
+    ld   a, c
+    and  a, #7
+    ld   e, a
+    ld   a, #1
+    inc  e
+1011$:
+    dec  e
+    jr   z, 1012$
+    add  a, a
+    jr   1011$
+1012$:
+    and  a, (hl)
+    pop  hl
+    jr   nz, 1080$
+1020$:
+    push hl
+    ld   hl, #0xA800
+    add  hl, bc
+    ld   a, (hl)
+    cp   a, #24
+    jr   nc, 1070$
+    ld   l, a
+    ld   h, #0
+    add  hl, hl
+    add  hl, hl
+    ld   e, l
+    ld   d, h
+    add  hl, hl
+    add  hl, hl
+    add  hl, de
+    ld   de, #_g_objs
+    add  hl, de
+    ld   a, (hl)
+    or   a, a
+    jr   z, 1070$
+    inc  hl
+    inc  hl
+    inc  hl
+    ld   a, (hl+)
+    cp   a, c
+    jr   nz, 1070$
+    ld   a, (hl)
+    cp   a, b
+    jr   nz, 1070$
+    ld   de, #5
+    add  hl, de
+    pop  de
+    push de
+    ld   a, (de)
+    cp   a, (hl)
+    jr   nz, 1070$
+    inc  de
+    inc  hl
+    ld   a, (de)
+    cp   a, (hl)
+    jr   nz, 1070$
+    pop  hl
+    jr   1080$
+1070$:
+    pop  hl
+    ld   a, l
+    ld   (_s_sc_p), a
+    ld   a, h
+    ld   (_s_sc_p + 1), a
+    ld   a, c
+    ld   (_s_sc_idx), a
+    ld   a, b
+    ld   (_s_sc_idx + 1), a
+    ld   a, #1
+    ret
+1080$:
+    ld   de, #6
+    add  hl, de
+    inc  bc
+    jp   1001$
+1090$:
+    xor  a, a
+    ret
+    __endasm;
+}
+
 void hw_scan_spawn_objects(void) {
     uint8_t prev;
     const uint8_t *p;
@@ -1596,8 +2771,10 @@ void hw_scan_spawn_objects(void) {
     int16_t max_x = g_cam_x + 464;
     uint8_t scan_tag = (uint8_t)((g_cur_act << 1) | (g_rev_mode & 1));
     int16_t dcam = g_cam_x - s_last_scan_cam_x;
+    uint8_t prefix = 1;
 
     if (!s_scan_force && scan_tag == s_last_scan_tag && dcam > -8 && dcam < 8) return;
+    if (s_scan_force || scan_tag != s_last_scan_tag || min_x < s_scan_skip_min) s_scan_skip = 0;
     s_scan_force = 0;
     s_last_scan_tag = scan_tag;
     s_last_scan_cam_x = g_cam_x;
@@ -1609,17 +2786,20 @@ void hw_scan_spawn_objects(void) {
         SWITCH_ROM(g_ram_act.data_bank);
         p = g_ram_act.objects;
     }
-    while (idx < 512U) {
-        uint16_t ox = (uint16_t)p[0] | ((uint16_t)p[1] << 8);
-        if (ox == 0xFFFF) break;
-        if ((int16_t)ox > max_x) break;
-        if ((int16_t)ox >= min_x) {
-            int16_t oy = (int16_t)((uint16_t)p[2] | ((uint16_t)p[3] << 8));
-            spawn_try_place_b127(idx, (int16_t)ox, oy, p[4], p[5]);
-        }
-        p += 6;
-        idx++;
+    idx = s_scan_skip;
+    s_sc_p = p + idx * 6U;
+    s_sc_idx = idx;
+    s_sc_minb = (uint16_t)min_x ^ 0x8000U;
+    s_sc_maxb = (uint16_t)max_x ^ 0x8000U;
+    s_sc_prefix = prefix;
+    while (scan_next()) {
+        const uint8_t *q = s_sc_p;
+        spawn_try_place_b127(s_sc_idx, (int16_t)((uint16_t)q[0] | ((uint16_t)q[1] << 8)),
+                             (int16_t)((uint16_t)q[2] | ((uint16_t)q[3] << 8)), q[4], q[5]);
+        s_sc_p = q + 6;
+        s_sc_idx++;
     }
+    s_scan_skip_min = min_x;
     SWITCH_ROM(prev);
 }
 
@@ -1694,7 +2874,9 @@ void main(void) {
 
         g_frame_counter++;
         vsync();
+        s_ring_upload_ok = 1;   /* ring art follows the ring map flush below, as before (not on mode-init passes) */
         flush_vblank_hdma();
+        s_ring_upload_ok = 0;
         if (g_game_mode == GM_LEVEL && !g_paused) hw_flush_bkg_rings();
         hw_animate_level_gfx();
 #if SONIC_GAMEPLAY_30FPS
