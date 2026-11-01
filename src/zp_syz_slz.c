@@ -13,8 +13,8 @@
 /* 0x56 Floating blocks (`56 SYZ, SLZ Floating Blocks and LZ Doors.asm`): oscillating blocks (SYZ types 0..4). */
 static void syz_fblock(ActiveObj *o) {
     static const uint8_t k_wh[8][2] = { {16,16}, {32,32}, {16,32}, {32,26}, {16,39}, {16,16}, {8,32}, {64,16} };
-    uint8_t fr = (uint8_t)((o->subtype >> 4) & 7U), t = (uint8_t)(o->subtype & 0x0FU);
-    uint8_t xflip = (uint8_t)((o->subtype & 0x40U) && fr < 4);
+    uint8_t fr = (uint8_t)((o->subtype >> 4) & 3U), t = (uint8_t)(o->subtype & 0x0FU);
+    uint8_t xflip = (uint8_t)((o->subtype & 0x40U) != 0);   /* converter ORs the object's X flip into bit 6 */
     int16_t old_x = o->x, v, w, h, sx, sy;
     uint8_t k;
 
@@ -22,11 +22,10 @@ static void syz_fblock(ActiveObj *o) {
         o->state = 1;
         o->hp = k_wh[fr][0];
         o->timer = k_wh[fr][1];
+        o->vy = 0;
     }
     w = o->hp;
     h = o->timer;
-    if (xflip) fr &= 3U;
-    fr &= 3U;
     if (t == 1 || t == 2 || t == 3 || t == 4) {
         if (t & 1U) {
             v = (int16_t)OSC_HI(0x0A);                 /* small: +$A, range $20 */
@@ -37,6 +36,13 @@ static void syz_fblock(ActiveObj *o) {
         }
         if (t <= 2) o->x = o->base_x - v;
         else o->y = o->base_y - v;
+    }
+    else if (t == 7) {                                   /* SYZ3 tunnel block: slides right once switch $F is pressed */
+        if (o->vy == 0 && (g_button_state & 0x80U)) { o->vy = 1; o->vx = 0; }
+        if (o->vy) {
+            o->x++;
+            if (++o->vx >= 0x380) { o->vy = 0; o->subtype = (uint8_t)(o->subtype & 0xF0U); }
+        }
     }
     pr_solid(o, w + 11, h, w);
     if (g_stand_obj == o && o->x != old_x) pr_move_x(o->x - old_x);

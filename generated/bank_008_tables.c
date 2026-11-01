@@ -568,44 +568,6 @@ extern const uint8_t s1_asset_361[];
 extern const uint8_t s1_asset_362[];
 extern const uint8_t s1_asset_363[];
 extern const uint8_t s1_asset_364[];
-extern const uint8_t s1_asset_365[];
-extern const uint8_t s1_asset_366[];
-extern const uint8_t s1_asset_367[];
-extern const uint8_t s1_asset_368[];
-extern const uint8_t s1_asset_369[];
-extern const uint8_t s1_asset_370[];
-extern const uint8_t s1_asset_371[];
-extern const uint8_t s1_asset_372[];
-extern const uint8_t s1_asset_373[];
-extern const uint8_t s1_asset_374[];
-extern const uint8_t s1_asset_375[];
-extern const uint8_t s1_asset_376[];
-extern const uint8_t s1_asset_377[];
-extern const uint8_t s1_asset_378[];
-extern const uint8_t s1_asset_379[];
-extern const uint8_t s1_asset_380[];
-extern const uint8_t s1_asset_381[];
-extern const uint8_t s1_asset_382[];
-extern const uint8_t s1_asset_383[];
-extern const uint8_t s1_asset_384[];
-extern const uint8_t s1_asset_385[];
-extern const uint8_t s1_asset_386[];
-extern const uint8_t s1_asset_387[];
-extern const uint8_t s1_asset_388[];
-extern const uint8_t s1_asset_389[];
-extern const uint8_t s1_asset_390[];
-extern const uint8_t s1_asset_391[];
-extern const uint8_t s1_asset_392[];
-extern const uint8_t s1_asset_393[];
-extern const uint8_t s1_asset_394[];
-extern const uint8_t s1_asset_395[];
-extern const uint8_t s1_asset_396[];
-extern const uint8_t s1_asset_397[];
-extern const uint8_t s1_asset_398[];
-extern const uint8_t s1_asset_399[];
-extern const uint8_t s1_asset_400[];
-extern const uint8_t s1_asset_401[];
-extern const uint8_t s1_asset_402[];
 
 const uint8_t * const g_chunk_bank_ptrs[256] = {
     0,
@@ -920,20 +882,20 @@ const SongDesc g_songs[NUM_SONGS] = {
     { 76, mus_81 },
     { 76, mus_82 },
     { 76, mus_83 },
-    { 76, mus_84 },
-    { 76, mus_85 },
-    { 76, mus_86 },
-    { 77, mus_87 },
-    { 77, mus_88 },
-    { 77, mus_89 },
-    { 77, mus_8A },
-    { 77, mus_8B },
-    { 77, mus_8C },
-    { 77, mus_8D },
-    { 77, mus_8E },
-    { 77, mus_8F },
-    { 77, mus_90 },
-    { 77, mus_91 },
-    { 77, mus_92 },
-    { 78, mus_93 },
+    { 77, mus_84 },
+    { 77, mus_85 },
+    { 78, mus_86 },
+    { 78, mus_87 },
+    { 78, mus_88 },
+    { 78, mus_89 },
+    { 78, mus_8A },
+    { 78, mus_8B },
+    { 79, mus_8C },
+    { 79, mus_8D },
+    { 79, mus_8E },
+    { 79, mus_8F },
+    { 79, mus_90 },
+    { 79, mus_91 },
+    { 79, mus_92 },
+    { 79, mus_93 },
 };

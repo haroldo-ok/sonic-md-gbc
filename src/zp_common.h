@@ -61,6 +61,14 @@ static void zp_button(ActiveObj *o, const PropCell *c0, const PropCell *c1, uint
     }
     pr_solid(o, 27, 5, 16);
     pressed = (uint8_t)(g_stand_obj == o);
+    if ((o->subtype & 0x80U) && g_ram_act.vset_idx == 2 && !pressed) {   /* `But_MZBlock`: a pushable block pressing the button */
+        uint8_t j;
+        for (j = 0; j < MAX_ACTIVE_OBJS; j++) {
+            ActiveObj *b = &g_objs[j];
+            int16_t dx = b->x - o->x, dy = o->y - b->y;
+            if (b->active && b->id == 0x33 && dx > -32 && dx < 32 && dy > 8 && dy < 32) pressed = 1;
+        }
+    }
     if (pressed) {
         if (!(g_button_state & bit)) hw_play_sfx(SFX_SWITCH);
         g_button_state |= bit;
@@ -147,6 +155,9 @@ static void zp_fireball(ActiveObj *o, const PropCell *vert, uint8_t vn, const Pr
     }
 }
 
+#endif
+
+#if defined(ZP_WANT_COMMON) || defined(ZP_WANT_MBLK)
 /* 0x52 Moving blocks (`52 Moving Blocks.asm`), MZ single/triple block flavours. */
 static void zp_mblock(ActiveObj *o, const PropCell *c, uint8_t n, int16_t ph) {
     static const uint8_t k_w[5] = { 16, 32, 32, 64, 48 };
@@ -156,6 +167,7 @@ static void zp_mblock(ActiveObj *o, const PropCell *c, uint8_t n, int16_t ph) {
 
     if (o->state == 0) {
         uint8_t wi = (uint8_t)((o->subtype >> 4) & 7U);
+        if (wi > 4) wi &= 3U;                         /* converter-ORed X flip (bit 6) */
         o->hp = k_w[wi > 4 ? 0 : wi];
         o->subtype &= 0x0FU;
         o->state = 1;

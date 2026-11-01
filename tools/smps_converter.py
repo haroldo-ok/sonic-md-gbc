@@ -51,9 +51,9 @@ def semi_to_gbc_period(semi_from_c0: int, is_bass: bool = False) -> int:
         reg = int(round(2048.0 - 65536.0 / hz))
     else:
         # Fold extreme upper register gently down by octaves so pulse channels stay warm (`C3 = 130.8 Hz` .. `Eb6 = 1244.5 Hz`)
-        while s < 36:
+        while s < 24:   # C2 (65.4 Hz) is the lowest pitch a CGB pulse channel can reach
             s += 12
-        while s > 75:  # 75 = Eb6 (1,244.5 Hz) — zero dog-whistle screech!
+        while s > 79:   # G6 (1,568 Hz): keep the real octave of nearly every melody note
             s -= 12
         hz = 261.625565 * (2.0 ** ((s - 48) / 12.0))
         reg = int(round(2048.0 - 131072.0 / hz))
@@ -78,6 +78,7 @@ class TrackState:
     fill_left: int = 0
     current_note: int = 0  # 0 = rest; >0 = unified semitone from C0 (48 = C4), or raw DAC sample id for DAC track
     no_attack: bool = False
+    jumps: int = 0
     retriggered: bool = False
     mod_on: bool = False
     mod_wait: int = 0
@@ -210,6 +211,7 @@ def step_smps_track(rom: bytes, trk: TrackState, all_tracks: list[TrackState] | 
                 # Exact 68000 `cfJumpTo`: `move.b (a4)+; move.b (a4)+; adda.w d0,a4; subq.w #1,a4` -> `trk.pos + 1 + rel`!
                 rel = struct.unpack_from(">h", rom, trk.pos)[0]
                 trk.pos = trk.pos + 1 + rel
+                trk.jumps += 1
             elif b == 0xF7:
                 # Exact 68000 `cfRepeatAtPos` -> `bra.s cfJumpTo` at `trk.pos + 2` -> `trk.pos + 3 + rel`!
                 idx = rom[trk.pos]
@@ -367,6 +369,11 @@ def compile_smps_song(s1: S1DisasmROM, song_id: int, max_frames: int = 2400) -> 
     prev_ch3 = 0
     wait_acc = 0
     tempo_cnt = main_tempo
+    # Loop detection: the first melodic track's `smpsJump` marks the song's real loop point.  The stream is cut after one
+    # full pass of the loop and ends in `00 lo hi` (jump back to byte `loop_off`) instead of restarting at frame 0.
+    ref = next((t for t in tracks[1:] if t.active), None)
+    loop_off = None
+    looped = False
 
     for _frame in range(sim_frames):
         skip_tick = False
@@ -377,8 +384,19 @@ def compile_smps_song(s1: S1DisasmROM, song_id: int, max_frames: int = 2400) -> 
                 skip_tick = True
 
         if not skip_tick:
+            ref_j = ref.jumps if ref is not None else 0
             for t in tracks:
                 step_smps_track(rom, t, tracks)
+            if ref is not None and not is_jingle and ref.jumps > ref_j:
+                if loop_off is None:
+                    while wait_acc > 0:
+                        step_w = min(127, wait_acc)
+                        out.append(step_w)
+                        wait_acc -= step_w
+                    loop_off = len(out)
+                else:
+                    looped = True
+                    break
 
         if not any(t.active for t in tracks):
             break
@@ -521,7 +539,10 @@ def compile_smps_song(s1: S1DisasmROM, song_id: int, max_frames: int = 2400) -> 
         out.append(step_w)
         wait_acc -= step_w
 
-    out.append(0xFF if is_jingle else 0x00)
+    if is_jingle:
+        out.append(0xFF)
+    else:
+        out.extend((0x00, (loop_off or 0) & 0xFF, ((loop_off or 0) >> 8) & 0xFF))
     return bytes(out)
 
 

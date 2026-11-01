@@ -306,8 +306,10 @@ void hw_sound_tick(void) {
             uint8_t op;
             SWITCH_ROM(s_bgm_bank);
             op = *s_bgm_ptr++;
-            if (op == 0x00) {
-                s_bgm_ptr = s_bgm_base;
+            if (op == 0x00) {                        /* end of stream: `00 lo hi` = loop back to byte offset hi:lo */
+                uint8_t llo = *s_bgm_ptr++;
+                uint8_t lhi = *s_bgm_ptr;
+                s_bgm_ptr = s_bgm_base + (((uint16_t)lhi << 8) | llo);
                 op = *s_bgm_ptr++;
             } else if (op == 0xFF) {
                 s_bgm_ptr = 0;
@@ -2770,7 +2772,7 @@ void hw_scan_spawn_objects(void) {
     uint8_t prev;
     const uint8_t *p;
     uint16_t idx = 0;
-    int16_t min_x = g_cam_x - 96;
+    int16_t min_x = g_cam_x - 160;   /* matches the update window (`obj_prefilter`): wide swing/bridge arcs reach 128 px from their pivot */
     int16_t max_x = g_cam_x + 464;
     uint8_t scan_tag = (uint8_t)((g_cur_act << 1) | (g_rev_mode & 1));
     int16_t dcam = g_cam_x - s_last_scan_cam_x;

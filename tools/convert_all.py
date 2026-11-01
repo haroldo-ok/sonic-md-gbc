@@ -381,11 +381,12 @@ def main() -> None:
 
         # Expand Ring formations (`Obj25`) directly OR convert 6-byte big-endian objects `[x_u16, y_u16, id_u8, sub_u8]`
         # into native little-endian `6 bytes/entry` (`x_u16_le, y_u16_le, id, subtype`), expanding multi-ring formations (`Obj25`)!
-        ring_dirs = [
-            (0x10, 0), (0, 0x10), (0x18, 0), (0, 0x18),
-            (0x20, 0), (0, 0x20), (0x10, 0x10), (0x10, -0x10),
-            (-0x10, 0x10), (-0x10, -0x10), (0x18, 0x0C), (-0x18, 0x0C),
-            (0x0C, 0x18), (-0x0C, 0x18), (0x08, 0x08), (-0x08, 0x08),
+        ring_dirs = [   # `Ring_PosData` in `25, 37 Rings.asm`: subtype high nibble selects (dx, dy)
+            (0x10, 0), (0x18, 0), (0x20, 0),
+            (0, 0x10), (0, 0x18), (0, 0x20),
+            (0x10, 0x10), (0x18, 0x18), (0x20, 0x20),
+            (-0x10, 0x10), (-0x18, 0x18), (-0x20, 0x20),
+            (0x10, 8), (0x18, 0x10), (-0x10, 8), (-0x18, 0x10),
         ]
         objs_parsed = []
         for i in range(0, len(obj_raw) - 5, 6):
@@ -396,7 +397,7 @@ def main() -> None:
             oy = oy_raw & 0x0FFF
             oid = obj_raw[i + 4] & 0x7F
             osub = obj_raw[i + 5]
-            flags_hv = (oy_raw >> 14) & 3
+            flags_hv = (oy_raw >> 14) & 3   # `rol.w #2` in ObjPosLoad: bit 14 = X flip (status bit 0), bit 15 = Y flip (bit 1)
             if oid == 0x25:
                 cnt = min(7, (osub & 0x07) + 1)
                 dir_idx = (osub >> 4) & 0x0F
@@ -545,7 +546,7 @@ def main() -> None:
     print("[6/7] Converting ALL 19 SMPS Music Tracks, ALL 49 SMPS Sound Effects, & ALL 4 WAV PCM Samples...")
     song_meta = []
     for sid in range(0x81, 0x94):
-        sbytes = compile_smps_song(s1, sid, max_frames=2400)
+        sbytes = compile_smps_song(s1, sid, max_frames=7200)
         sb = packer.add_array(f"mus_{sid:02X}", sbytes, f"SMPS Song 0x{sid:02X}")
         song_meta.append((sid, sb, f"mus_{sid:02X}", len(sbytes)))
 
@@ -620,8 +621,8 @@ def main() -> None:
             else:
                 payload = raw[:14000]
 
-            # Pack in <= 12,000-byte chunks into remaining ROM banks up to bank 121 (Banks 123..127 belong to engine/supplement)!
-            if packer.cur_bank < 122 and len(payload) <= 12000:
+            # Pack in <= 12,000-byte chunks into remaining ROM banks up to bank 121 (Banks 121..127 belong to engine/supplement)!
+            if packer.cur_bank < 120 and len(payload) <= 12000:
                 b_assigned = packer.add_array(f"s1_asset_{archive_id}", payload, f"Converted {rel}")
                 archive_id += 1
             else:

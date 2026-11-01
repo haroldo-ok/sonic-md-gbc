@@ -5,158 +5,13 @@
 #include "zp_syz.h"
 #include "zp_slz.h"
 #include "zp_lz.h"
+#include "zp_sbz.h"
 
 /* =============================================================================================== */
 /* MARBLE ZONE                                                                                      */
 /* =============================================================================================== */
 
 /* 0x46 Bricks: static / wobble (ceiling) / fall when Sonic is near / slow wobble on lava (`46 MZ Bricks.asm`). */
-static void mz_brick(ActiveObj *o) {
-    uint8_t t = (uint8_t)(o->subtype & 7U);
-    int16_t v, dx;
-    uint8_t ang;
-
-    if (t == 2) {
-        dx = g_sonic.x - o->x;
-        if (dx < 0) dx = -dx;
-        if (dx < 0x90) {
-            o->subtype = 3;
-            o->vy = 0;
-            o->timer = 0;
-        }
-        t = 1;
-    }
-    if (t == 1) {
-        v = (int16_t)OSC_HI(0x16);
-        if (o->subtype & 8U) v = 0x10 - v;
-        o->y = o->base_y - v;
-    } else if (t == 3) {
-        zp_fall(o, 0x18);
-        if (o->vy >= 0 && hw_floor_distance(o->x, o->y + 15, &ang) < 0) {
-            o->y += hw_floor_distance(o->x, o->y + 15, &ang);
-            o->vy = 0;
-            o->base_y = o->y;
-            o->subtype = zp_is_lava(o->x, o->y + 16) ? 4 : 0;
-        }
-    } else if (t == 4) {
-        o->y = o->base_y - (int16_t)(OSC_HI(0x12) >> 3);
-    }
-    pr_solid(o, 27, 16, 16);
-    pr_cells(ZP_SX(o), ZP_SY(o), zp_mz_brick, ZP_MZ_BRICK_N, 0);
-}
-
-/* 0x2F Large grassy platforms (`2F MZ Large Grassy Platforms`): slope heightmaps, oscillating / burnable. */
-static int16_t mz_grass_top(ActiveObj *o, uint8_t fr, int16_t d1) {
-    int16_t d0 = g_sonic.x - o->x + d1;
-    uint8_t idx, h;
-    if (d0 < 0) d0 = 0;
-    idx = (uint8_t)(d0 >> 1);
-    if (fr == 0) {
-        if (idx < 14) h = 0x20;
-        else if (idx < 29) h = (uint8_t)(0x21 + (idx - 14));
-        else if (idx < 47) h = 0x30;
-        else if (idx < 62) h = (uint8_t)(0x2F - (idx - 47));
-        else h = 0x20;
-    } else if (fr == 1) {
-        if (idx < 6) h = 0x20;
-        else if (idx < 37) h = (uint8_t)(0x21 + (idx - 6));
-        else if (idx < 55) h = 0x40;
-        else if (idx < 70) h = (uint8_t)(0x3F - (idx - 55));
-        else h = 0x30;
-    } else {
-        h = 0x30;
-    }
-    return o->y - (int16_t)h;
-}
-
-static void mz_grass(ActiveObj *o) {
-    static const uint8_t k_off[4] = { 2, 6, 10, 14 };
-    static const uint8_t k_mid[4] = { 0x10, 0x18, 0x20, 0x30 };
-    uint8_t fr = (uint8_t)((o->subtype >> 4) & 3U);
-    uint8_t t = (uint8_t)(o->subtype & 7U);
-    int16_t d1, v, sx, sy;
-    const PropCell *c;
-    uint8_t n;
-
-    if (fr > 2) fr = 0;
-    d1 = (fr == 2 ? 32 : 64) + 11;
-    if (t >= 1 && t <= 4) {
-        uint8_t oi = (uint8_t)(t - 1U);
-        v = (int16_t)((uint8_t *)g_osc_val)[((k_off[oi] - 2) >> 1) + 1];
-        if (o->subtype & 8U) v = ((int16_t)k_mid[oi] << 1) - v;
-        o->y = o->base_y - v;
-    } else if (t == 5) {
-        uint8_t n8 = o->hp;
-        if (g_stand_obj == o) {
-            n8 = (uint8_t)(n8 + 4U);
-            if (n8 >= 0x40) n8 = 0x40;
-        } else {
-            n8 = (n8 >= 2) ? (uint8_t)(n8 - 2U) : 0;
-        }
-        o->hp = n8;
-        o->y = o->base_y + (hw_sin(n8) >> 4);
-        if (n8 == 0x20) o->state = 1;      /* burning */
-    }
-    zp_stand_slope(o, d1, mz_grass_top(o, fr, d1));
-    sx = ZP_SX(o);
-    sy = ZP_SY(o);
-    c = fr == 0 ? zp_mz_grass0 : (fr == 1 ? zp_mz_grass1 : zp_mz_grass2);
-    n = fr == 0 ? ZP_MZ_GRASS0_N : (fr == 1 ? ZP_MZ_GRASS1_N : ZP_MZ_GRASS2_N);
-    pr_cells(sx, sy, c, n, 0);
-    if (o->state == 1) {
-        /* `35 Burning Grass`: flames licking over the platform surface */
-        uint8_t k;
-        for (k = 0; k < 4; k++) {
-            int16_t fx = ((int16_t)k << 4) - 28;
-            hw_put_sprite8(sx + fx, sy - 16 - (int16_t)((g_frame_counter >> 2) & 1U) * 2, zp_mz_fire0[0].tile + 0, zp_mz_fire0[0].attr);
-        }
-        if (g_stand_obj == o && !((g_frame_counter + o->spawn_slot) & 31U)) sonic_hurt_or_kill(0);
-    }
-}
-
-/* 0x51 Smashable green block: roll onto it from above to break it (`51 MZ Smashable Green Block.asm`). */
-static void mz_smash(ActiveObj *o) {
-    static const int8_t k_vx[4] = { -2, 2, -1, 1 };
-    static const int8_t k_vy[4] = { -2, -2, -1, -1 };
-    int16_t sx = ZP_SX(o), sy = ZP_SY(o);
-    uint8_t k;
-
-    if (o->state == 0) {
-        uint8_t was_roll = (uint8_t)(g_sonic.rolling || g_sonic.anim == ANI_ROLL);
-        pr_solid(o, 27, 16, 16);
-        if (g_stand_obj == o && was_roll) {
-            g_stand_obj = 0;
-            g_sonic.rolling = 1;
-            g_sonic.anim = ANI_ROLL;
-            g_sonic.ysp = -0x300;
-            g_sonic.on_ground = 0;
-            o->state = 1;
-            o->timer = 0;
-            pr_taken(o);
-            add_score_points(100);
-            hw_play_sfx(SFX_SMASH);
-        } else {
-            pr_cells(sx, sy, zp_mz_smab, ZP_MZ_SMAB_N, 0);
-            return;
-        }
-    }
-    {
-        uint16_t t = o->timer;
-        if (t > 60U) {
-            o->active = 0;
-            return;
-        }
-        o->timer++;
-        for (k = 0; k < 4; k++) {
-            int16_t xo = (int16_t)k_vx[k] * (int16_t)t;
-            int16_t yo = (int16_t)k_vy[k] * (int16_t)t + (int16_t)((7U * t * t) >> 4);
-            hw_put_sprite8(sx + zp_mz_smab[k].dx + (xo >> 1), sy + zp_mz_smab[k].dy + (yo >> 1),
-                           zp_mz_smab[k].tile, zp_mz_smab[k].attr);
-        }
-    }
-}
-
-
 /* 0x31 Chained stompers (`31 MZ Chained Stompers.asm`): vx = extension (8.8), vy = speed, hp = rising, timer = delay. */
 static void mz_stomper(ActiveObj *o) {
     static const uint16_t k_len[7] = { 0x7000, 0xA000, 0x5000, 0x7800, 0x3800, 0x5800, 0xB800 };
@@ -180,7 +35,12 @@ static void mz_stomper(ActiveObj *o) {
     if (o->subtype & 0x80U) {
         /* switch controlled: rise while the switch is pressed, else fall */
         if (g_button_state & 1U) {
-            if (cur) {
+            uint8_t blk = 0, j;
+            for (j = 0; j < MAX_ACTIVE_OBJS; j++)
+                if (g_objs[j].active && g_objs[j].id == 0x33 && g_objs[j].base_y == 1) blk = 1;
+            if (blk && (cur >> 8) <= 0x10U) {
+                o->vy = 0;
+            } else if (cur) {
                 cur = (cur > 0x80U) ? (uint16_t)(cur - 0x80U) : 0;
                 if (!(g_frame_counter & 15U)) hw_play_sfx(SFX_CHAIN);
             }
@@ -264,7 +124,22 @@ static void mz_push(ActiveObj *o) {
             if (g_stand_obj == o) g_stand_obj = 0;
             return;
         }
+    } else if (o->base_y == 1 || (g_cur_act == 3 && o->x >= 0xA20 && o->x < 0xAA1 && o->state == 1)) {
+        /* Hard-coded MZ1 case in `33 MZ, LZ Pushable Blocks.asm`: the block rides on the spiked stomper's top */
+        uint8_t k;
+        o->base_y = 0;
+        for (k = 0; k < MAX_ACTIVE_OBJS; k++) {
+            ActiveObj *s = &g_objs[k];
+            if (s->active && s->id == 0x31 && (s->subtype & 0x80U) && o->x >= 0xA20 && o->x < 0xAA1) {
+                o->y = s->base_y + (int16_t)((uint16_t)s->vx >> 8) - 0x1C;
+                o->vy = 0;
+                o->base_y = 1;
+                break;
+            }
+        }
+        if (o->base_y == 0) goto fall;
     } else {
+fall:
         d = zp_floor(o, 16);
         if (d > 0 || o->vy) {
             zp_fall(o, 0x18);
@@ -401,16 +276,15 @@ static void mz_glass(ActiveObj *o) {
 }
 
 /* ------------------------------------------------------------------------------------------------ */
+extern uint8_t zp_mz2_object(ActiveObj *o) BANKED;
 static uint8_t zp_marble(ActiveObj *o) {
     switch (o->id) {
-    case 0x2F: mz_grass(o); return 1;
+    case 0x2F: case 0x46: case 0x51: return zp_mz2_object(o);
     case 0x30: mz_glass(o); return 1;
     case 0x31: mz_stomper(o); return 1;
     case 0x33: mz_push(o); return 1;
-    case 0x46: mz_brick(o); return 1;
     case 0x4C: mz_geyser(o); return 1;
     case 0x4E: mz_lavawall(o); return 1;
-    case 0x51: mz_smash(o); return 1;
     case 0x52: zp_mblock(o, zp_mz_mblk, ZP_MZ_MBLK_N, 0); return 1;
     case 0x54: mz_lavatag(o); return 1;
     default: return 0;
@@ -432,7 +306,8 @@ uint8_t zp_object(ActiveObj *o) BANKED {
         return 1;
     case 0x32:
         if (v == 4) zp_button(o, zp_syz_but0, zp_syz_but1, ZP_SYZ_BUT0_N);
-        else if (v == 1) zp_button(o, zp_lz_but0, zp_lz_but1, ZP_LZ_BUT0_N);
+        else if (v == 1 || v == 7) zp_button(o, zp_lz_but0, zp_lz_but1, ZP_LZ_BUT0_N);
+        else if (v == 5 || v == 6) zp_button(o, zp_sbz_but0, zp_sbz_but1, ZP_SBZ_BUT0_N);
         else zp_button(o, zp_mz_but0, zp_mz_but1, ZP_MZ_BUT0_N);
         return 1;
     case 0x71:
@@ -440,10 +315,12 @@ uint8_t zp_object(ActiveObj *o) BANKED {
         return 1;
     case 0x53:
         if (v == 3) zp_cflo(o, zp_slz_cflo, ZP_SLZ_CFLO_N);
+        else if (v >= 5) return zp_lz_sbz_object(o);
         else return 0;
         return 1;
     case 0x52:
-        if (v == 1) {
+        if (v == 5 || v == 6) return zp_lz_sbz_object(o);
+        if (v == 1 || v == 7) {
             if ((o->subtype & 0x0FU) == 7 && !(g_button_state & 4U)) return 1;
             zp_mblock(o, zp_lz_raft, ZP_LZ_RAFT_N, 7);
             return 1;

@@ -295,6 +295,7 @@ def zone_mz() -> Zone:
     # 0x2F large grassy platforms (level art, Tile_Pal3): top two cell rows of each frame
     for i, ty in enumerate((-48, -64, -48)):
         Z.add(f"grass{i}", Z.crop(F("Map_LGrass", i, 3, 0, 2), -64, ty, 64, ty + 32), (P6, P7))
+    Z.add("gbody", Z.crop(F("Map_LGrass", 2, 3, 0, 2), -32, -16, 0, 16), (P6, P7))   # 32x32 body block under the grass top
     Z.add("brick", F("Map_Brick", 0, 1, 0, 2), (P6, P7))                    # 0x46 purple brick 32x32
     Z.add("smab", F("Map_Smab", 0, 3, BL, 2), (P6, P7))                     # 0x51 smashable green block
     Z.add("push", F("Map_Push", 0, 2, BL, 2), (P6, P7))                     # 0x33 pushable block
@@ -352,7 +353,7 @@ def zone_slz() -> Zone:
 
 
 def zone_lz() -> Zone:
-    Z = Zone("LZ", [1], "Labyrinth Zone.bin", ["PLC_LZ", "PLC_LZ2"])
+    Z = Zone("LZ", [1, 7], "Labyrinth Zone.bin", ["PLC_LZ", "PLC_LZ2"])
     c = zart.const
     F = Z.frame
     LB, HP, DR, MB, SB = c("ArtTile_LZ_Blocks"), c("ArtTile_LZ_Harpoon"), c("ArtTile_LZ_Door"), c("ArtTile_LZ_Moving_Block"), c("ArtTile_LZ_Spikeball_Chain")
@@ -371,7 +372,41 @@ def zone_lz() -> Zone:
     return Z
 
 
-ZONES = {"MZ": zone_mz, "SYZ": zone_syz, "SLZ": zone_slz, "LZ": zone_lz}
+def zone_sbz() -> Zone:
+    """Scrap Brain Zone 1/2 (vsets 5, 6).  SBZ3 (vset 7) uses the Labyrinth props, see `zone_lz`."""
+    Z = Zone("SBZ", [5, 6], "SBZ Act 1.bin", ["PLC_SBZ", "PLC_SBZ2"])
+    c = zart.const
+    F = Z.frame
+    VB, SP, TR, SW = c("ArtTile_SBZ_Vanishing_Block"), c("ArtTile_SBZ_Spinning_Platform"), c("ArtTile_SBZ_Trap_Door"), c("ArtTile_SBZ_Saw")
+    FL, EL, DR, MS, MW = c("ArtTile_SBZ_Flamethrower"), c("ArtTile_SBZ_Electric_Orb"), c("ArtTile_SBZ_Door"), c("ArtTile_SBZ_Moving_Block_Short"), c("ArtTile_SBZ_Moving_Block_Long")
+    CF, GI = c("ArtTile_SBZ_Collapsing_Floor"), c("ArtTile_SBZ_Girder")
+    Z.add("vanw", F("Map_VanP", 0, 4, VB, 2), (P6, P7))                              # 0x6C vanishing platform 32x32
+    Z.add("vanh", F("Map_VanP", 1, 4, VB, 2), (P6, P7))                              # half width
+    Z.add("spinf", F("Map_Spin", 0, 5, SP, 0), (P6, P7))                            # 0x69 spinner flat 32x16
+    Z.add("spine", F("Map_Spin", 4, 5, SP, 0), (P6, P7))                            # spinner edge-on
+    Z.add("trap", Z.crop(F("Map_Trap", 0, 3, TR, 2), -64, -12, -32, 12), (P6, P7))   # 0x69 trapdoor piece 32x24
+    Z.add("sawa", F("Map_Saw", 2, 4, SW, 2, pieces=[0]), (STEEL,))                  # 0x6A saw quadrant A (x4 mirrored)
+    Z.add("sawb", F("Map_Saw", 3, 4, SW, 2, pieces=[0]), (STEEL,))                  # quadrant B
+    Z.add("orb", F("Map_Elec", 0, 6, EL, 2), (STEEL,))                              # 0x6E electrocuter
+    Z.add("spark", F("Map_Elec", 1, 6, EL, 0, pieces=[0]), (2,))                    # discharge spark
+    Z.add("bolt", F("Map_Elec", 2, 6, EL, 0, pieces=[3]), (2,))                     # lightning bolt (x mirrored)
+    Z.add("fhead", F("Map_Flame", 7, 22, FL, 0, pieces=[0]), (2,))                  # 0x6D flame head 24x32
+    Z.add("fbody", F("Map_Flame", 3, 22, FL, 0, pieces=[0]), (2,))                  # flame body 16x24
+    Z.add("ftip", Z.crop(F("Map_Flame", 0, 22, FL, 2), -6, 40, 10, 56), (STEEL,))                           # pipe tip
+    Z.add("stma", Z.crop(F("Map_Stomp", 1, 5, MS, 1), -28, -32, -12, -16), (STEEL,))   # 0x6B stomper hazard cell
+    Z.add("stmb", Z.crop(F("Map_Stomp", 1, 5, MS, 1), -28, -16, -12, 0), (STEEL,))     # stomper body cell
+    Z.add("sdoor", Z.crop(F("Map_Stomp", 0, 5, MS, 1), -64, -12, -48, 12), (STEEL,))   # sliding door slice 16x24
+    Z.add("gird", Z.crop(F("Map_Gird", 0, 1, GI, 2), -96, -24, -64, 0), (P6, P7))      # 0x70 girder piece 32x24
+    Z.add("adoor", F("Map_ADoor", 0, 9, DR, 2, pieces=[0]), (STEEL,))                 # 0x2A small door half 16x32
+    Z.add("mblks", F("Map_MBlock", 2, 5, MS, 2), (P6, P7))                          # 0x52 short moving block
+    Z.add("mblkw", F("Map_MBlock", 3, 5, MW, 2), (P6, P7))                          # long moving block
+    Z.add("cflo", F("Map_CFlo", 0, 4, CF, 2), (P6, P7))                             # 0x53 collapsing floor
+    Z.add("but0", Z.crop(F("Map_But", 0, 2, c("ArtTile_Button_Main"), 0), -16, -12, 16, 4), (STEEL,))
+    Z.add("but1", Z.crop(F("Map_But", 1, 2, c("ArtTile_Button_Main"), 0), -16, -12, 16, 4), (STEEL,))
+    return Z
+
+
+ZONES = {"MZ": zone_mz, "SYZ": zone_syz, "SLZ": zone_slz, "LZ": zone_lz, "SBZ": zone_sbz}
 
 if __name__ == "__main__":
     names = sys.argv[1:] or list(ZONES)

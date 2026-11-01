@@ -3,6 +3,8 @@
 #include "zp_common.h"
 #include "zp_lz.h"
 
+extern uint8_t zp_sbz_object(ActiveObj *o) BANKED;
+
 /* =============================================================================================== */
 /* LABYRINTH ZONE                                                                                   */
 /* =============================================================================================== */
@@ -134,16 +136,14 @@ static void lz_harpoon(ActiveObj *o) {
 
 /* ------------------------------------------------------------------------------------------------ */
 uint8_t zp_lz_sbz_object(ActiveObj *o) BANKED {
-    switch (g_ram_act.vset_idx) {
-    case 1:
-        switch (o->id) {
-        case 0x16: lz_harpoon(o); return 1;
-        case 0x56: if (o->subtype & 0x80U) { lz_door(o); return 1; } return 0;
-        case 0x57: zp_sball(o, zp_lz_link, ZP_LZ_LINK_N, 0); return 1;
-        case 0x61: lz_block(o); return 1;
-        default: return 0;
-        }
-    default:
-        return 0;
+    uint8_t v = g_ram_act.vset_idx;
+    if (v == 5 || v == 6) return zp_sbz_object(o);
+    if (v == 7 && o->id == 0x6B) return zp_sbz_object(o);        /* SBZ3's ancient lift */
+    switch (o->id) {                                              /* vsets 1 (LZ) and 7 (SBZ3) share the Labyrinth props */
+    case 0x16: lz_harpoon(o); return 1;
+    case 0x56: if (o->subtype & 0x80U) { lz_door(o); return 1; } return 0;
+    case 0x57: zp_sball(o, zp_lz_link, ZP_LZ_LINK_N, 0); return 1;
+    case 0x61: lz_block(o); return 1;
+    default: return 0;
     }
 }
