@@ -207,6 +207,9 @@ typedef struct {
     uint8_t hp;
 } ActiveObj;
 
+/* One 8x8 hardware-sprite cell of a zone prop (`tools/ghz_props.py`, `tools/zone_props.py`): offset from the object centre in screen px. */
+typedef struct { int8_t dx; int8_t dy; uint8_t tile; uint8_t attr; } PropCell;
+
 typedef struct {
     uint8_t active;
     int16_t x;
@@ -267,8 +270,11 @@ extern int16_t g_dyn_left_bound;
 extern int16_t g_dyn_right_bound;
 extern int16_t g_dyn_top_bound;
 extern int16_t g_dyn_bottom_bound;
-extern uint16_t g_osc_val[16];
+extern uint16_t g_osc_val[14];     /* `v_oscillate` values (hi byte = what objects read), offsets $02..$36 step 4 */
+extern int16_t g_osc_rate[14];     /* `v_oscillate` rates */
 extern uint16_t g_osc_dir;
+#define OSC_HI(off)   (((uint8_t *)g_osc_val)[((((off) - 2) >> 2) << 1) + 1])
+#define OSC_RATE(off) (g_osc_rate[((off) - 2) >> 2])
 
 extern SonicState g_sonic;
 extern ActiveObj g_objs[MAX_ACTIVE_OBJS];
@@ -385,6 +391,8 @@ void sonic_hurt_or_kill(uint8_t instant_kill) BANKED;
 extern ActiveObj *g_stand_obj;
 void ghz_objects_reset(void) BANKED;
 void ghz_object(ActiveObj *o, int16_t sx, int16_t sy) BANKED;
+/* Bank 123: MZ/SYZ/LZ/SLZ/SBZ interactive props (`src/zp_zones.c`); returns 1 when handled. */
+uint8_t zp_object(ActiveObj *o) BANKED;
 void physics_land_on_object(void) BANKED;
 
 /* Bank 2: Level Objects & All 16 Sonic 1 Badnik AIs (`src/objects.c`) */

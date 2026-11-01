@@ -94,8 +94,17 @@ void add_score_points(uint16_t pts) BANKED {
 /* Authentic `_inc/Oscillatory Routines.asm` (`OscillateNumInit` & `OscillateNumDo` — 2x delta every 2nd frame) */
 
 void osc_reset(void) BANKED {
-    g_osc_dir = 0;
-    hw_init_osc_from_rom(g_osc_val);
+    uint8_t i;
+    for (i = 0; i < 14; i++) {
+        g_osc_val[i] = 0x0080;
+        g_osc_rate[i] = 0;
+    }
+    g_osc_val[9] = 0x50F0;  g_osc_rate[9] = 0x011E;
+    g_osc_val[10] = 0x2080; g_osc_rate[10] = 0x00B4;
+    g_osc_val[11] = 0x3080; g_osc_rate[11] = 0x010E;
+    g_osc_val[12] = 0x5080; g_osc_rate[12] = 0x01C2;
+    g_osc_val[13] = 0x7080; g_osc_rate[13] = 0x0276;
+    g_osc_dir = 0x007C;
 }
 
 /* Live VBlank Zone Color Cycling matching `_inc/PaletteCycle.asm` — cycles ONLY true water/lava/light sub-palettes,
@@ -128,48 +137,27 @@ void hw_step_palette_cycle(void) BANKED {
     g_pal_cycles++;
 }
 
-/* One oscillator step (`OscillateNumDo`): bounce oscillator IDX between 0 and LIM by STEP; direction bit MASK of D.
-   Values never exceed 0x90 (init 0x80, limits <= 0x70, steps <= 16) and the high byte is always 0, so only the low
-   byte is touched and all arithmetic is 8-bit. IDX/STEP/LIM are literals, so every access is a direct address. */
-#define OSC_N(IDX, STEP, LIM, D, MASK)                                   \
-    do {                                                                 \
-        uint8_t v = ((uint8_t *)g_osc_val)[(IDX) * 2U];                  \
-        if (!(D & (MASK))) {                                             \
-            v += (STEP);                                                 \
-            if (v >= (LIM)) D |= (MASK);                                 \
-        } else if (v > (STEP)) {                                         \
-            v -= (STEP);                                                 \
-        } else {                                                         \
-            v = 0;                                                       \
-            D &= (uint8_t)~(MASK);                                       \
-        }                                                                \
-        ((uint8_t *)g_osc_val)[(IDX) * 2U] = v;                          \
-    } while (0)
+/* `OscillateNumDo` (`_inc/Oscillatory Routines.asm`): acceleration based. Entry e <-> `v_oscillate + 2 + 4e`, direction bit 15-e.
+   rate +/-= frequency, value += rate; direction flips when the value's high byte crosses the middle value. */
+static const uint8_t k_osc_freq[14] = { 2, 2, 2, 2, 4, 8, 8, 4, 2, 2, 2, 3, 5, 7 };
+static const uint8_t k_osc_mid[14]  = { 0x10, 0x18, 0x20, 0x30, 0x20, 8, 0x40, 0x40, 0x50, 0x50, 0x20, 0x30, 0x50, 0x70 };
 
-/* Per-oscillator step sizes {4,4,4,4,8,16,16,8,4,4,4,6,10,14,4,4} and limits
-   {0x10,0x18,0x20,0x30,0x20,0x08,0x40,0x40,0x50,0x50,0x20,0x30,0x50,0x70,0x10,0x10} unrolled below. */
 void osc_step_all(void) BANKED {
-    uint8_t lo, hi;
-    if (g_paused) return;
-    lo = (uint8_t)g_osc_dir;
-    hi = (uint8_t)(g_osc_dir >> 8);
-    OSC_N( 0,  4, 0x10, lo, 0x01);
-    OSC_N( 1,  4, 0x18, lo, 0x02);
-    OSC_N( 2,  4, 0x20, lo, 0x04);
-    OSC_N( 3,  4, 0x30, lo, 0x08);
-    OSC_N( 4,  8, 0x20, lo, 0x10);
-    OSC_N( 5, 16, 0x08, lo, 0x20);
-    OSC_N( 6, 16, 0x40, lo, 0x40);
-    OSC_N( 7,  8, 0x40, lo, 0x80);
-    OSC_N( 8,  4, 0x50, hi, 0x01);
-    OSC_N( 9,  4, 0x50, hi, 0x02);
-    OSC_N(10,  4, 0x20, hi, 0x04);
-    OSC_N(11,  6, 0x30, hi, 0x08);
-    OSC_N(12, 10, 0x50, hi, 0x10);
-    OSC_N(13, 14, 0x70, hi, 0x20);
-    OSC_N(14,  4, 0x10, hi, 0x40);
-    OSC_N(15,  4, 0x10, hi, 0x80);
-    g_osc_dir = (uint16_t)(((uint16_t)hi << 8) | lo);
+    uint8_t e;
+    if (g_paused || g_sonic.dead) return;
+    for (e = 0; e < 14; e++) {
+        uint16_t bit = (uint16_t)(0x8000U >> e);
+        uint8_t f = k_osc_freq[e];
+        if (!(g_osc_dir & bit)) {
+            g_osc_rate[e] += f;
+            g_osc_val[e] += (uint16_t)g_osc_rate[e];
+            if ((uint8_t)(g_osc_val[e] >> 8) >= k_osc_mid[e]) g_osc_dir |= bit;
+        } else {
+            g_osc_rate[e] -= f;
+            g_osc_val[e] += (uint16_t)g_osc_rate[e];
+            if ((uint8_t)(g_osc_val[e] >> 8) < k_osc_mid[e]) g_osc_dir &= (uint16_t)~bit;
+        }
+    }
 }
 
 /* Authentic `_inc/DynamicLevelEvents.asm`: Dynamic Camera Boundary Locks & Zone Events */

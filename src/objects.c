@@ -12,6 +12,9 @@ static uint8_t box_overlap(int16_t ax, int16_t ay, int16_t aw, int16_t ah,
     return (dx < (aw + bw)) && (dy < (ah + bh));
 }
 
+/* ids implemented in `zp_object()` (bitmap, 1 bit per object id) */
+static const uint8_t k_zp_ids[16] = { 0x00, 0x18, 0x6C, 0x11, 0x00, 0x84, 0x0F, 0x10, 0xC0, 0x50, 0xDE, 0x7F, 0xFE, 0xFF, 0x07, 0x00 };
+
 void objects_reset_for_act(void) BANKED {
     memset(g_objs, 0, sizeof(g_objs));
     memset(g_lost_rings, 0, sizeof(g_lost_rings));
@@ -1283,8 +1286,13 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
 
         /* --- GREEN HILL INTERACTIVE PROPS (bridge, platforms, collapsing ledge, rock, smash walls, bridge stumps) --- */
         if (g_ram_act.vset_idx == 0 &&
-            (id == 0x11 || id == 0x18 || id == 0x1A || id == 0x1C || id == 0x3B || id == 0x3C)) {
+            (id == 0x11 || id == 0x15 || id == 0x18 || id == 0x1A || id == 0x1C || id == 0x3B || id == 0x3C)) {
             ghz_object(o, sx, sy);
+            return 0;
+        }
+
+        /* --- ZONE PROPS (MZ/SYZ/LZ/SLZ/SBZ platforms, blocks, hazards: `src/zp_zones.c`, bank 123) --- */
+        if (g_ram_act.vset_idx != 0 && (k_zp_ids[id >> 3] & (uint8_t)(1U << (id & 7U))) && zp_object(o)) {
             return 0;
         }
 

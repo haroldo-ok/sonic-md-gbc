@@ -1424,7 +1424,7 @@ def test_interrupt_driven_music_playback_when_main_loop_stalled():
         #    WRAM gap between the end of `_DATA` and the stack. (It used to sit at `0xDF80`, which is inside the live
         #    stack whenever the hijack lands mid-update with a deep call chain; the ISR's own pushes then overwrote
         #    the spin loop and resumed `main()`.)
-        spin = 0xDE00
+        spin = (syms.get("s__HEAP", 0xDE00) + 0x20 + 0xF) & ~0xF   # just past the end of all static RAM
         assert 0xC0A0 + syms["l__DATA"] <= spin - 16, "spin-loop address overlaps _DATA"
         pb.memory[spin] = 0x18      # `JR rel8`
         pb.memory[spin + 1] = 0xFE  # `-2` (infinite spin loop — `main()` NEVER executes another instruction!)

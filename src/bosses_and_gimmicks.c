@@ -745,7 +745,7 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
         return 1;
     }
     if (id == 0x45) {
-        int16_t ext = (int16_t)(g_osc_val[3] >> 1);
+        int16_t ext = (int16_t)(OSC_HI(0x0E) >> 1);
         o->x = o->base_x - ext;
         sx = (o->x - g_cam_x) >> 1;
         bg_solid_top(o, 18, 12);
@@ -807,7 +807,7 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
         return 1;
     }
     if (id == 0x46) {
-        o->y = o->base_y + ((o->subtype & 1) ? (int16_t)(g_osc_val[1] >> 1) : 0);
+        o->y = o->base_y + ((o->subtype & 1) ? (int16_t)(OSC_HI(0x06) >> 1) : 0);
         sy = (o->y - g_cam_y) >> 1;
         bg_solid_top(o, 16, 16);
         hw_put_sprite16(sx, sy, ZSPR_PROP + 24, 0x08 | 6);

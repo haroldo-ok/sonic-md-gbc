@@ -100,7 +100,9 @@ What changed:
   - **Stone blocks (`0x1C`)**: solid top and sides, Sonic can stand on them.
   - **Smash wall (`0x3B`)**: breaks only when Sonic rolls at speed >= `$480`, into 8 falling fragments.
   - Sonic standing on an object is tracked in `g_stand_obj`; ground sensors are skipped while it is set, as in the original `Sonic_AnglePos`.
-- **Verification**: `python3 tests/ghz/run_tests.py sonic.gbc sonic.noi new` (13 checks: bridge, 3 platform kinds, ledge, rock, wall) all pass, as do the 9 regular PyBoy tests. Known compromises: 0x15 swinging platforms in GHZ2 still use the old placeholder art, and `l__DATA` is within about 20 bytes of its `0x1D00` limit, so new globals need to be traded against existing ones.
+- **Swinging platforms (`0x15`)**: GHZ swing platforms follow `15 Swinging Platforms (GHZ, MZ, SLZ).asm` with the real S1 oscillator (`OSC_HI`) driving the angle, chain links and anchor.
+- **Other zones** (`src/zp_mz.c`, `src/zp_syz_slz.c`, `src/zp_lz_sbz.c`, art from `tools/zone_props.py` -> `generated/zp_*.h`, zone sprite tiles 40..67): Marble (grass/bricks, smashable blocks, stompers, push blocks, buttons, fireballs, geysers, lava, glass), Spring Yard (falling blocks, bumpers, balls, buttons, platforms), Star Light (circling and stair platforms, elevators, fans, seesaws, collapsing floors, smash walls, stars) and Labyrinth (sinking/rising/cork blocks, doors, harpoons, chained ball, rafts, buttons).
+- **Verification**: `python3 tests/ghz/run_tests.py sonic.gbc sonic.noi new` (13 checks) and the 9 regular PyBoy tests pass; the zone props were also smoke-tested visually in the emulator. Known compromises: Scrap Brain Zone props (vanishing/spinning platforms, flamethrowers, electrocuters, saws, girders) and LZ gargoyles/bubble makers/waterfalls/conveyors still use the old placeholders; the SLZ elevator spawner is simplified; sprite flip bits are mostly ignored; `l__DATA` is near its limit, so new globals need to be traded against existing ones.
 
 ---
 

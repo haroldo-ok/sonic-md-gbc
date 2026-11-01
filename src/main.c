@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "ghz_pals.h"
+#include "zp_pals.h"
 #include <stddef.h>
 
 #ifndef SONIC_GAMEPLAY_30FPS
@@ -136,7 +137,8 @@ int16_t g_dyn_left_bound = 0;
 int16_t g_dyn_right_bound = 0x24BF;
 int16_t g_dyn_top_bound = 0;
 int16_t g_dyn_bottom_bound = 0x0300;
-uint16_t g_osc_val[16];
+uint16_t g_osc_val[14];
+int16_t g_osc_rate[14];
 uint16_t g_osc_dir = 0;
 
 SonicState g_sonic;
@@ -1519,6 +1521,7 @@ void hw_load_act(uint8_t act_idx) {
     set_bkg_palette(0, 8, pal_ram);
     set_sprite_palette(0, 8, g_default_obj_pals);
     if (g_ram_act.vset_idx == 0) set_sprite_palette(6, 2, g_ghz_obj_pal67);   /* GHZ: dirt/wood + grass for bridge, ledge, platforms */
+    else set_sprite_palette(6, 2, g_zp_pal67[g_ram_act.vset_idx]);            /* other zones: platform / block / hazard colours */
     hw_play_bgm(g_ram_act.music_id);
     hw_refresh_full_viewport();
 
