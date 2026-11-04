@@ -124,6 +124,7 @@ uint8_t g_joy_pressed = 0;
 uint8_t g_paused = 0;
 
 volatile uint8_t g_debug_unlocked = 0;
+uint8_t g_cheats = 0;
 volatile uint8_t g_debug_active = 0;
 uint8_t g_debug_item = 0;
 uint8_t g_button_state = 0;
@@ -677,7 +678,8 @@ void hw_put_sprite8(int16_t sx, int16_t sy, uint8_t tile, uint8_t attr) __naked 
 /* Same result as emitting 2*ncols `hw_put_sprite8` calls (column by column, top then bottom; X/Y flips mirror the
    column order / swap top and bottom tiles). Hand-written; scratch state lives in c2_*.
    sdcccall(1): sx in DE, sy in BC, base_tile [SP+2], ncols [SP+3], attr [SP+4]; callee pops 3 bytes. */
-static uint8_t c2_ok0, c2_ok1, c2_oy0, c2_oy1, c2_base, c2_ncols, c2_attr, c2_cx;
+/* Shared main-loop asm scratch: also used by `pr_cells_fast` (props_common.h) and `osc_step_all` (dle_osc_sram.c). */
+uint8_t c2_ok0, c2_ok1, c2_oy0, c2_oy1, c2_base, c2_ncols, c2_attr, c2_cx;
 void hw_put_sprite_cols2rows(int16_t sx, int16_t sy, uint8_t base_tile, uint8_t ncols, uint8_t attr) __naked {
     (void)sx; (void)sy; (void)base_tile; (void)ncols; (void)attr;
     __asm
@@ -1278,6 +1280,11 @@ static void span_zero(uint16_t *dst) __naked {
     __endasm;
 }
 
+/* Baked decorations (`tools/bake_decor.py`, `src/decor_apply.c`, bank DECOR_BANK). */
+extern uint16_t g_decor_cnt;
+extern void decor_apply_b(uint8_t *t, int16_t wx0, int16_t wy0, uint8_t is_col) BANKED;
+extern void decor_select_act(uint8_t act) BANKED;
+
 static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
     uint8_t prev = CURRENT_BANK;
     uint8_t n = is_col ? 20U : 23U;
@@ -1344,6 +1351,7 @@ static void enqueue_world_span(int16_t wx0, int16_t wy0, uint8_t is_col) {
     if (is_col) g_ring_dirty_col[sp->vx >> 3] |= (uint8_t)(1U << (sp->vx & 7U));
     else        g_ring_dirty_row[sp->vy >> 3] |= (uint8_t)(1U << (sp->vy & 7U));
     blocks_to_tiles_batch(bw_buf, n, sp->t);
+    if (g_decor_cnt) decor_apply_b(sp->t, wx0, wy0, is_col);
     SWITCH_ROM(prev);
 }
 
@@ -1427,6 +1435,7 @@ void hw_load_act(uint8_t act_idx) {
     /* Clear any previous act's ring overlay from wrapped BG-map cells before streaming new art. */
     hw_ring_reset();
 
+    decor_select_act(act_idx);
     SWITCH_ROM(8);
     __critical {
         g_ram_act = g_acts[act_idx];

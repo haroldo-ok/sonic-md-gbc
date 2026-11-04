@@ -46,7 +46,129 @@ static uint8_t pr_still_on(int16_t w, int16_t ox) {
     return g_sonic.on_ground && dx >= 0 && dx < (w << 1);
 }
 
+/* Batched OAM emitter for un-flipped prop cells (same visibility test and OAM layout as `hw_put_sprite8`, without a
+   call per cell). sdcccall(1): sx in DE, sy in BC, c / n on the stack (callee pops 3 bytes).
+   Scratch (src/main.c `c2_*`): ok0/ok1 cell pointer, oy0 count, oy1/base oam-x base, ncols/attr oam-y base. */
+static void pr_cells_fast(int16_t sx, int16_t sy, const PropCell *c, uint8_t n) __naked {
+    (void)sx; (void)sy; (void)c; (void)n;
+    __asm
+    ldhl sp, #2
+    ld   a, (hl+)
+    ld   (_c2_ok0), a
+    ld   a, (hl+)
+    ld   (_c2_ok1), a
+    ld   a, (hl)
+    or   a, a
+    jp   z, 609$
+    ld   (_c2_oy0), a
+    ld   hl, #8
+    add  hl, de
+    ld   a, l
+    ld   (_c2_oy1), a
+    ld   a, h
+    ld   (_c2_base), a
+    ld   hl, #16
+    add  hl, bc
+    ld   a, l
+    ld   (_c2_ncols), a
+    ld   a, h
+    ld   (_c2_attr), a
+601$:
+    ld   a, (_g_oam_next)
+    cp   a, #40
+    jp   nc, 609$
+    ld   a, (_c2_ok0)
+    ld   l, a
+    ld   a, (_c2_ok1)
+    ld   h, a
+    ld   a, (hl+)
+    ld   e, a
+    rlca
+    sbc  a, a
+    ld   d, a
+    ld   a, (_c2_oy1)
+    add  a, e
+    ld   e, a
+    ld   a, (_c2_base)
+    adc  a, d
+    ld   d, a
+    ld   a, (hl+)
+    ld   c, a
+    rlca
+    sbc  a, a
+    ld   b, a
+    ld   a, (_c2_ncols)
+    add  a, c
+    ld   c, a
+    ld   a, (_c2_attr)
+    adc  a, b
+    ld   b, a
+    ld   a, d
+    or   a, a
+    jr   nz, 605$
+    ld   a, e
+    or   a, a
+    jr   z, 605$
+    cp   a, #168
+    jr   nc, 605$
+    ld   a, b
+    or   a, a
+    jr   nz, 605$
+    ld   a, c
+    cp   a, #9
+    jr   c, 605$
+    cp   a, #144
+    jr   nc, 605$
+    push hl
+    ld   a, (_g_oam_next)
+    ld   l, a
+    inc  a
+    ld   (_g_oam_next), a
+    ld   a, l
+    add  a, a
+    add  a, a
+    ld   l, a
+    ld   h, #(_shadow_OAM >> 8)
+    ld   (hl), c
+    inc  l
+    ld   (hl), e
+    inc  l
+    pop  de
+    ld   a, (de)
+    ld   (hl), a
+    inc  l
+    inc  de
+    ld   a, (de)
+    ld   (hl), a
+    ld   h, d
+    ld   l, e
+    dec  hl
+605$:
+    inc  hl
+    inc  hl
+    ld   a, l
+    ld   (_c2_ok0), a
+    ld   a, h
+    ld   (_c2_ok1), a
+    ld   a, (_c2_oy0)
+    dec  a
+    ld   (_c2_oy0), a
+    jp   nz, 601$
+609$:
+    pop  hl
+    pop  af
+    inc  sp
+    jp   (hl)
+    __endasm;
+}
+
 static void pr_cells(int16_t sx, int16_t sy, const PropCell *c, uint8_t n, uint8_t flip) {
+    /* whole-object cull: prop cells sit within +-64 px of the origin, the screen is 160x128 */
+    if ((uint16_t)(sx + 72) >= 304U || (uint16_t)(sy + 72) >= 272U) return;
+    if (!flip) {
+        pr_cells_fast(sx, sy, c, n);
+        return;
+    }
     while (n--) {
         if (flip) hw_put_sprite8(sx - 8 - c->dx, sy + c->dy, c->tile, c->attr ^ 0x20);
         else hw_put_sprite8(sx + c->dx, sy + c->dy, c->tile, c->attr);

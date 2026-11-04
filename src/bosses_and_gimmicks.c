@@ -534,7 +534,7 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
             int16_t d = hw_floor_distance(o->x, o->y + 16, &ang);
             if (d > 0) o->y += 2;
         }
-        if (id != 0x71) {
+        if (id != 0x71 && !(id == 0x44 && (o->subtype & 0x20))) {   /* 0x44 bit 5: art baked into the BG */
             uint8_t blk_tile = (id == 0x33) ? (ZSPR_PROP + 8) : (ZSPR_PROP + 4);
             uint8_t blk_pal = (id == 0x33 && g_ram_act.vset_idx == 2) ? 7 : 6;
             hw_put_sprite16(sx, sy, blk_tile, 0x08 | blk_pal);

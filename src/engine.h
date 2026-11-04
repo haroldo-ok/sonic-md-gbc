@@ -265,6 +265,12 @@ extern volatile uint16_t g_anim_tile_uploads;
 extern volatile uint16_t g_dac_drum_packets;
 extern volatile uint8_t g_rev_mode;
 extern volatile uint8_t g_jp_credits;
+/* Title-screen cheat codes (`screens_and_ss.c`), kept for the whole power-on session. */
+#define CHEAT_INVINCIBLE 0x01   /* Up, A, A, Down, Left, Right: hits never hurt, touching badniks destroys them */
+#define CHEAT_LIVES      0x02   /* A, B, A, B, B, A: dying never costs a life */
+#define CHEAT_NOENEMY    0x04   /* B, Up, A, Down, Down: badniks never spawn */
+#define CHEAT_LEVELSEL   0x08   /* Up, Down, Left, Right: START on the title opens the Level Select */
+extern uint8_t g_cheats;
 
 extern int16_t g_dyn_left_bound;
 extern int16_t g_dyn_right_bound;

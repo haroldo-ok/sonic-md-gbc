@@ -1315,7 +1315,7 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
 
 void objects_update_and_draw(void) BANKED {
     uint8_t i;
-    uint8_t sonic_spinning = (g_sonic.rolling || g_sonic.anim == ANI_ROLL || g_sonic.invinc > 0);
+    uint8_t sonic_spinning = (g_sonic.rolling || g_sonic.anim == ANI_ROLL || g_sonic.invinc > 0 || (g_cheats & CHEAT_INVINCIBLE));
     int16_t sonic_x = g_sonic.x;
     int16_t sonic_y = g_sonic.y;
     int16_t cam_x = g_cam_x;

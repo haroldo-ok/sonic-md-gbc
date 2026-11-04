@@ -11,9 +11,22 @@ static uint8_t s_ls_top = 0;
 static uint8_t s_ls_sound = 0x81;
 static uint8_t s_ls_dirty = 1;
 static uint8_t s_attract_idx = 0;
-static uint8_t s_cheat_ls = 0;
-static uint8_t s_cheat_dbg = 0;
-static uint8_t s_cheat_jp = 0;
+/* Title-screen cheat codes: `flag` = CHEAT_* bit to toggle, 0xFE = debug mode, 0xFF = Japanese credits. */
+typedef struct { const uint8_t *seq; uint8_t len; uint8_t flag; } CheatCode;
+static const uint8_t s_seq_ls[4]    = { J_UP, J_DOWN, J_LEFT, J_RIGHT };
+static const uint8_t s_seq_inv[6]   = { J_UP, J_A, J_A, J_DOWN, J_LEFT, J_RIGHT };
+static const uint8_t s_seq_lives[6] = { J_A, J_B, J_A, J_B, J_B, J_A };
+static const uint8_t s_seq_noen[5]  = { J_B, J_UP, J_A, J_DOWN, J_DOWN };
+static const uint8_t s_seq_dbg[8]   = { J_UP, J_B, J_DOWN, J_B, J_LEFT, J_B, J_RIGHT, J_B };
+static const uint8_t s_seq_jp[5]    = { J_DOWN, J_DOWN, J_DOWN, J_LEFT, J_RIGHT };
+#define N_CHEATS 6
+static const CheatCode s_cheat_codes[N_CHEATS] = {
+    { s_seq_ls, 4, CHEAT_LEVELSEL }, { s_seq_inv, 6, CHEAT_INVINCIBLE }, { s_seq_lives, 6, CHEAT_LIVES },
+    { s_seq_noen, 5, CHEAT_NOENEMY }, { s_seq_dbg, 8, 0xFE }, { s_seq_jp, 5, 0xFF },
+};
+/* Code progress lives in the enemy-projectile table: unused outside levels and cleared by every act load
+   (`boss_and_gimmick_reset`), so the title screen can borrow it without costing WRAM (`l__DATA` is at its limit). */
+#define s_cheat_pos ((uint8_t *)g_projs)
 static uint8_t s_cred_idx = 0;
 
 static const char *const s_cred_en_role[9] = {
@@ -244,9 +257,7 @@ void screens_init_mode(uint8_t mode) BANKED {
             hw_start_sega_chant();
         }
     } else if (mode == GM_TITLE) {
-        s_cheat_ls = 0;
-        s_cheat_dbg = 0;
-        s_cheat_jp = 0;
+        memset(s_cheat_pos, 0, N_CHEATS);
         hw_load_fullscreen_screen(1);
         VBK_REG = 0;
         set_sprite_data(0, 3, s_tson_face_tiles);
@@ -372,60 +383,63 @@ void screens_init_mode(uint8_t mode) BANKED {
  * ============================================================================================ */
 void screens_update_mode(uint8_t mode) BANKED {
     static const uint8_t s_attract_acts[4] = { 0, 3, 6, 12 }; /* GHZ1 -> MZ1 -> SYZ1 -> SLZ1 */
-    static const uint8_t s_ls_code[4]  = { J_UP, J_DOWN, J_LEFT, J_RIGHT };
-    static const uint8_t s_dbg_code[8] = { J_UP, J_B, J_DOWN, J_B, J_LEFT, J_B, J_RIGHT, J_B };
-    static const uint8_t s_jp_code[5]  = { J_DOWN, J_DOWN, J_DOWN, J_LEFT, J_RIGHT };
 
-    /* 1. SEGA Boot Screen + Hardware 15 kHz Wave-RAM Choir Voice (`sega.wav`) -> Level Select! */
+    /* 1. SEGA Boot Screen + Hardware 15 kHz Wave-RAM Choir Voice (`sega.wav`) -> Title Screen */
     if (mode == GM_SEGA) {
         s_mode_timer++;
         if ((g_joy_pressed & (J_START | J_A | J_SELECT)) || (!g_sega_pcm_playing && s_mode_timer >= 98)) {
             hw_stop_sega_chant();
             g_cur_act = 0;
-            g_next_mode = GM_LEVEL_SELECT;
+            g_next_mode = GM_TITLE;
         }
         return;
     }
 
-    /* 2. Animated Title Screen + Cheat Codes + 4-Zone Attract Mode Cycle (`START`/`A`/`SELECT` -> Level Select) */
+    /* 2. Title Screen: START begins a new game at Green Hill 1 (or opens the Level Select once its code was entered);
+          cheat codes are typed on the D-pad / A / B while the title is up; 4-zone attract demo after 7 s. */
     if (mode == GM_TITLE) {
         s_mode_timer++;
         if (g_joy_pressed) {
-            if (g_joy_pressed == s_ls_code[s_cheat_ls]) {
-                if (++s_cheat_ls == 4) {
-                    s_cheat_ls = 0;
-                    hw_play_sfx(SFX_RING);
-                    g_next_mode = GM_LEVEL_SELECT;
-                    return;
+            uint8_t c;
+            s_mode_timer = 0;                       /* any input restarts the attract-mode countdown */
+            for (c = 0; c < N_CHEATS; c++) {
+                const CheatCode *k = &s_cheat_codes[c];
+                uint8_t pos = s_cheat_pos[c];
+                if (g_joy_pressed == k->seq[pos]) {
+                    if (++pos == k->len) {
+                        pos = 0;
+                        if (k->flag == 0xFF) {                      /* Japanese credits names */
+                            g_jp_credits = !g_jp_credits;
+                            sram_save_progress();
+                            hw_play_sfx(SFX_ENTERSPEC);
+                        } else if (k->flag == 0xFE) {               /* debug mode */
+                            g_debug_unlocked = 1;
+                            hw_play_sfx(SFX_GIANTRING);
+                        } else {
+                            g_cheats ^= k->flag;
+                            hw_play_sfx((g_cheats & k->flag) ? SFX_RING : SFX_SWITCH);
+                        }
+                    }
+                } else {
+                    pos = (uint8_t)(g_joy_pressed == k->seq[0]);
                 }
-            } else if (!(g_joy_pressed & (J_START | J_A))) {
-                s_cheat_ls = 0;
-            }
-            if (g_joy_pressed == s_dbg_code[s_cheat_dbg]) {
-                if (++s_cheat_dbg == 8) {
-                    s_cheat_dbg = 0;
-                    g_debug_unlocked = 1;
-                    hw_play_sfx(SFX_GIANTRING);
-                }
-            } else if (!(g_joy_pressed & J_START)) {
-                s_cheat_dbg = 0;
-            }
-            /* Authentic Sonic 1 Japanese Credits Code (`DOWN, DOWN, DOWN, LEFT, RIGHT` -> `8C` JP pseudonyms!) */
-            if (g_joy_pressed == s_jp_code[s_cheat_jp]) {
-                if (++s_cheat_jp == 5) {
-                    s_cheat_jp = 0;
-                    g_jp_credits = !g_jp_credits;
-                    sram_save_progress();
-                    hw_play_sfx(SFX_ENTERSPEC);
-                }
-            } else if (!(g_joy_pressed & (J_START | J_A))) {
-                s_cheat_jp = 0;
+                s_cheat_pos[c] = pos;
             }
         }
-        if (g_joy_pressed & (J_START | J_A | J_SELECT)) {
+        if (g_joy_pressed & J_START) {
             if ((g_joy & J_B) && (g_joy & J_A)) g_debug_unlocked = 1;
-            hw_play_sfx(SFX_RING);
-            g_next_mode = GM_LEVEL_SELECT;
+            if (g_cheats & CHEAT_LEVELSEL) {
+                hw_play_sfx(SFX_RING);
+                g_next_mode = GM_LEVEL_SELECT;
+            } else {
+                g_demo_mode = 0;
+                g_checkpoint_active = 0;
+                g_score = 0;
+                g_rings = 0;
+                g_lives = 3;
+                g_cur_act = 0;
+                g_next_mode = GM_LEVEL;
+            }
             return;
         }
         if (s_mode_timer >= 420) {

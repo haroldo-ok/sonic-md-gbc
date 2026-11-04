@@ -139,25 +139,112 @@ void hw_step_palette_cycle(void) BANKED {
 
 /* `OscillateNumDo` (`_inc/Oscillatory Routines.asm`): acceleration based. Entry e <-> `v_oscillate + 2 + 4e`, direction bit 15-e.
    rate +/-= frequency, value += rate; direction flips when the value's high byte crosses the middle value. */
-static const uint8_t k_osc_freq[14] = { 2, 2, 2, 2, 4, 8, 8, 4, 2, 2, 2, 3, 5, 7 };
-static const uint8_t k_osc_mid[14]  = { 0x10, 0x18, 0x20, 0x30, 0x20, 8, 0x40, 0x40, 0x50, 0x50, 0x20, 0x30, 0x50, 0x70 };
+/* (frequency, middle value) pairs per oscillator entry. */
+const uint8_t k_osc_fm[28] = {
+    2, 0x10, 2, 0x18, 2, 0x20, 2, 0x30, 4, 0x20, 8, 8, 8, 0x40,
+    4, 0x40, 2, 0x50, 2, 0x50, 2, 0x20, 3, 0x30, 5, 0x50, 7, 0x70,
+};
 
+/* Hand-written SM83 (the C version cost ~20k cycles per call). Direction bits are consumed by rotating each
+   `g_osc_dir` byte left once per entry (bit 7 = current entry); the updated bit lands in bit 0, so after 8 rotations
+   the byte is back in place. Scratch: `c2_cx` = direction byte, `c2_ncols` = entry counter (src/main.c). */
 void osc_step_all(void) BANKED {
-    uint8_t e;
     if (g_paused || g_sonic.dead) return;
-    for (e = 0; e < 14; e++) {
-        uint16_t bit = (uint16_t)(0x8000U >> e);
-        uint8_t f = k_osc_freq[e];
-        if (!(g_osc_dir & bit)) {
-            g_osc_rate[e] += f;
-            g_osc_val[e] += (uint16_t)g_osc_rate[e];
-            if ((uint8_t)(g_osc_val[e] >> 8) >= k_osc_mid[e]) g_osc_dir |= bit;
-        } else {
-            g_osc_rate[e] -= f;
-            g_osc_val[e] += (uint16_t)g_osc_rate[e];
-            if ((uint8_t)(g_osc_val[e] >> 8) < k_osc_mid[e]) g_osc_dir &= (uint16_t)~bit;
-        }
-    }
+    __asm
+    ld   bc, #_g_osc_val
+    ld   de, #_g_osc_rate
+    ld   hl, #_k_osc_fm
+    ld   a, (_g_osc_dir + 1)
+    ld   (_c2_cx), a
+    ld   a, #8
+    ld   (_c2_ncols), a
+    call 700$
+    ld   a, (_c2_cx)
+    ld   (_g_osc_dir + 1), a
+    ld   a, (_g_osc_dir)
+    ld   (_c2_cx), a
+    ld   a, #6
+    ld   (_c2_ncols), a
+    call 700$
+    ld   a, (_c2_cx)
+    rlca
+    rlca
+    ld   (_g_osc_dir), a
+    jr   799$
+700$:
+    ld   a, (_c2_cx)
+    rlca
+    ld   (_c2_cx), a
+    jr   c, 720$
+    ld   a, (de)
+    add  a, (hl)
+    ld   (de), a
+    inc  de
+    ld   a, (de)
+    adc  a, #0
+    ld   (de), a
+    dec  de
+    ld   a, (de)
+    push hl
+    ld   h, a
+    ld   a, (bc)
+    add  a, h
+    ld   (bc), a
+    inc  bc
+    inc  de
+    ld   a, (de)
+    ld   h, a
+    ld   a, (bc)
+    adc  a, h
+    ld   (bc), a
+    pop  hl
+    inc  hl
+    cp   a, (hl)
+    jr   c, 730$
+    ld   a, (_c2_cx)
+    or   a, #1
+    ld   (_c2_cx), a
+    jr   730$
+720$:
+    ld   a, (de)
+    sub  a, (hl)
+    ld   (de), a
+    inc  de
+    ld   a, (de)
+    sbc  a, #0
+    ld   (de), a
+    dec  de
+    ld   a, (de)
+    push hl
+    ld   h, a
+    ld   a, (bc)
+    add  a, h
+    ld   (bc), a
+    inc  bc
+    inc  de
+    ld   a, (de)
+    ld   h, a
+    ld   a, (bc)
+    adc  a, h
+    ld   (bc), a
+    pop  hl
+    inc  hl
+    cp   a, (hl)
+    jr   nc, 730$
+    ld   a, (_c2_cx)
+    and  a, #0xFE
+    ld   (_c2_cx), a
+730$:
+    inc  hl
+    inc  bc
+    inc  de
+    ld   a, (_c2_ncols)
+    dec  a
+    ld   (_c2_ncols), a
+    jr   nz, 700$
+    ret
+799$:
+    __endasm;
 }
 
 /* Authentic `_inc/DynamicLevelEvents.asm`: Dynamic Camera Boundary Locks & Zone Events */
@@ -378,6 +465,12 @@ void spawn_try_place_b127(uint16_t idx, int16_t ox, int16_t oy, uint8_t oid, uin
     uint8_t s;
     ActiveObj *o, *slot = 0;
     uint8_t keep = (oid == 0x0D || oid == 0x3E || oid == 0x4B);
+    if (g_cheats & CHEAT_NOENEMY) {
+        /* badniks: 1E 1F 22 2B 2C 2D 40 42 43 4F 50 55 5F 60 78 */
+        static const uint8_t k_badnik[16] = { 0x00, 0x00, 0x00, 0xC0, 0x04, 0x38, 0x00, 0x00,
+                                              0x0D, 0x80, 0x21, 0x80, 0x01, 0x00, 0x00, 0x01 };
+        if (k_badnik[oid >> 3] & (uint8_t)(1U << (oid & 7U))) return;
+    }
     if (idx < 512U && !keep &&
         (g_obj_taken[idx >> 3] & (uint8_t)(1U << (idx & 7)))) return;
     for (s = MAX_ACTIVE_OBJS, o = g_objs; s != 0U; s--, o++) {

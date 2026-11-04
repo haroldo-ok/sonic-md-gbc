@@ -8,6 +8,11 @@ Every single one of the **`946 / 946` non-`.git` files** in `s1disasm` is hashed
 
 ## Summary of Latest Engineering Improvements
 
+### 0. Title Screen, Cheats, Baked Decorations & Performance (2026-11)
+- **Boot flow**: SEGA -> Title Screen -> `START` = new game at GHZ1. Title cheat codes (table under *Controls*) are matched in parallel by `screens_update_mode()` (`src/screens_and_ss.c`); flags live in `g_cheats` (`CHEAT_*` in `src/engine.h`). Invincibility short-circuits `sonic_hurt_or_kill()` and counts as spinning for badnik/monitor contact; Infinite Lives reloads the act without decrementing `g_lives`; No Enemies drops badnik IDs in `spawn_try_place_b127()`.
+- **Baked decorations** (`tools/bake_decor.py`, run by the regen pipeline after `convert_all.py`): static, purely decorative sprites (GHZ `0x1C` bridge stumps, GHZ `0x44` edge-wall art, SLZ `0x1C` lava-thrower bodies) are rendered from the original art, composited over the half-scale terrain cell at their object position (high-priority terrain stays in front), quantised to the zone BG palettes and written into unused BG tile slots (GHZ 33 new tiles, SLZ 6). `generated/decor.c` lists the overlay cells per act (column- and row-sorted); `decor_apply_b()` (`src/decor_apply.c`, bank 125) patches them into each streamed column/row. Pure decorations are removed from the act object lists; solid edge walls keep their collision object (subtype bit 5 = art baked, not drawn).
+- **Performance** (`tools/perf_bench.py`, mean 52.3 -> 54.6 FPS; SLZ1 42.8 -> 51.0, MZ1 45.2 -> 49.5, SYZ1 52.8 -> 54.8, SBZ1 51.8 -> 54.5): `osc_step_all()` is hand-written SM83 (was ~20k cycles per call; verified step-for-step identical against the C arithmetic), level-prop cells are emitted by one batched asm loop (`pr_cells_fast`, `src/props_common.h`) with a whole-object off-screen cull, and the title cheat state borrows the projectile table so WRAM `l__DATA` stays at `0x1CFD` (< `0x1D00`).
+
 ### 1. Restoring Sonic's Eye Pupils (`0.5x` Sprite Downsampling + Title Screen OAM Overlay)
 When Mega Drive `4bpp` `Map_Sonic` sprites (`32×40 px`) and the `Title Screen` Sonic emblem (`0E Title Screen Sonic`) are scaled down by `50%` (`0.5x` width × `0.5x` height) and quantized to `3` visible colors per CGB `2bpp` palette:
 - **Why Pupils Disappeared Originally**:
@@ -117,8 +122,8 @@ What changed:
   - All sprites are composited directly from authentic `s1built.bin` `Map_*` multi-piece sprite mapping tables (`Map_Sonic` + `SonicDynPLC` `89` frames with preserved eye pupils, `5`-frame `24×24` Goal Post, Monitors with distinct Ring/Speed Shoes/Shield/Invincibility/1-UP icons, Vertical & Horizontal Springs, Steel Spikes, Checkpoints, all Zone Badniks, `32×16` Dr. Eggman + boss weapons, `24×16` Prison Capsule + button, Giant Special Stage Ring, Animals, Points, Projectiles, Explosions, Air Bubbles, and per-Zone props) into dual CGB VRAM banks (`VRAM Bank 0` common sprites + `VRAM Bank 1` Zone sprites).
 - **Hardware-Interrupt Concert-Pitch SMPS Music, Warm CGB 4-Channel APU & Digital `"SEGA!"` Voice**:
   - Driven directly from the **SM83 Hardware Vertical Blank Interrupt (`0x0040` -> `add_VBL(hw_sound_isr)`)** and **Timer Interrupt (`0x0050` -> `add_TIM(hw_sega_pcm_tim_isr)`)** with safe MBC5 ROM bank save/restore (`CURRENT_BANK` / `SWITCH_ROM`) across all **19 SMPS music tracks** and **49 SMPS sound effects**.
-- **Immediate Start-of-Game Level Select**:
-  - Right after the `"SE-GA!"` boot screen, the game enters **`SONIC LEVEL SELECT`** automatically with no cheat code required, allowing instant selection of any of the **20 Zone Acts**, **6 Special Stages**, or **68-track Sound Test** (plus quick return from pause anywhere in-game via **`START` -> `SELECT`**).
+- **Title Screen at boot + title-screen cheat codes**:
+  - After the `"SE-GA!"` boot screen the game shows the **Title Screen**; **`START`** begins a new game at Green Hill 1. The **Level Select** (any of the **20 Zone Acts**, **6 Special Stages**, **68-track Sound Test**) is unlocked with its cheat code, see *Cheat Codes* below.
 - **Authentic `360°` Slope, Loop, Closed S-Tunnel & Spring Physics (`01 Sonic.asm` + `41 Springs.asm`)**:
   - Full 4-quadrant floor/wall/ceiling sensor math (`SonicAnglePos.asm`), dual collision planes (`Col_1` & `Col_2`), `Sonic_JumpHeight` `jumping`-gated variable jump height, full `flags_hv` spring decoding across all `197` `objpos/*.bin` springs, Spin Dash, and underwater physics.
 - **All Zones, Bosses, Special Stages, Audio & SRAM Persistence**:
@@ -142,8 +147,19 @@ What changed:
 | **`LEFT` / `RIGHT`** | Run / accelerate through slopes, `360°` loops, and S-tunnels |
 | **`DOWN`** | Duck when standing; curl into high-speed spin roll when moving |
 | **`A` or `B`** | Jump (`DOWN + A/B` while standing charges **Spin Dash** — release `DOWN` to launch) |
-| **`START`** | Pause (`PAUSED`) — press **`START`** again to resume or **`SELECT`** while paused to return to **`SONIC LEVEL SELECT`** |
-| **Title Codes** | On Title Screen: `UP, DOWN, LEFT, RIGHT` jumps to Level Select; `UP, B, DOWN, B, LEFT, B, RIGHT, B` unlocks Debug Mode (`SELECT` toggles in-level placement); `DOWN, DOWN, DOWN, LEFT, RIGHT` toggles Japanese Staff Credits |
+| **`START`** | Pause (`PAUSED`) — press **`START`** again to resume, or **`SELECT`** while paused to return to the Level Select (when its code is active) or the Title Screen |
+
+### Cheat Codes (typed on the Title Screen)
+Each code toggles: a ring chime means *on*, a click means *off*. Cheats last until power-off.
+
+| Code | Effect |
+|---|---|
+| `UP, DOWN, LEFT, RIGHT` | **Level Select**: `START` on the title opens the Level Select instead of starting GHZ1 |
+| `UP, A, A, DOWN, LEFT, RIGHT` | **Invincibility**: hits never hurt Sonic and touching a badnik destroys it (pits, drowning and crushing still kill; no invincibility stars/music) |
+| `A, B, A, B, B, A` | **Infinite Lives**: losing a life never decrements the counter |
+| `B, UP, A, DOWN, DOWN` | **No Enemies**: badniks never spawn (bosses, hazards and projectiles from bosses remain) |
+| `UP, B, DOWN, B, LEFT, B, RIGHT, B` | Debug Mode (`SELECT` toggles in-level placement) |
+| `DOWN, DOWN, DOWN, LEFT, RIGHT` | Japanese Staff Credits |
 
 ---
 
@@ -162,7 +178,7 @@ sonic-gbc/
 │   ├── main.c                      # Bank 0: CGB 8.388 MHz kernel, VBlank streamer, 2-slot Sonic cache, SMPS + 9.26 kHz Delta-Sigma DAC
 │   ├── physics.c                   # Bank 1: 360° slope/loop/S-tunnel physics, Spring/Jump kinematics, Spin Dash, Debug Mode
 │   ├── objects.c                   # Bank 2: Fast screen-culled Rings, Monitors, V/H Springs, 24×24 Signpost (`0x0D`), Badniks & shots
-│   ├── screens_and_ss.c            # Bank 3: Boot -> Level Select, Title Sonic OAM pupils, 58.5 FPS Rotating Special Stages, Credits
+│   ├── screens_and_ss.c            # Bank 3: Boot -> Title Screen + cheat codes, Level Select, Title Sonic OAM pupils, 58.5 FPS Rotating Special Stages, Credits
 │   ├── bosses_and_gimmicks.c       # Bank 126: All 6 Zone Bosses (`GHZ3..FZ`), Zone gimmicks/props & cut `s1disasm` objects
 │   ├── ghz_objects.c               # Bank 127: Green Hill bridge, moving/falling platforms, crumbling ledge, stone blocks & smash walls
 │   └── dle_osc_sram.c              # Bank 127: `DynamicLevelEvents`, 512-slot spawner, 16-ch oscillators & MBC5 SRAM save

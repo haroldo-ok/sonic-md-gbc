@@ -117,6 +117,15 @@ def tap_button(pb: PyBoy, btn: str, hold_frames: int = 3, release_frames: int = 
         analyze_frame(pb.screen.ndarray[:, :, :3], f"{check_ctx}_rel_{btn}_{k}", min_uniq=2)
 
 
+def enter_title_cheat(pb: PyBoy, seq, ctx: str = "Cheat") -> None:
+    """Type a title-screen cheat code (e.g. the Level Select code `UP, DOWN, LEFT, RIGHT`)."""
+    for btn in seq:
+        tap_button(pb, btn, hold_frames=2, release_frames=3, check_ctx=ctx)
+
+
+LEVEL_SELECT_CODE = ("up", "down", "left", "right")
+
+
 def test_rom_header_and_zero_placeholders() -> None:
     assert os.path.isfile(ROM_PATH), "Compiled sonic.gbc does not exist!"
     rom = open(ROM_PATH, "rb").read()
@@ -208,9 +217,13 @@ def test_full_end_to_end_boot_gameplay_all_zones_special_stages_and_audio() -> N
         # Verify SEGA PCM voice packets actually drove CGB APU sound events!
         assert read_u16(pb, sym_snd_ev) >= 10, "SEGA Wave-RAM PCM voice did not play!"
 
-        # 2. Press START on SEGA screen -> Opens Start-of-Game Level Select IMMEDIATELY (`mode == 2`)!
+        # 2. Press START on SEGA screen -> Title Screen; the Level Select code + START opens the Level Select (`mode == 2`)!
+        tap_button(pb, "start", hold_frames=4, release_frames=20, check_ctx="To_Title_From_Sega")
+        assert pb.memory[sym_mode] == 1, f"Expected Title Screen (1) after SEGA, got {pb.memory[sym_mode]}"
+        enter_title_cheat(pb, LEVEL_SELECT_CODE, "LevelSelect_Code")
+        assert pb.memory[syms["_g_cheats"]] & 0x08, "Level Select cheat code was not recognised on the Title Screen!"
         tap_button(pb, "start", hold_frames=4, release_frames=10, check_ctx="To_Start_LevelSelect")
-        assert pb.memory[sym_mode] == 2, f"Expected Start-of-Game Level Select (2), got {pb.memory[sym_mode]}"
+        assert pb.memory[sym_mode] == 2, f"Expected Level Select (2), got {pb.memory[sym_mode]}"
         tap_button(pb, "b", hold_frames=2, release_frames=3, check_ctx="Toggle_REV00")
         assert pb.memory[sym_rev_mode] == 1, "Level Select B toggle did not enable REV00 disassembly mode!"
         tap_button(pb, "b", hold_frames=2, release_frames=3, check_ctx="Restore_REV01")
@@ -772,15 +785,20 @@ def test_start_of_game_level_select_and_end_of_level_goalpost_clear():
         while read_u16(pb, syms["_g_frame_counter"]) < 1:
             pb.tick()
 
-        # 1. Pure hands-off boot (`0` buttons pressed!) MUST land directly on `SONIC LEVEL SELECT`!
-        reached_boot_lvsel = False
+        # 1. Pure hands-off boot (`0` buttons pressed!) MUST land on the Title Screen; the Level Select code opens it.
+        reached_title = False
         for f_i in range(260):
             pb.tick()
             analyze_frame(pb.screen.ndarray[:, :, :3], f"HandsOff_Boot_{f_i}", min_uniq=2)
-            if pb.memory[sym_mode] == 2:
-                reached_boot_lvsel = True
+            if pb.memory[sym_mode] == 1:
+                reached_title = True
                 break
-        assert reached_boot_lvsel, f"Cold boot did not automatically enter Level Select! mode={pb.memory[sym_mode]}"
+        assert reached_title, f"Cold boot did not automatically enter the Title Screen! mode={pb.memory[sym_mode]}"
+        for _ in range(20):
+            pb.tick()
+        enter_title_cheat(pb, LEVEL_SELECT_CODE, "Boot_LevelSelect_Code")
+        tap_button(pb, "start", hold_frames=4, release_frames=6, check_ctx="Boot_To_LvSel")
+        assert pb.memory[sym_mode] == 2, f"Level Select code + START did not open Level Select! mode={pb.memory[sym_mode]}"
         for _ in range(12):
             pb.tick()
             analyze_frame(pb.screen.ndarray[:, :, :3], "Boot_LvSel_Render", min_uniq=3)
@@ -1640,7 +1658,10 @@ def test_09_background_map_integrity_pupils_sega_and_fps():
         assert r_lpf >= 0.88, f"SEGA chant waveform correlation too low: r={r_lpf:.4f}"
         assert post_std == 0.0, f"Post-chant audio buzz detected: std={post_std:.6f}"
 
-        # Title Screen (`GM_TITLE = 1`): verify snow-white wings + peach muzzle + black pupils
+        # Title Screen (`GM_TITLE = 1`): verify snow-white wings + peach muzzle + black pupils.
+        # Boot now lands on the Title Screen by itself: let that first load finish before forcing a fresh one.
+        for _ in range(60):
+            pb.tick(1, False, False)
         pb.memory[syms["_g_next_mode"]] = 1
         pb.memory[syms["_g_mode_init_done"]] = 0
         for _ in range(30):
@@ -1758,3 +1779,43 @@ def test_experimental_30fps_rom_paces_gameplay_and_keeps_60hz_vblank() -> None:
         vbl_ticks = (read_u16(pb, sym_isr) - isr_before) & 0xFFFF
         assert 58 <= game_updates <= 62, f"Expected ~60 gameplay updates in 120 VBlanks, got {game_updates}"
         assert vbl_ticks == 120, f"VBlank audio clock changed under 30 FPS cap: {vbl_ticks}"
+
+
+def test_title_screen_start_and_cheat_codes() -> None:
+    """Cold boot lands on the Title Screen; the Invincibility / Infinite Lives / No Enemies codes typed there toggle
+    `g_cheats`, START begins Green Hill 1 directly, and no badnik ever spawns with No Enemies on."""
+    syms = load_noi_symbols(NOI_PATH)
+    sym_mode = syms["_g_game_mode"]
+    sym_cheats = syms["_g_cheats"]
+    sym_objs = syms["_g_objs"]
+    badniks = {0x1E, 0x1F, 0x22, 0x2B, 0x2C, 0x2D, 0x40, 0x42, 0x43, 0x4F, 0x50, 0x55, 0x5F, 0x60, 0x78}
+    with PyBoy(ROM_PATH, window="null", sound_emulated=False) as pb:
+        for _ in range(400):
+            pb.tick()
+            if pb.memory[sym_mode] == 1:
+                break
+        assert pb.memory[sym_mode] == 1, f"Boot did not reach the Title Screen: mode={pb.memory[sym_mode]}"
+        for _ in range(20):
+            pb.tick()
+        enter_title_cheat(pb, ("up", "a", "a", "down", "left", "right"), "Invincible_Code")
+        assert pb.memory[sym_cheats] == 0x01, f"Invincibility code: g_cheats={pb.memory[sym_cheats]:#x}"
+        enter_title_cheat(pb, ("a", "b", "a", "b", "b", "a"), "Lives_Code")
+        enter_title_cheat(pb, ("b", "up", "a", "down", "down"), "NoEnemy_Code")
+        assert pb.memory[sym_cheats] == 0x07, f"Cheat flags after 3 codes: {pb.memory[sym_cheats]:#x}"
+        assert pb.memory[sym_mode] == 1, "Typing cheat codes must not leave the Title Screen"
+        tap_button(pb, "start", hold_frames=4, release_frames=4, check_ctx="Title_Start_GHZ1")
+        for _ in range(60):
+            pb.tick()
+        assert pb.memory[sym_mode] == 3 and pb.memory[syms["_g_cur_act"]] == 0, "START on the title must start GHZ1"
+        pb.button_press("right")
+        seen = set()
+        for f in range(600):
+            pb.tick()
+            if f % 10 == 0:
+                for i in range(24):
+                    if pb.memory[sym_objs + i * 20]:
+                        seen.add(pb.memory[sym_objs + i * 20 + 1])
+        pb.button_release("right")
+        assert not (seen & badniks), f"No Enemies cheat: badniks spawned {sorted(hex(x) for x in seen & badniks)}"
+        assert 0x1C not in seen, "GHZ bridge stumps should be baked into the background, not spawned as objects"
+        assert pb.memory[sym_mode] == 3, "Sonic should still be playing GHZ1 (invincible, no enemies)"

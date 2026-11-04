@@ -164,7 +164,7 @@ void physics_init_sonic(int16_t sx, int16_t sy) BANKED {
 
 void sonic_hurt_or_kill(uint8_t instant_kill) BANKED {
     if (g_sonic.dead || g_debug_active || g_signpost_passed) return;
-    if (!instant_kill && (g_sonic.invuln > 0 || g_sonic.invinc > 0)) return;
+    if (!instant_kill && (g_sonic.invuln > 0 || g_sonic.invinc > 0 || (g_cheats & CHEAT_INVINCIBLE))) return;
 
     if (!instant_kill && g_sonic.shield) {
         sonic_exit_roll();
@@ -598,7 +598,7 @@ void physics_update_level(void) BANKED {
         if (pressed & J_START) {
             g_paused = !g_paused;
             if (g_paused) {
-                hw_print_win(0, 0, "PAUSED  SEL:LVSEL   ");
+                hw_print_win(0, 0, (g_cheats & CHEAT_LEVELSEL) ? "PAUSED  SEL:LVSEL   " : "PAUSED  SEL:TITLE   ");
             } else {
                 g_hud_dirty = 1;
             }
@@ -606,7 +606,7 @@ void physics_update_level(void) BANKED {
         if (g_paused) {
             if (pressed & J_SELECT) {
                 g_paused = 0;
-                g_next_mode = GM_LEVEL_SELECT;
+                g_next_mode = (g_cheats & CHEAT_LEVELSEL) ? GM_LEVEL_SELECT : GM_TITLE;
             } else if ((pressed & J_B) && g_debug_unlocked) {
                 g_paused = 0;
                 g_debug_active = !g_debug_active;
@@ -643,7 +643,9 @@ void physics_update_level(void) BANKED {
         g_sonic.y = (int16_t)(g_sonic.y_sub >> 8);
         hw_step_sonic_anim();
         if (g_sonic.y > g_cam_y + 300) {
-            if (g_lives > 1) {
+            if (g_cheats & CHEAT_LIVES) {
+                hw_load_act(g_cur_act);
+            } else if (g_lives > 1) {
                 g_lives--;
                 hw_load_act(g_cur_act);
             } else if (g_continues > 0) {
