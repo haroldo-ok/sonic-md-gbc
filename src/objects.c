@@ -747,29 +747,232 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
 
 /* Stage ring (`0x25`, not exploding): same checks, in the same order, as the generic `step_one_active_obj`
    path, but without its large prologue/stack frame. Rings are the majority of active objects. */
-static void step_ring_obj(ActiveObj *o) {
-    int16_t dx = o->x - g_cam_x;
-    int16_t sx, sy;
-    if ((uint16_t)(dx + 160) > 640U) { o->active = 0; return; }
-    sx = dx >> 1;
-    sy = (o->y - g_cam_y) >> 1;
-    if ((uint16_t)(sx + 20) > 200U || (uint16_t)(sy + 24) > 176U) return;
-    if (!g_sonic.dead) {
-        int16_t rdx = g_sonic.x - o->x;
-        if ((uint16_t)(rdx + 17) < 35U) {
-            int16_t rdy = g_sonic.y - o->y;
-            if ((uint16_t)(rdy + 23) < 47U) {
-                g_rings++;
-                g_score += 10;
-                g_hud_dirty = 1;
-                hw_play_sfx(SFX_RING);
-                g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
-                o->active = 0;
-                return;
-            }
-        }
-    }
+/* Ring collected / ring that needs the full queue path: the rare cases of `step_ring_obj`. */
+static void ring_collect(ActiveObj *o) {
+    g_rings++;
+    g_score += 10;
+    g_hud_dirty = 1;
+    hw_play_sfx(SFX_RING);
+    g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
+    o->active = 0;
+}
+static void ring_queue_slow(ActiveObj *o) {
     hw_queue_bkg_ring(o->x, o->y);
+}
+
+/* Per-frame stage ring (`0x25`), hand-written; same tests in the same order as the C version it replaces:
+     dx = x - cam_x: outside [-160, 480] -> despawn;  sx = dx >> 1 outside [-20, 180] or sy outside [-24, 152] -> skip;
+     Sonic alive and |x| within [-17, 17], |y| within [-23, 23] of the ring -> collect (`ring_collect`);
+     otherwise queue the BG overlay cell: outside the 32x32-cell window -> nothing; fast path when this ring is the
+     next entry of last frame's drawn sequence (`RING_SEQ[s_seq_k]`), else `hw_queue_bkg_ring` (`ring_queue_slow`).
+   sdcccall(1): o in DE. Scratch (src/main.c): c2_ok0/ok1 = y, c2_oy0/oy1 = dx, c2_base/ncols = dy. */
+typedef char sonic_layout_check[(offsetof(SonicState, x) == 8 && offsetof(SonicState, y) == 10 &&
+                                 offsetof(SonicState, dead) == 34 && offsetof(ActiveObj, x) == 5) ? 1 : -1];
+static void step_ring_obj(ActiveObj *o) __naked {
+    (void)o;
+    __asm
+    ld   hl, #5
+    add  hl, de
+    ld   a, (hl+)
+    ld   c, a
+    ld   a, (hl+)
+    ld   b, a                 ; BC = x
+    ld   a, (hl+)
+    ld   (_c2_ok0), a
+    ld   a, (hl)
+    ld   (_c2_ok1), a         ; y
+    ; dx = x - cam_x
+    ld   a, (_g_cam_x)
+    ld   l, a
+    ld   a, c
+    sub  a, l
+    ld   l, a
+    ld   a, (_g_cam_x + 1)
+    ld   h, a
+    ld   a, b
+    sbc  a, h
+    ld   h, a
+    ld   a, l
+    ld   (_c2_oy0), a
+    ld   a, h
+    ld   (_c2_oy1), a
+    ; (uint16)(dx + 160) > 640 -> despawn
+    push de
+    ld   de, #160
+    add  hl, de
+    pop  de
+    ld   a, h
+    cp   a, #2
+    jr   c, 801$
+    jp   nz, 890$
+    ld   a, l
+    cp   a, #0x81
+    jp   nc, 890$
+801$:
+    ; (uint16)(dx + 40) > 401 -> off screen (sx outside [-20, 180])
+    ld   a, (_c2_oy0)
+    add  a, #40
+    ld   l, a
+    ld   a, (_c2_oy1)
+    adc  a, #0
+    ld   h, a
+    cp   a, #1
+    jr   c, 802$
+    ret  nz
+    ld   a, l
+    cp   a, #0x92
+    ret  nc
+802$:
+    ; dy = y - cam_y; (uint16)(dy + 48) > 353 -> off screen
+    ld   a, (_g_cam_y)
+    ld   l, a
+    ld   a, (_c2_ok0)
+    sub  a, l
+    ld   l, a
+    ld   a, (_g_cam_y + 1)
+    ld   h, a
+    ld   a, (_c2_ok1)
+    sbc  a, h
+    ld   h, a
+    ld   a, l
+    ld   (_c2_base), a
+    ld   a, h
+    ld   (_c2_ncols), a
+    ld   a, l
+    add  a, #48
+    ld   l, a
+    ld   a, h
+    adc  a, #0
+    cp   a, #1
+    jr   c, 803$
+    ret  nz
+    ld   a, l
+    cp   a, #0x62
+    ret  nc
+803$:
+    ; collection test
+    ld   a, (_g_sonic + 34)
+    or   a, a
+    jr   nz, 810$
+    ld   a, (_g_sonic + 8)    ; rdx = sonic.x - x, (uint16)(rdx + 17) < 35
+    sub  a, c
+    ld   l, a
+    ld   a, (_g_sonic + 9)
+    sbc  a, b
+    ld   h, a
+    ld   a, l
+    add  a, #17
+    ld   l, a
+    ld   a, h
+    adc  a, #0
+    jr   nz, 810$
+    ld   a, l
+    cp   a, #35
+    jr   nc, 810$
+    ld   a, (_c2_ok0)         ; rdy = sonic.y - y, (uint16)(rdy + 23) < 47
+    ld   l, a
+    ld   a, (_g_sonic + 10)
+    sub  a, l
+    ld   l, a
+    ld   a, (_c2_ok1)
+    ld   h, a
+    ld   a, (_g_sonic + 11)
+    sbc  a, h
+    ld   h, a
+    ld   a, l
+    add  a, #23
+    ld   l, a
+    ld   a, h
+    adc  a, #0
+    jr   nz, 810$
+    ld   a, l
+    cp   a, #47
+    jr   nc, 810$
+    jp   _ring_collect        ; tail call, DE = o
+810$:
+    ; queue window: (uint16)(dx + 16) > 352 or (uint16)(dy + 16) > 304 -> nothing to draw
+    ld   a, (_c2_oy0)
+    add  a, #16
+    ld   l, a
+    ld   a, (_c2_oy1)
+    adc  a, #0
+    cp   a, #1
+    jr   c, 811$
+    ret  nz
+    ld   a, l
+    cp   a, #0x61
+    ret  nc
+811$:
+    ld   a, (_c2_base)
+    add  a, #16
+    ld   l, a
+    ld   a, (_c2_ncols)
+    adc  a, #0
+    cp   a, #1
+    jr   c, 812$
+    ret  nz
+    ld   a, l
+    cp   a, #0x31
+    ret  nc
+812$:
+    ; fast path needs s_seq_match && s_seq_k < s_seq_n && RING_SEQ[k] == key
+    ld   a, (_s_seq_match)
+    or   a, a
+    jr   z, 820$
+    ld   a, (_s_seq_n)
+    ld   l, a
+    ld   a, (_s_seq_k)
+    cp   a, l
+    jr   nc, 820$
+    ; key = ((x >> 4) & 31) | ((y << 1) & 0x3E0):  lo = (x >> 4) & 0x1F | (y << 1) & 0xE0, hi = (y >> 7) & 3
+    push de
+    ld   l, a                 ; k
+    ld   h, #0
+    add  hl, hl
+    ld   de, #0xB200
+    add  hl, de               ; &RING_SEQ[k]
+    ld   a, c
+    swap a
+    and  a, #0x0F
+    ld   e, a
+    ld   a, b
+    swap a
+    and  a, #0x10
+    or   a, e
+    ld   e, a                 ; (x >> 4) & 0x1F
+    ld   a, (_c2_ok0)
+    add  a, a
+    and  a, #0xE0
+    or   a, e
+    ld   e, a                 ; key lo
+    ld   a, (_c2_ok0)
+    rlca
+    and  a, #1
+    ld   d, a
+    ld   a, (_c2_ok1)
+    add  a, a
+    and  a, #2
+    or   a, d
+    ld   d, a                 ; key hi
+    ld   a, (hl+)
+    cp   a, e
+    jr   nz, 819$
+    ld   a, (hl)
+    cp   a, d
+    jr   nz, 819$
+    pop  de
+    ld   hl, #_s_seq_k
+    inc  (hl)
+    ret
+819$:
+    pop  de
+820$:
+    jp   _ring_queue_slow     ; DE = o
+890$:
+    xor  a, a
+    ld   (de), a              ; o->active = 0
+    ret
+    __endasm;
 }
 
 /* First active slot at or after `o` (or &g_objs[MAX_ACTIVE_OBJS]). Inactive slots are skipped in a tight loop.
@@ -1383,10 +1586,19 @@ void objects_update_and_draw(void) BANKED {
     /* 4. Update & Draw Active Level Objects — pointer walk (`0` software `__mulint` per frame!) */
     hw_begin_bkg_rings();
     {
+        uint8_t vset = g_ram_act.vset_idx;
         ActiveObj *o = obj_next_active(g_objs);
         while (o != &g_objs[MAX_ACTIVE_OBJS]) {
-            if (o->id == 0x25 && o->state != 99) step_ring_obj(o);
-            else if (obj_prefilter(o) && step_one_active_obj(o, sonic_spinning)) return;
+            uint8_t id = o->id;
+            if (id == 0x25 && o->state != 99) step_ring_obj(o);
+            else if (obj_prefilter(o)) {
+                /* Zone props go straight to their bank (none of the handlers that precede the zone-prop test in
+                   `step_one_active_obj` uses these IDs), skipping that function's large stack frame. */
+                if (vset && o->state != 99 && (k_zp_ids[id >> 3] & (uint8_t)(1U << (id & 7U))) && zp_object(o)) {
+                } else if (step_one_active_obj(o, sonic_spinning)) {
+                    return;
+                }
+            }
             o = obj_next_active(o + 1);
         }
     }

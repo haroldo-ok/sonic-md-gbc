@@ -207,7 +207,6 @@ static void play_wave_drum_packet(uint8_t kind, uint8_t pkt) {
     uint8_t prev = CURRENT_BANK;
     const uint8_t *wsrc;
     uint16_t period = 1120; /* Warm 70.6 Hz sub-bass thump — never high-frequency 1.17 kHz buzz! */
-    uint8_t i;
 
     SWITCH_ROM(SUPPLEMENT_ANIM_BANK);
     if (kind == 1) {
@@ -221,9 +220,7 @@ static void play_wave_drum_packet(uint8_t kind, uint8_t pkt) {
         period = (kind == 3) ? 1548u : 1380u; /* Concert C3 (131 Hz) / G2 (98 Hz) timpani */
     }
     NR30_REG = 0x00;
-    for (i = 0; i < 16; i++) {
-        ((volatile uint8_t *)0xFF30)[i] = wsrc[i];
-    }
+    memcpy((void *)0xFF30, wsrc, 16);       /* asm block copy (`safe_copy_bytes`) */
     NR30_REG = 0x80;
     NR32_REG = 0x20;
     NR33_REG = (uint8_t)(period & 0xFF);
@@ -2131,8 +2128,15 @@ static void flush_vblank_hdma(void) {
         /* The VBlank interrupt chain (music tick) occasionally runs long enough that vsync() returns after VBlank
            is already over (LY < 144) or nearly over. A DMA started there would be dropped by the PPU, leaving
            stale Sonic frames / ring tiles. Sit out one more frame instead of corrupting this one. */
+        /* GDMA moves one 16-byte block per 64 T-cycles in double speed, i.e. ~14 blocks per scanline: only sit
+           out a frame when the pending DMAs no longer fit in the full VBlank lines left (14 blocks per line). The
+           spans / HUD rows are STAT-gated and need no VBlank time. */
         uint8_t ly = LY_REG;
-        if (ly < 144U || ly > 148U) vsync();
+        uint8_t need = s_dplc_pending_cnt;
+        if (g_ss_dma_ptr) need = (uint8_t)(need + 64U);
+        if (s_ring_upload_ok && g_game_mode == GM_LEVEL && !g_paused &&
+            (uint8_t)((g_frame_counter >> 3) & 3U) != g_ring_last_frame) need = (uint8_t)(need + 16U);
+        if (need && (ly < 144U || (uint8_t)((uint8_t)(153U - ly) * 14U) < need)) vsync();
     }
     if (s_dplc_pending_cnt) {
         uint16_t ssrc = ((uint16_t)s_dplc_raw + 15U) & 0xFFF0U;

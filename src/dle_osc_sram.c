@@ -1,5 +1,6 @@
 #pragma bank 127
 #include "engine.h"
+#include <stddef.h>
 #include <string.h>
 
 /* ============================================================================================
@@ -391,29 +392,65 @@ static void write_u16_digits(char *dst, uint16_t val, uint8_t digits) {
 }
 
 static uint8_t b127_ascii_tile(char c);
-static void hud_build(char *row0, char *row1) {
-    uint16_t secs_total = g_level_frames / 60;
-    uint8_t mins = (uint8_t)(secs_total / 60);
-    uint8_t secs = (uint8_t)(secs_total % 60);
-    uint16_t sc_disp = (uint16_t)(g_score / 10);
+/* HUD fields without any software divide (the old `/ 60`, `% 60` and 32-bit `g_score / 10` plus a per-character
+   ASCII->tile lookup made a HUD refresh ~38k cycles, a dropped frame every second): time digits by repeated subtraction
+   of 3600 / 600 / 60 frames, score digits by subtracting powers of ten (32-bit only above 9,999). `zero` is the code of
+   the digit 0: '0' for the text rows, tile 84 for the level HUD tiles. Same text as before (the score field now also
+   shows scores above 655,350). Row 0 = "SCR 0000000 T 0:00  ", row 1 = "*000  @#03   EM 0:6 ". */
+static void hud_fields(uint8_t *r0, uint8_t *r1, uint8_t zero) {
+    static const uint32_t pow10_hi[3] = { 1000000UL, 100000UL, 10000UL };
+    static const uint16_t pow10_lo[4] = { 1000U, 100U, 10U, 1U };
+    uint16_t f = g_level_frames, v;
+    uint8_t mins = 0, st = 0, so = 0, i, c;
+    uint32_t sc = g_score;
 
-    memcpy(row0, "SCR 0000000 T 0:00  ", 20);
-    row0[20] = '\0';
-    write_u16_digits(&row0[4], sc_disp, 6);
-    row0[14] = (char)('0' + (mins % 10));
-    row0[16] = (char)('0' + (secs / 10));
-    row0[17] = (char)('0' + (secs % 10));
+    while (f >= 3600U) { f -= 3600U; mins++; }
+    while (f >= 600U) { f -= 600U; st++; }
+    while (f >= 60U) { f -= 60U; so++; }
+    while (mins >= 10U) mins -= 10U;
+    r0[14] = (uint8_t)(zero + mins);
+    r0[16] = (uint8_t)(zero + st);
+    r0[17] = (uint8_t)(zero + so);
 
-    memcpy(row1, "*000  @#03   EM 0:6 ", 20);
-    row1[20] = '\0';
-    write_u16_digits(&row1[1], g_rings > 999 ? 999 : g_rings, 3);
-    write_u16_digits(&row1[8], g_lives > 99 ? 99 : g_lives, 2);
-    {
-        uint8_t em_cnt = 0, b;
-        for (b = 0; b < 6; b++) if (g_emeralds & (1 << b)) em_cnt++;
-        row1[16] = (char)('0' + em_cnt);
+    if (sc > 9999999UL) sc = 9999999UL;
+    for (i = 0; i < 3U; i++) {
+        uint32_t p = pow10_hi[i];
+        c = zero;
+        while (sc >= p) { sc -= p; c++; }
+        r0[4U + i] = c;
+    }
+    v = (uint16_t)sc;
+    for (i = 0; i < 4U; i++) {
+        uint16_t p = pow10_lo[i];
+        c = zero;
+        while (v >= p) { v -= p; c++; }
+        r0[7U + i] = c;
     }
 
+    v = g_rings > 999 ? 999 : g_rings;
+    for (i = 1; i < 4U; i++) {
+        uint16_t p = pow10_lo[i];
+        c = zero;
+        while (v >= p) { v -= p; c++; }
+        r1[i] = c;
+    }
+    c = g_lives > 99 ? 99 : g_lives;
+    r1[8] = zero;
+    while (c >= 10U) { c -= 10U; r1[8]++; }
+    r1[9] = (uint8_t)(zero + c);
+    {
+        uint8_t em_cnt = 0, b, e = g_emeralds;
+        for (b = 0; b < 6; b++, e >>= 1) em_cnt += (uint8_t)(e & 1U);
+        r1[16] = (uint8_t)(zero + em_cnt);
+    }
+}
+
+static void hud_build(char *row0, char *row1) {
+    memcpy(row0, "SCR 0000000 T 0:00  ", 20);
+    row0[20] = '\0';
+    memcpy(row1, "*000  @#03   EM 0:6 ", 20);
+    row1[20] = '\0';
+    hud_fields((uint8_t *)row0, (uint8_t *)row1, (uint8_t)'0');
 }
 
 void hw_update_hud(void) BANKED {
@@ -424,18 +461,17 @@ void hw_update_hud(void) BANKED {
     hw_print_win(0, 1, row1);
 }
 
-/* Level-mode HUD refresh: same two 20-cell window rows, but converted to tiles now and written to VRAM at the
-   start of the next VBlank by `flush_vblank_hdma()` (no per-byte STAT stalls mid-frame). Any other window write
-   flushes a pending HUD first, so the order of window writes is unchanged. */
+/* Level-mode HUD refresh: same two 20-cell window rows, but written as tiles now and copied to VRAM at the start of
+   the next VBlank by `flush_vblank_hdma()` (no per-byte STAT stalls mid-frame). Any other window write flushes a
+   pending HUD first, so the order of window writes is unchanged. The templates are the `b127_ascii_tile` codes of
+   the two text rows above. */
 void hw_update_hud_deferred(void) BANKED {
-    char row0[21];
-    char row1[21];
-    uint8_t i;
-    hud_build(row0, row1);
-    for (i = 0; i < 20U; i++) {
-        g_hud_pend_t[i] = b127_ascii_tile(row0[i]);
-        g_hud_pend_t[20U + i] = b127_ascii_tile(row1[i]);
-    }
+    static const uint8_t k_hud_tiles[40] = {
+        114, 98, 113, 80, 84, 84, 84, 84, 84, 84, 84, 80, 115, 80, 84, 120, 84, 84, 80, 80,
+        121, 84, 84, 84, 80, 80, 122, 123, 84, 84, 80, 80, 80, 100, 108, 80, 84, 120, 90, 80,
+    };
+    memcpy(g_hud_pend_t, k_hud_tiles, 40);
+    hud_fields(g_hud_pend_t, g_hud_pend_t + 20, 84U);
     g_hud_pend = 1;
 }
 
@@ -460,6 +496,70 @@ void draw_transition_card_win_b127(const char *line1, const char *line2, uint8_t
     WY_REG = 0;
 }
 
+/* `spawn_try_place_b127` slot scan, hand-written: returns (BC) 0xFFFF when an active object already has
+   spawn_slot == idx and base_x == ox, else the first inactive slot (or 0). Inputs: c2_ok0/ok1 = idx,
+   c2_oy0/oy1 = ox (src/main.c scratch). Same order and result as the C loop it replaces. */
+extern uint8_t c2_ok0, c2_ok1, c2_oy0, c2_oy1;
+typedef char spawn_layout_check[(offsetof(ActiveObj, spawn_slot) == 3 && offsetof(ActiveObj, base_x) == 9 &&
+                                 sizeof(ActiveObj) == 20U && MAX_ACTIVE_OBJS == 24) ? 1 : -1];
+static ActiveObj *spawn_find(void) __naked {
+    __asm
+    ld   hl, #_g_objs
+    ld   bc, #0
+    ld   e, #24
+1$:
+    ld   a, (hl)
+    or   a, a
+    jr   z, 5$
+    push hl
+    inc  hl
+    inc  hl
+    inc  hl
+    ld   a, (_c2_ok0)
+    cp   a, (hl)
+    jr   nz, 4$
+    inc  hl
+    ld   a, (_c2_ok1)
+    cp   a, (hl)
+    jr   nz, 4$
+    ld   a, l
+    add  a, #5
+    ld   l, a
+    ld   a, h
+    adc  a, #0
+    ld   h, a
+    ld   a, (_c2_oy0)
+    cp   a, (hl)
+    jr   nz, 4$
+    inc  hl
+    ld   a, (_c2_oy1)
+    cp   a, (hl)
+    jr   nz, 4$
+    pop  hl
+    ld   bc, #0xFFFF
+    ret
+4$:
+    pop  hl
+    jr   6$
+5$:
+    ld   a, b
+    or   a, c
+    jr   nz, 6$
+    ld   b, h
+    ld   c, l
+6$:
+    ld   a, l
+    add  a, #20
+    ld   l, a
+    ld   a, h
+    adc  a, #0
+    ld   h, a
+    dec  e
+    jr   nz, 1$
+    ret
+    __endasm;
+}
+
 BANKREF(spawn_try_place_b127)
 void spawn_try_place_b127(uint16_t idx, int16_t ox, int16_t oy, uint8_t oid, uint8_t osub) BANKED {
     uint8_t s;
@@ -473,13 +573,10 @@ void spawn_try_place_b127(uint16_t idx, int16_t ox, int16_t oy, uint8_t oid, uin
     }
     if (idx < 512U && !keep &&
         (g_obj_taken[idx >> 3] & (uint8_t)(1U << (idx & 7)))) return;
-    for (s = MAX_ACTIVE_OBJS, o = g_objs; s != 0U; s--, o++) {
-        if (o->active) {
-            if (o->spawn_slot == idx && o->base_x == ox) return;   /* already spawned */
-        } else if (!slot) {
-            slot = o;
-        }
-    }
+    c2_ok0 = (uint8_t)idx; c2_ok1 = (uint8_t)(idx >> 8);
+    c2_oy0 = (uint8_t)ox;  c2_oy1 = (uint8_t)((uint16_t)ox >> 8);
+    slot = spawn_find();
+    if (slot == (ActiveObj *)0xFFFFU) return;                      /* already spawned */
     if (!slot && keep) {
         for (s = MAX_ACTIVE_OBJS, o = g_objs; s != 0U; s--, o++) {
             uint8_t eid = o->id;

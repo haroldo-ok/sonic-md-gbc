@@ -48,113 +48,100 @@ static uint8_t pr_still_on(int16_t w, int16_t ox) {
 
 /* Batched OAM emitter for un-flipped prop cells (same visibility test and OAM layout as `hw_put_sprite8`, without a
    call per cell). sdcccall(1): sx in DE, sy in BC, c / n on the stack (callee pops 3 bytes).
-   Scratch (src/main.c `c2_*`): ok0/ok1 cell pointer, oy0 count, oy1/base oam-x base, ncols/attr oam-y base. */
+   Loop registers: HL = cell, DE = shadow-OAM write pointer (E = 4 * g_oam_next, the table is 256-byte aligned;
+   D doubles as the y temporary and is reloaded), B = cells left, C = x. Coordinates use biased bases so a signed cell offset is one unsigned add:
+   x = (sx - 120) + (dx ^ 0x80) = sx + dx + 8 (OAM x), y = (sy - 112) + (dy ^ 0x80) = sy + dy + 16 (OAM y).
+   Scratch (src/main.c `c2_*`): ok0/ok1 = x base, oy0/oy1 = y base. */
 static void pr_cells_fast(int16_t sx, int16_t sy, const PropCell *c, uint8_t n) __naked {
     (void)sx; (void)sy; (void)c; (void)n;
     __asm
-    ldhl sp, #2
-    ld   a, (hl+)
-    ld   (_c2_ok0), a
-    ld   a, (hl+)
-    ld   (_c2_ok1), a
-    ld   a, (hl)
-    or   a, a
-    jp   z, 609$
-    ld   (_c2_oy0), a
-    ld   hl, #8
+    ld   hl, #-120
     add  hl, de
     ld   a, l
-    ld   (_c2_oy1), a
-    ld   a, h
-    ld   (_c2_base), a
-    ld   hl, #16
-    add  hl, bc
-    ld   a, l
-    ld   (_c2_ncols), a
-    ld   a, h
-    ld   (_c2_attr), a
-601$:
-    ld   a, (_g_oam_next)
-    cp   a, #40
-    jp   nc, 609$
-    ld   a, (_c2_ok0)
-    ld   l, a
-    ld   a, (_c2_ok1)
-    ld   h, a
-    ld   a, (hl+)
-    ld   e, a
-    rlca
-    sbc  a, a
-    ld   d, a
-    ld   a, (_c2_oy1)
-    add  a, e
-    ld   e, a
-    ld   a, (_c2_base)
-    adc  a, d
-    ld   d, a
-    ld   a, (hl+)
-    ld   c, a
-    rlca
-    sbc  a, a
-    ld   b, a
-    ld   a, (_c2_ncols)
-    add  a, c
-    ld   c, a
-    ld   a, (_c2_attr)
-    adc  a, b
-    ld   b, a
-    ld   a, d
-    or   a, a
-    jr   nz, 605$
-    ld   a, e
-    or   a, a
-    jr   z, 605$
-    cp   a, #168
-    jr   nc, 605$
-    ld   a, b
-    or   a, a
-    jr   nz, 605$
-    ld   a, c
-    cp   a, #9
-    jr   c, 605$
-    cp   a, #144
-    jr   nc, 605$
-    push hl
-    ld   a, (_g_oam_next)
-    ld   l, a
-    inc  a
-    ld   (_g_oam_next), a
-    ld   a, l
-    add  a, a
-    add  a, a
-    ld   l, a
-    ld   h, #(_shadow_OAM >> 8)
-    ld   (hl), c
-    inc  l
-    ld   (hl), e
-    inc  l
-    pop  de
-    ld   a, (de)
-    ld   (hl), a
-    inc  l
-    inc  de
-    ld   a, (de)
-    ld   (hl), a
-    ld   h, d
-    ld   l, e
-    dec  hl
-605$:
-    inc  hl
-    inc  hl
-    ld   a, l
     ld   (_c2_ok0), a
     ld   a, h
     ld   (_c2_ok1), a
-    ld   a, (_c2_oy0)
-    dec  a
+    ld   hl, #-112
+    add  hl, bc
+    ld   a, l
     ld   (_c2_oy0), a
-    jp   nz, 601$
+    ld   a, h
+    ld   (_c2_oy1), a
+    ldhl sp, #2
+    ld   a, (hl+)
+    ld   e, a
+    ld   a, (hl+)
+    ld   d, a
+    ld   b, (hl)
+    ld   h, d
+    ld   l, e
+    ld   a, (_g_oam_next)
+    add  a, a
+    add  a, a
+    ld   e, a
+    ld   d, #(_shadow_OAM >> 8)
+    ld   a, b
+    or   a, a
+    jr   z, 609$
+601$:
+    ld   a, e
+    cp   a, #160
+    jr   nc, 609$
+    ld   a, (hl+)
+    xor  a, #0x80
+    ld   c, a
+    ld   a, (_c2_ok0)
+    add  a, c
+    ld   c, a
+    ld   a, (_c2_ok1)
+    adc  a, #0
+    jr   nz, 605$
+    ld   a, c
+    dec  a
+    cp   a, #167
+    jr   nc, 605$
+    ld   a, (hl+)
+    xor  a, #0x80
+    ld   d, a
+    ld   a, (_c2_oy0)
+    add  a, d
+    ld   d, a
+    ld   a, (_c2_oy1)
+    adc  a, #0
+    jr   nz, 606$
+    ld   a, d
+    sub  a, #9
+    cp   a, #135
+    jr   nc, 606$
+    ld   a, d
+    ld   d, #(_shadow_OAM >> 8)
+    ld   (de), a
+    inc  e
+    ld   a, c
+    ld   (de), a
+    inc  e
+    ld   a, (hl+)
+    ld   (de), a
+    inc  e
+    ld   a, (hl+)
+    ld   (de), a
+    inc  e
+    dec  b
+    jr   nz, 601$
+    jr   609$
+605$:
+    inc  hl
+606$:
+    ld   d, #(_shadow_OAM >> 8)
+    inc  hl
+    inc  hl
+    dec  b
+    jr   nz, 601$
 609$:
+    ld   a, e
+    srl  a
+    srl  a
+    ld   (_g_oam_next), a
     pop  hl
     pop  af
     inc  sp

@@ -280,6 +280,9 @@ def test_full_end_to_end_boot_gameplay_all_zones_special_stages_and_audio() -> N
 
         # Hold RIGHT and hold A for full Sonic jump height (`30` frames) right into the Golden Ring trio at X=352!
         # Checking EVERY SINGLE FRAME to guarantee ZERO black frames & ZERO white frames during fast scrolling!
+        # The jump schedule is in VBlanks; with the faster engine Sonic now covers more ground in that time and can
+        # reach a Moto Bug, so the Invincibility cheat keeps this scripted run from ending on a death/title card.
+        pb.memory[syms["_g_cheats"]] = 0x01
         pb.button_press("right")
         for step in range(340):
             if step in (45, 138, 215, 290):

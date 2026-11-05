@@ -7,4 +7,8 @@ typedef struct { uint16_t bx; uint16_t by; uint8_t tile; uint8_t attr; } DecorCe
 extern const DecorCell * const g_decor_tab[20];     /* sorted by (bx, by): column spans */
 extern const DecorCell * const g_decor_rtab[20];    /* same cells sorted by (by, bx): row spans */
 extern const uint16_t g_decor_n[20];
+extern const uint8_t * const g_decor_colbits[20];  /* bit bx set: some cell in column bx */
+extern const uint8_t * const g_decor_rowbits[20];  /* bit by set: some cell in row by */
+extern const uint16_t g_decor_colbytes[20];
+extern const uint8_t g_decor_rowbytes[20];
 #endif

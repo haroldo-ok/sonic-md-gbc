@@ -76,22 +76,25 @@ static void pr_bridge(ActiveObj *o) {
     }
 
     start = (n > 8 && (g_frame_counter & 1U)) ? (uint8_t)(n >> 1) : 0;
-    for (k = 0; k < n; k++) {
-        int16_t ly = o->y;
-        i = (uint8_t)(start + k);
-        if (i >= n) i -= n;
-        if (o->hp) {
-            uint8_t a8;
-            if (i <= cur) {
-                a8 = ghz_bri_align[((uint8_t)(cur * (cur + 1U)) >> 1) + i];
-            } else {
-                uint8_t nr = (uint8_t)(n - 1U - cur);
-                a8 = ghz_bri_align[((uint8_t)(nr * (nr + 1U)) >> 1) + (uint8_t)(nr - (i - cur))];
+    {
+        /* Loop invariants hoisted; the per-log `(t >> 5) * (a8 + 1)` is an 8x8 product plus t5 (t5 <= 128, so the
+           sum fits 16 bits exactly as before) instead of a 16x16 `__mulint` call per log. */
+        uint8_t t5 = (uint8_t)(t >> 5), nr = (uint8_t)(n - 1U - cur);
+        const uint8_t *al = &ghz_bri_align[(uint8_t)((uint8_t)(cur * (uint8_t)(cur + 1U)) >> 1)];
+        const uint8_t *ar = &ghz_bri_align[(uint8_t)((uint8_t)(nr * (uint8_t)(nr + 1U)) >> 1) + nr + cur];
+        int16_t sy0 = ((o->y - cam_y) >> 1) + ghzc_log[0].dy;
+        int16_t bx = lx - cam_x;
+        for (k = 0; k < n; k++) {
+            int16_t sy = sy0;
+            i = (uint8_t)(start + k);
+            if (i >= n) i -= n;
+            if (o->hp) {
+                uint8_t a8 = (i <= cur) ? al[i] : ar[-(int16_t)i];
+                uint16_t prod = (uint16_t)((uint8_t)t5 * (uint8_t)a8) + t5;
+                sy = ((o->y + (int16_t)(prod >> 11) - cam_y) >> 1) + ghzc_log[0].dy;
             }
-            ly += (int16_t)(((t >> 5) * ((uint16_t)a8 + 1U)) >> 11);
+            hw_put_sprite8(((bx + ((int16_t)i << 4)) >> 1) + ghzc_log[0].dx, sy, ghzc_log[0].tile, ghzc_log[0].attr);
         }
-        hw_put_sprite8(((lx + ((int16_t)i << 4) - cam_x) >> 1) + ghzc_log[0].dx,
-                       ((ly - cam_y) >> 1) + ghzc_log[0].dy, ghzc_log[0].tile, ghzc_log[0].attr);
     }
 }
 
