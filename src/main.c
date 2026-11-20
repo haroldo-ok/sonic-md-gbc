@@ -256,10 +256,36 @@ void hw_play_bgm(uint8_t bgm_id) {
     s_audio_lock = 0;
 }
 
+/* Jump SFX: generated from the original `SndA0 - Jump.asm` by `tools/jump_sfx.py` (see `generated/sfx_jump.h`).
+ * The SMPS track is one PSG1 channel (voice 0) at header transposition -12: note F4 for 5 frames, then Bb4 for 21 frames;
+ * `smpsModSet 2, 1, -8, 101` rises the pitch after a 2-frame wait, restarting for each note;
+ * the PSG voice 0 envelope sets the volume per frame. Played on CH2; CH1 stays with the music. */
+#include "../generated/sfx_jump.h"
+static uint8_t s_jump_t = 0xFF;   /* 0xFF = inactive */
+
+static void jump_tick(void) {
+    if (s_jump_t == 0xFF) return;
+    if (s_jump_t >= JUMP_SFX_FRAMES) {
+        NR22_REG = 0x00;                       /* DAC off: silence */
+        s_jump_t = 0xFF;
+        return;
+    }
+    NR21_REG = 0x80;                           /* 50% duty */
+    NR22_REG = (uint8_t)(jump_sfx_frames[s_jump_t][2] << 4);
+    NR23_REG = jump_sfx_frames[s_jump_t][0];
+    NR24_REG = (uint8_t)(0x80 | (jump_sfx_frames[s_jump_t][1] & 0x07));   /* retrigger so the new volume applies */
+    s_jump_t++;
+}
+
 void hw_play_sfx(uint8_t sfx_id) {
     uint8_t prev;
     uint16_t off;
     if (sfx_id < 0xA0 || sfx_id > 0xD0) return;
+    if (sfx_id == SFX_JUMP) {                  /* see `jump_tick` */
+        s_sfx_active = 0;
+        s_jump_t = 0;
+        return;
+    }
     s_audio_lock = 1;
     prev = CURRENT_BANK;
     g_cur_sfx = sfx_id;
@@ -270,14 +296,8 @@ void hw_play_sfx(uint8_t sfx_id) {
     s_sfx_wait = 0;
     g_sound_events++;
 
-    /* Warm, authentic hardware sweep transients for signature Sonic SFX (`Jump`, `Ring`, `Spring`) */
-    if (sfx_id == SFX_JUMP) {
-        NR10_REG = 0x2B;
-        NR11_REG = 0x80;
-        NR12_REG = 0xB2;
-        NR13_REG = 0x88;
-        NR14_REG = 0x85;
-    } else if (sfx_id == SFX_RING) {
+    /* Warm, authentic hardware sweep transients for signature Sonic SFX (`Ring`, `Spring`) */
+    if (sfx_id == SFX_RING) {
         NR21_REG = 0x80;
         NR22_REG = 0xB2;
         NR23_REG = 0x4E;
@@ -451,6 +471,7 @@ void hw_sound_tick(void) {
             }
         }
     }
+    jump_tick();
     SWITCH_ROM(prev);
 }
 
