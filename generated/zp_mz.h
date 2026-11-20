@@ -102,6 +102,26 @@ static const PropCell zp_mz_stblk[14] = {
     { 20, -2, 52, 0x2D },
 };
 #define ZP_MZ_STSPK_N 12
+#define ZP_MZ_STBLKMED_N 10
+static const PropCell zp_mz_stblkmed[10] = {
+    { -20, -10, 59, 0x0D },
+    { -12, -10, 51, 0x2D },
+    { -4, -10, 53, 0x0D },
+    { 4, -10, 51, 0x0D },
+    { 12, -10, 59, 0x0D },
+    { -20, -2, 53, 0x0D },
+    { -12, -2, 53, 0x2D },
+    { -4, -2, 53, 0x0D },
+    { 4, -2, 53, 0x0D },
+    { 12, -2, 53, 0x0D },
+};
+#define ZP_MZ_STBLKSML_N 4
+static const PropCell zp_mz_stblksml[4] = {
+    { -8, -10, 53, 0x0D },
+    { 0, -10, 51, 0x0D },
+    { -8, -2, 53, 0x0D },
+    { 0, -2, 53, 0x0D },
+};
 static const PropCell zp_mz_stspk[12] = {
     { -22, -8, 54, 0x0D },
     { -14, -8, 56, 0x0D },

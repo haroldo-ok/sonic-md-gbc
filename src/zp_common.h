@@ -246,8 +246,9 @@ static void zp_mblock(ActiveObj *o, const PropCell *c, uint8_t n, int16_t ph) {
 
 /* 0x71 Invisible solid barrier (`71 Invisible Solid Barriers.asm`): width/height from the subtype nibbles. */
 static void zp_barrier(ActiveObj *o) {
-    int16_t w = (int16_t)(((o->subtype & 0x0FU) << 3) + 8);
-    int16_t h = (int16_t)(((o->subtype >> 4) << 3) + 8);
+    /* high nibble = width, low nibble = height (both 0-based, 8 px per step; `obActWid`/`obHeight` in the original) */
+    int16_t w = (int16_t)(((o->subtype >> 4) << 3) + 8);
+    int16_t h = (int16_t)(((o->subtype & 0x0FU) << 3) + 8);
     pr_solid(o, w + 11, h, w);
 }
 

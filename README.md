@@ -8,6 +8,28 @@ Every single one of the **`946 / 946` non-`.git` files** in `s1disasm` is hashed
 
 ## Summary of Latest Engineering Improvements
 
+### 00. Marble Zone 3 & Scrap Brain Fixes (2026-11-19)
+- **Rings visible at range (MZ3)**: ring slots were starved by far-off rings (20 of 24 object slots). Rings more than 640 px from the camera now release their slot (`src/objects.c`), and the spawn scan skips ring spawns far above or below the camera (`src/main.c`, `hw_scan_spawn_objects`). Measured near the MZ3 ring cluster: visible rings went from 1 to 11.
+- **Invisible solid barriers (`0x71`, `src/zp_common.h` `zp_barrier`, `src/bosses_and_gimmicks.c`)**: the barrier's size was built from the wrong subtype nibbles (width and height were swapped in the MZ path, and the SBZ path ignored the subtype and used a fixed 16x16 box). Per `71 Invisible Solid Barriers.asm`, the high nibble is the width and the low nibble the height, both `(n+1)*8` px. For subtype `$15` the barrier is now 32 px wide and 96 px tall, not 96 px wide and 32 px tall. Confirmed on the real game for SBZ (the "moving walls near ramps" stall is solved). The MZ3 invisible wall at the ledge where Sonic cannot move right is still present after this change; its cause is not yet found.
+- **Carry-along on floating blocks (`src/props_common.h` `pr_solid`)**: a standing object no longer needs `on_ground`, because floor sensors over lava do not see the block. Sonic stays attached until he jumps or leaves the block's X range (`MvSonicOnPtfm`). Verified in the emulator: Sonic follows a floating block frame by frame for about 45 frames until a brick wall beside the block pushes him back.
+- **Pushable block over lava (MZ2/MZ3, `src/zp_mz.c` `mz_push`)**: the block now floats on lava (state 3) and drifts until it hits a wall, as in `33 MZ, LZ Pushable Blocks.asm`, instead of sinking immediately. A block that lands on lava while still drifting keeps floating.
+- **Lava jets pushing the block (`src/zp_mz.c`, `mz_geyser`, `mz_block_lava_geysers`)**: this implements `PushB_SpawnLavaGeysers` and `GeyserMaker`:
+  - MZ3: the block spawns a jet 32 px ahead and 16 px lower when it reaches x = `$560` or `$5C0` (moving right). MZ2: `$DD0`, `$CC0` and `$BA0` (moving left).
+  - The spawned jet fires on its next frame, so the block that triggered it is still in reach. Each jet fires only while Sonic is within `$170` px above it, and re-arms for 120 frames otherwise.
+  - A fired jet lifts any pushable block within reach, including floating ones, with the original's `-$580` launch speed (measured here: the block peaked about 138 px above its starting height and fell back onto the lava).
+  - If all 24 object slots are full, the jet reclaims the object farthest from the camera (except the pushable block, the goal post and dying objects).
+- **Chained stompers (`src/zp_mz.c`, `mz_stomper`, `generated/zp_mz.h`)**:
+  - The first chain link draws near the anchor.
+  - Subtype `$1x` draws the medium block (`zp_mz_stblkmed`, from frame 9 of `Map_CStom`) and subtype `$2x` the small spikeless block (`zp_mz_stblksml`, frame 0xA). Each size uses its own solid width.
+  - The cell tables are approximated from the wide block's cells, because `tools/zone_props.py` needs `lua` and the Macro Assembler to read the disassembly. They have not been compared with the original art.
+
+**Known open issues (as of this build)**
+- **SBZ moving walls near ramps (bug 3)**: fixed (confirmed by the maintainer on the real game) by the barrier geometry change above.
+- **MZ3 invisible wall (rightward ledge)**: still present. The barrier nibble fix did not remove it, so it has a different cause. Not yet investigated further.
+- **Carry-along**: works frame by frame, but a brick wall beside the block can still push Sonic off it.
+- **Tests** (after these changes): 8 of 11 pass. `test_rom_header_and_zero_placeholders` and `test_09_background_map_integrity_pupils_sega_and_fps` fail, the same two that failed before this work (not yet root-caused). The experimental 30 fps test did not finish within the run window (it was killed after about 50 minutes), so it is unverified.
+- **Bank 123** (`zp_mz.c`) is at 16,357 of 16,384 bytes. Any addition there will overflow into bank 124.
+
 ### 0. Title Screen, Cheats, Baked Decorations & Performance (2026-11)
 - **Boot flow**: SEGA -> Title Screen -> `START` = new game at GHZ1. Title cheat codes (table under *Controls*) are matched in parallel by `screens_update_mode()` (`src/screens_and_ss.c`); flags live in `g_cheats` (`CHEAT_*` in `src/engine.h`). Invincibility short-circuits `sonic_hurt_or_kill()` and counts as spinning for badnik/monitor contact; Infinite Lives reloads the act without decrementing `g_lives`; No Enemies drops badnik IDs in `spawn_try_place_b127()`.
 - **Baked decorations** (`tools/bake_decor.py`, run by the regen pipeline after `convert_all.py`): static, purely decorative sprites (GHZ `0x1C` bridge stumps, GHZ `0x44` edge-wall art, SLZ `0x1C` lava-thrower bodies) are rendered from the original art, composited over the half-scale terrain cell at their object position (high-priority terrain stays in front), quantised to the zone BG palettes and written into unused BG tile slots (GHZ 33 new tiles, SLZ 6). `generated/decor.c` lists the overlay cells per act (column- and row-sorted); `decor_apply_b()` (`src/decor_apply.c`, bank 125) patches them into each streamed column/row. Pure decorations are removed from the act object lists; solid edge walls keep their collision object (subtype bit 5 = art baked, not drawn).

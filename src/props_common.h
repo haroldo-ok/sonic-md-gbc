@@ -171,7 +171,9 @@ static uint8_t pr_solid(ActiveObj *o, int16_t d1, int16_t d2, int16_t actw) {
 
     if (g_stand_obj == o) {
         d0 = g_sonic.x - o->x + d1;
-        if (!g_sonic.on_ground || d0 < 0 || d0 >= (d1 << 1)) {
+        /* `MvSonicOnPtfm`: stay attached while Sonic is within the platform's X range; detach only on a jump or
+           when he walks off. Floor sensors over lava do not see the block, so `on_ground` cannot be required. */
+        if (g_sonic.ysp < 0 || d0 < 0 || d0 >= (d1 << 1)) {
             g_stand_obj = 0;
             return 0;
         }

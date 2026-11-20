@@ -15,9 +15,9 @@
 /* 0x31 Chained stompers (`31 MZ Chained Stompers.asm`): vx = extension (8.8), vy = speed, hp = rising, timer = delay. */
 static void mz_stomper(ActiveObj *o) {
     static const uint16_t k_len[7] = { 0x7000, 0xA000, 0x5000, 0x7800, 0x3800, 0x5800, 0xB800 };
-    uint8_t t, big;
+    uint8_t t, big, up;
     uint16_t cur, mx;
-    int16_t by, sx, sy;
+    int16_t by, sx, sy, hw;
     uint8_t k;
 
     if (o->state == 0) {
@@ -28,7 +28,10 @@ static void mz_stomper(ActiveObj *o) {
         o->vx = ((o->subtype & 0x0FU) == 0 || (o->subtype & 0x80U)) ? (int16_t)k_len[0] : 0;
     }
     t = (uint8_t)(o->subtype & 0x0FU);
-    big = (uint8_t)(((o->subtype >> 4) & 7U) != 2U);
+    /* subtype upper digit: 0 = wide block + spikes, 1 = medium block + spikes, 2 = small spikeless block */
+    up = (uint8_t)((o->subtype >> 4) & 7U);
+    big = (uint8_t)(up != 2U);
+    hw = (up == 0U) ? 56 : (up == 1U) ? 48 : 16;   /* `CStom_Var2` half widths */
     mx = k_len[t > 6 ? 0 : t];
     cur = (uint16_t)o->vx;
 
@@ -88,7 +91,7 @@ static void mz_stomper(ActiveObj *o) {
     {
         int16_t sy0 = o->y;
         o->y = by;
-        pr_solid(o, (big ? 56 : 16) + 11, 12, big ? 56 : 16);
+        pr_solid(o, hw + 11, 12, hw);
         if (g_stand_obj == o && (cur >> 8) < 0x10) sonic_hurt_or_kill(1);
         if (big) zp_hurt(o, 56, 12);
         o->y = sy0;
@@ -98,18 +101,60 @@ static void mz_stomper(ActiveObj *o) {
     /* chain from the ceiling to the block */
     for (k = 0; k < 6; k++) {
         int16_t cy = (int16_t)((o->base_y - 36) + ((int16_t)k << 5));
-        if (cy + 32 > by - 20) break;
+        if (cy > by - 20) break;
         pr_cells(sx, (cy - g_cam_y) >> 1, zp_mz_stchn, ZP_MZ_STCHN_N, 0);
     }
-    pr_cells(sx, sy, zp_mz_stblk, ZP_MZ_STBLK_N, 0);
+    if (up == 0U) pr_cells(sx, sy, zp_mz_stblk, ZP_MZ_STBLK_N, 0);
+    else if (up == 1U) pr_cells(sx, sy, zp_mz_stblkmed, ZP_MZ_STBLKMED_N, 0);
+    else pr_cells(sx, sy, zp_mz_stblksml, ZP_MZ_STBLKSML_N, 0);
     if (big) pr_cells(sx, sy + 14, zp_mz_stspk, ZP_MZ_STSPK_N, 0);
 }
 
 
-/* 0x33 Pushable block (`33 MZ Pushable Blocks.asm`): pushed 1 px/frame, falls off ledges, sinks in lava. */
+/* `PushB_SpawnLavaGeysers`: hard-coded lava jets spawned by the block as it crosses the lava in MZ2 (moving left) and
+   MZ3 (moving right). Each jet is a 0x4C geyser maker placed 32 px ahead of the block, 16 px lower. */
+static void mz_block_lava_geysers(ActiveObj *o) {
+    /* MZ2 block moves left (triggers 0DD0/0CC0/0BA0, jet 32 px left); MZ3 block moves right (0560/05C0, 32 px right) */
+    static const uint16_t k_trig[5] = { 0x0DD0, 0x0CC0, 0x0BA0, 0x0560, 0x05C0 };
+    uint8_t k, lo = 0, hi = 0, slot = 0xFF, ev = 0xFF;
+    int16_t d2, far = -1, dx;
+    ActiveObj *n;
+    if (g_cur_act == 4) { lo = 0; hi = 3; d2 = -32; }
+    else if (g_cur_act == 5) { lo = 3; hi = 5; d2 = 32; }
+    else return;
+    for (k = lo; k < hi && o->x != (int16_t)k_trig[k]; k++) ;
+    if (k == hi) return;
+    /* Object slots are scarce (24): take a free one, else reclaim the object farthest from the camera */
+    for (k = 0; k < MAX_ACTIVE_OBJS; k++) {
+        n = &g_objs[k];
+        if (!n->active) { slot = k; break; }
+        if (n->id == 0x33 || n->id == 0x0D || n->state == 99) continue;
+        dx = (int16_t)(n->x - g_cam_x - 160);
+        if (dx < 0) dx = -dx;
+        if (dx > far) { far = dx; ev = k; }
+    }
+    if (slot == 0xFF) slot = ev;
+    if (slot == 0xFF) return;
+    n = &g_objs[slot];
+    memset(n, 0, sizeof(*n));
+    n->active = 1;
+    n->id = 0x4C;
+    n->spawn_slot = 0xFF;
+    n->x = o->x + d2;
+    n->y = o->y + 16;
+    n->state = 1;                 /* fire on the next frame: the block that triggered it is still in reach */
+    n->timer = 1;
+}
+
+/* 0x33 Pushable block (`33 MZ Pushable Blocks.asm`): pushed 1 px/frame, falls off ledges, floats over lava.
+   States: 1 = normal (pushable/falling), 3 = floating on lava (drifts 0.5 px/frame, vx = direction),
+   2 = sinking in lava (vx = frame counter). vx doubles as the carried push direction while in state 1. */
 static void mz_push(ActiveObj *o) {
     uint8_t ang;
     int16_t d, dir;
+    int16_t hw = o->subtype ? 64 : 16;
+    int16_t old_x = o->x;
+    uint8_t was = (g_stand_obj == o);
     if (o->state == 0) {
         o->state = 1;
         o->vy = 0;
@@ -123,6 +168,36 @@ static void mz_push(ActiveObj *o) {
             pr_taken(o);
             if (g_stand_obj == o) g_stand_obj = 0;
             return;
+        }
+    } else if (o->state == 4) {                /* shot up by a lava geyser (`PushB_OnLava`): falls back under gravity */
+        zp_fall(o, 0x18);
+        if (o->vy >= 0) {
+            d = zp_floor(o, 16);
+            if (d < 0) {
+                o->y += d;
+                o->vy = 0;
+                o->timer = 0;
+                if (zp_is_lava(o->x, o->y + 16)) {   /* `PushB_OnLava`: still drifting -> float on, else sink */
+                    o->state = o->vx ? 3 : 2;
+                } else {
+                    o->vx = 0;
+                    o->state = 1;
+                }
+            }
+        }
+    } else if (o->state == 3) {                /* floating on lava: moves at 0.5 px/frame until it hits a wall */
+        dir = o->vx;
+        o->timer ^= 1;
+        if (o->timer) {
+            d = hw_rwall_distance(dir > 0 ? o->x + hw : o->x - hw - 1, o->y, &ang);
+            if (d < 0) {
+                o->state = 2;                  /* stopped: start sinking */
+                o->vx = 0;
+                o->timer = 0;
+            } else {
+                o->x += dir;
+                mz_block_lava_geysers(o);     /* `PushB_SpawnLavaGeysers` */
+            }
         }
     } else if (o->base_y == 1 || (g_cur_act == 3 && o->x >= 0xA20 && o->x < 0xAA1 && o->state == 1)) {
         /* Hard-coded MZ1 case in `33 MZ, LZ Pushable Blocks.asm`: the block rides on the spiked stomper's top */
@@ -142,24 +217,33 @@ static void mz_push(ActiveObj *o) {
 fall:
         d = zp_floor(o, 16);
         if (d > 0 || o->vy) {
+            if (o->vx) o->x += o->vx;          /* keep horizontal momentum when pushed off a ledge */
             zp_fall(o, 0x18);
             d = zp_floor(o, 16);
             if (d < 0) {
                 o->y += d;
                 o->vy = 0;
                 o->timer = 0;
-                if (zp_is_lava(o->x, o->y + 16)) o->state = 2;
+                if (zp_is_lava(o->x, o->y + 16)) {
+                    /* Landed on lava: float if still moving (`PushB_OnLava`), otherwise sink */
+                    if (o->vx) o->state = 3;
+                    else o->state = 2;
+                } else {
+                    o->vx = 0;
+                }
             }
         }
     }
+    /* `MvSonicOnPtfm`: Sonic rides the block's horizontal motion (lava drift, falling off ledges, etc.) */
+    if (was && g_stand_obj == o) pr_move_x(o->x - old_x);
     {
         uint8_t push = pr_solid(o, (o->subtype ? 64 : 16) + 11, 16, o->subtype ? 64 : 16);
         if (push && o->state == 1 && o->vy == 0) {
             dir = (g_sonic.x < o->x) ? 1 : -1;
-            d = hw_rwall_distance(o->x + (dir > 0 ? (o->subtype ? 64 : 16) : -(o->subtype ? 64 : 16) - 1), o->y, &ang);
-            if (dir < 0) d = hw_rwall_distance(o->x - (o->subtype ? 64 : 16) - 1, o->y, &ang);
-            if (d >= 0 || (dir > 0 && 0)) {
+            d = hw_rwall_distance(o->x + (dir > 0 ? hw : -hw - 1), o->y, &ang);
+            if (d >= 0) {
                 o->x += dir;
+                o->vx = dir;
                 if (!(g_frame_counter & 15U)) hw_play_sfx(SFX_PUSH);
             }
         }
@@ -179,15 +263,34 @@ static void mz_geyser(ActiveObj *o) {
     int16_t sx, sy, h, k;
     if (o->state == 0) {
         o->state = 1;
-        o->timer = 60;
+        o->timer = 120;                           /* `GMake_Main`: 2 s between jets */
         o->vx = 0;
         o->vy = 0;
     }
     if (o->state == 1) {
         if (--o->timer == 0) {
+            /* `GMake_Wait`: fire only while Sonic is within $170 above the maker, else re-arm */
+            if (g_sonic.y >= o->y || g_sonic.y < o->y - 0x170) {
+                o->timer = 120;
+                return;
+            }
             o->state = 2;
             o->vy = -0x500;
             hw_play_sfx(SFX_BURN);
+            /* the jet lifts any pushable block resting over it (`PushB_OnLava` shot-up branch) */
+            for (k = 0; k < MAX_ACTIVE_OBJS; k++) {
+                ActiveObj *b = &g_objs[k];
+                int16_t hw, ddx;
+                if (!b->active || b->id != 0x33 || (b->state != 1 && b->state != 3) || b->base_y == 1) continue;
+                hw = b->subtype ? 64 : 16;
+                ddx = b->x - o->x;
+                if (ddx < 0) ddx = -ddx;
+                if (ddx < hw + 40 && b->y >= o->y - 32 && b->y <= o->y + 16) {
+                    b->state = 4;
+                    b->vy = -0x500;
+                    b->timer = 0;
+                }
+            }
         }
     } else {
         int16_t dh = -(int16_t)(o->vy >> 8);

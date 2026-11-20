@@ -527,7 +527,10 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
     /* --- PUSHABLE MARBLE / LABYRINTH BLOCK (`0x33`) & SOLID ROCK / WALL (`0x3B, 0x44, 0x71`) --- */
     if (id == 0x33 || id == 0x3B || id == 0x44 || id == 0x71) {
         if (!(id == 0x44 && (o->subtype & 0x10))) {
-            bg_solid_full_box(o, (id == 0x44) ? 10 : 16, (id == 0x44) ? 32 : 16, (id == 0x33) ? 1 : 0);
+            /* 0x71 invisible barrier: size from the subtype (high nibble = width, low = height; 8 px per step) */
+            int16_t bhw = (id == 0x71) ? (int16_t)(((o->subtype >> 4) + 1) << 3) : (id == 0x44) ? 10 : 16;
+            int16_t bhh = (id == 0x71) ? (int16_t)(((o->subtype & 0x0F) + 1) << 3) : (id == 0x44) ? 32 : 16;
+            bg_solid_full_box(o, bhw, bhh, (id == 0x33) ? 1 : 0);
         }
         if (id == 0x33) {
             uint8_t ang = 0;

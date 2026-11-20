@@ -1531,7 +1531,8 @@ void objects_update_and_draw(void) BANKED {
     if (cam_x >= g_dyn_right_bound - 320 && g_objs[0].id != 0x0D) {
         for (i = 1; i < MAX_ACTIVE_OBJS; i++) {
             if (g_objs[i].active && g_objs[i].id == 0x0D) {
-                ActiveObj tmp = g_objs[0];
+                ActiveObj tmp;
+                tmp = g_objs[0];
                 g_objs[0] = g_objs[i];
                 g_objs[i] = tmp;
                 break;
@@ -1590,7 +1591,12 @@ void objects_update_and_draw(void) BANKED {
         ActiveObj *o = obj_next_active(g_objs);
         while (o != &g_objs[MAX_ACTIVE_OBJS]) {
             uint8_t id = o->id;
-            if (id == 0x25 && o->state != 99) step_ring_obj(o);
+            if (id == 0x25 && o->state != 99) {
+                /* Rings far above/below the camera free their slot (the spawn walker brings them back when the camera
+                   nears them). The slot pool is small, so off-screen rings must not crowd out the visible ones. */
+                if ((uint16_t)(o->y - g_cam_y + 160) > 640U) o->active = 0;
+                else step_ring_obj(o);
+            }
             else if (obj_prefilter(o)) {
                 /* Zone props go straight to their bank (none of the handlers that precede the zone-prop test in
                    `step_one_active_obj` uses these IDs), skipping that function's large stack frame. */

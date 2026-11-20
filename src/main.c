@@ -2604,6 +2604,7 @@ void hw_animate_level_gfx(void) {
 
 
 static int16_t s_last_scan_cam_x = -32767;
+static int16_t s_last_scan_cam_y = -32767;
 static uint8_t s_last_scan_tag = 0xFF;
 
 extern const uint8_t rev00_ghz3_objs[];
@@ -2789,13 +2790,15 @@ void hw_scan_spawn_objects(void) {
     int16_t max_x = g_cam_x + 464;
     uint8_t scan_tag = (uint8_t)((g_cur_act << 1) | (g_rev_mode & 1));
     int16_t dcam = g_cam_x - s_last_scan_cam_x;
+    int16_t dcam_y = g_cam_y - s_last_scan_cam_y;
     uint8_t prefix = 1;
 
-    if (!s_scan_force && scan_tag == s_last_scan_tag && dcam > -8 && dcam < 8) return;
+    if (!s_scan_force && scan_tag == s_last_scan_tag && dcam > -8 && dcam < 8 && dcam_y > -8 && dcam_y < 8) return;
     if (s_scan_force || scan_tag != s_last_scan_tag || min_x < s_scan_skip_min) s_scan_skip = 0;
     s_scan_force = 0;
     s_last_scan_tag = scan_tag;
     s_last_scan_cam_x = g_cam_x;
+    s_last_scan_cam_y = g_cam_y;
     prev = CURRENT_BANK;
     if (g_rev_mode && (g_cur_act == 2 || g_cur_act == 9)) {
         SWITCH_ROM(SUPPLEMENT_REV00_BANK);
@@ -2812,8 +2815,11 @@ void hw_scan_spawn_objects(void) {
     s_sc_prefix = prefix;
     while (scan_next()) {
         const uint8_t *q = s_sc_p;
-        spawn_try_place_b127(s_sc_idx, (int16_t)((uint16_t)q[0] | ((uint16_t)q[1] << 8)),
-                             (int16_t)((uint16_t)q[2] | ((uint16_t)q[3] << 8)), q[4], q[5]);
+        int16_t ex = (int16_t)((uint16_t)q[0] | ((uint16_t)q[1] << 8));
+        int16_t ey = (int16_t)((uint16_t)q[2] | ((uint16_t)q[3] << 8));
+        /* Rings only spawn near the vertical view (same band as the object despawn in `objects.c`) */
+        if (!(q[4] == 0x25 && (uint16_t)(ey - g_cam_y + 96) > 480U))
+            spawn_try_place_b127(s_sc_idx, ex, ey, q[4], q[5]);
         s_sc_p = q + 6;
         s_sc_idx++;
     }
