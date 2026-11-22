@@ -305,25 +305,26 @@ def build_voices(src, tables):
 
 
 def allocate(voices, nfr):
-    """Channel -> per-frame voice (or None). The two loudest tone voices own CH1 / CH2 and the loudest noise voice
-    owns CH4; while an owner is silent, the loudest other active voice of the same kind borrows the channel."""
+    """Channel -> per-frame voice (or None). CH1 carries the music's lead melody, so sound effects never take it
+    (the jump already lived on CH2 alone). The loudest tone voice owns CH2 and the loudest noise voice owns CH4;
+    while an owner is silent, the loudest other active voice of the same kind borrows the channel."""
     tones = sorted([v for v in voices if v.kind == 'tone' and v.energy > 0], key=lambda v: -v.energy)
     noises = sorted([v for v in voices if v.kind == 'noise' and v.energy > 0], key=lambda v: -v.energy)
 
-    def fill(primary, pool, taken):
+    def fill(primary, pool):
         seq = []
         for f in range(nfr):
             v = primary if (primary is not None and primary.amp[f] > 0) else None
             if v is None:
-                cand = [x for x in pool if x.amp[f] > 0 and x is not primary and (taken is None or x is not taken[f])]
+                cand = [x for x in pool if x.amp[f] > 0 and x is not primary]
                 v = max(cand, key=lambda x: x.amp[f]) if cand else primary
             seq.append(v)
         return seq
 
     plan = {}
-    plan[1] = fill(tones[0] if tones else None, tones[2:], None)
-    plan[2] = fill(tones[1] if len(tones) > 1 else None, tones[2:], plan[1])
-    plan[4] = fill(noises[0] if noises else None, noises[1:], None)
+    plan[1] = [None] * nfr
+    plan[2] = fill(tones[0] if tones else None, tones[1:])
+    plan[4] = fill(noises[0] if noises else None, noises[1:])
     return plan
 
 
@@ -361,6 +362,7 @@ def encode(src_id, voices, plan, nfr, priority, clear_push_frame=None):
             owned |= {1: 1, 2: 2, 4: 8}[ch]
     # per channel per frame: target vol, freq, trigger
     events = [dict() for _ in range(nfr)]
+    last_on = -1
     for ch in (1, 2, 4):
         if not owned & {1: 1, 2: 2, 4: 8}[ch]:
             continue
@@ -388,6 +390,8 @@ def encode(src_id, voices, plan, nfr, priority, clear_push_frame=None):
             buzz[f] = v.buzz
             fixed[f] = v.nr43
             prev_v = v
+        if vol.any():
+            last_on = max(last_on, int(np.nonzero(vol)[0][-1]))
         # walk frames and emit register state changes
         hw_on = False
         seg_start = seg_len = 0
@@ -427,6 +431,11 @@ def encode(src_id, voices, plan, nfr, priority, clear_push_frame=None):
             if ev:
                 events[f][ch] = ev
             f += 1
+    # hand the channels back to the music as soon as the effect is inaudible (the end marker releases them)
+    nfr = max(1, last_on + 1)
+    events = events[:nfr]
+    if clear_push_frame is not None and clear_push_frame >= nfr:
+        clear_push_frame = None            # the end of the stream clears the push flag anyway
     # serialise
     out = bytearray((owned, priority))
     last_f = -1

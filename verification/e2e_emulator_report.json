@@ -8,23 +8,23 @@
   "white_screens_detected": 0,
   "acts_verified": 20,
   "special_stages_verified": 6,
-  "palette_cycles_recorded": 128,
+  "palette_cycles_recorded": 129,
   "animated_tile_uploads": 41,
   "sampled_dac_drum_packets": 45,
   "syz3_blocks_remaining_after_spike_dive": "0x3fb",
   "battery_sram_restored_high_score": 50000,
   "battery_sram_restored_unlocked_act": 19,
   "battery_sram_restored_jp_credits": 1,
-  "special_stage_rotation_delta": 1512,
+  "special_stage_rotation_delta": 1456,
   "fz_boss_activated": true,
   "debug_mode_verified": true,
   "ss_results_and_good_ending_verified": true,
   "sonic_ghz1_start_x": 80,
-  "sonic_ghz1_end_x": 1543,
-  "camera_ghz1_end_x": 1415,
+  "sonic_ghz1_end_x": 1557,
+  "camera_ghz1_end_x": 1429,
   "rings_collected_in_ghz1": 2,
   "score_in_ghz1": 120,
-  "apu_sound_events": 1813,
+  "apu_sound_events": 1814,
   "ghz1_wall_flicker_pixels_32_frames": 0,
   "ghz1_360_loop_verified": true,
   "ghz1_double_s_tunnel_verified": true,
@@ -55,18 +55,18 @@
     },
     {
       "context": "GHZ1_Gameplay_f160",
-      "mean_rgb": 112.88,
-      "std_rgb": 76.9,
+      "mean_rgb": 111.71,
+      "std_rgb": 77.22,
       "black_fraction": 0.0,
-      "white_fraction": 0.0337,
+      "white_fraction": 0.0334,
       "unique_colors": 31
     },
     {
       "context": "Act_0_Live_f19",
       "mean_rgb": 109.12,
-      "std_rgb": 77.51,
+      "std_rgb": 77.52,
       "black_fraction": 0.0,
-      "white_fraction": 0.0329,
+      "white_fraction": 0.0334,
       "unique_colors": 25
     },
     {
@@ -103,10 +103,10 @@
     },
     {
       "context": "Act_5_Live_f19",
-      "mean_rgb": 100.2,
-      "std_rgb": 67.5,
+      "mean_rgb": 100.17,
+      "std_rgb": 67.46,
       "black_fraction": 0.0,
-      "white_fraction": 0.0256,
+      "white_fraction": 0.025,
       "unique_colors": 35
     },
     {
@@ -143,10 +143,10 @@
     },
     {
       "context": "Act_10_Live_f19",
-      "mean_rgb": 81.32,
-      "std_rgb": 72.33,
+      "mean_rgb": 81.31,
+      "std_rgb": 72.36,
       "black_fraction": 0.0,
-      "white_fraction": 0.027,
+      "white_fraction": 0.0276,
       "unique_colors": 24
     },
     {
@@ -175,27 +175,27 @@
     },
     {
       "context": "Act_14_Live_f19",
-      "mean_rgb": 51.2,
-      "std_rgb": 56.83,
+      "mean_rgb": 51.05,
+      "std_rgb": 56.38,
       "black_fraction": 0.0,
-      "white_fraction": 0.034,
-      "unique_colors": 21
+      "white_fraction": 0.027,
+      "unique_colors": 22
     },
     {
       "context": "Act_15_Live_f19",
-      "mean_rgb": 81.58,
-      "std_rgb": 52.41,
+      "mean_rgb": 81.69,
+      "std_rgb": 52.48,
       "black_fraction": 0.0,
       "white_fraction": 0.027,
       "unique_colors": 26
     },
     {
       "context": "Act_16_Live_f19",
-      "mean_rgb": 92.27,
-      "std_rgb": 62.79,
+      "mean_rgb": 91.81,
+      "std_rgb": 62.29,
       "black_fraction": 0.034,
       "white_fraction": 0.027,
-      "unique_colors": 28
+      "unique_colors": 27
     },
     {
       "context": "Act_17_Live_f19",
@@ -215,8 +215,8 @@
     },
     {
       "context": "Act_19_Live_f19",
-      "mean_rgb": 85.37,
-      "std_rgb": 80.59,
+      "mean_rgb": 85.38,
+      "std_rgb": 80.6,
       "black_fraction": 0.0,
       "white_fraction": 0.0276,
       "unique_colors": 28

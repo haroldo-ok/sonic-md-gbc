@@ -198,6 +198,11 @@ static const uint8_t *s_bgm_ptr = 0;
 static uint8_t s_bgm_wait = 0;
 /* Sound effects ($A1..$D0): src/sfx_player.c (bank 8, next to its data). g_sfx_own = GB channels lent to the
  * current SFX stream (bit0 CH1, bit1 CH2, bit3 CH4); the music skips them. */
+/* The music's current CH2 note (period lo / hi with its volume bits; 0 = rest) and its age in frames, kept while
+ * CH2 is lent to a sound effect or the jump so the held note can be picked up again when the channel returns. */
+static uint8_t s_ch2_lo = 0;
+static uint8_t s_ch2_hi = 0;
+static uint8_t s_ch2_age = 0;
 static uint8_t s_dac_drum_kind = 0;
 static uint8_t s_dac_drum_pkt = 0;
 static uint8_t s_bass_dirty = 0;
@@ -246,6 +251,7 @@ static void start_bgm_unlocked(uint8_t bgm_id) {
     s_bgm_base = sd.stream;
     s_bgm_ptr = sd.stream;
     s_bgm_wait = 0;
+    s_ch2_hi = 0;
     g_sound_events++;
     SWITCH_ROM(prev);
 }
@@ -348,7 +354,15 @@ void hw_sound_tick(void) {
                 if (op & 2) { /* CH2 Balanced 25% Harmony / Counter-Melody */
                     uint8_t lo = *s_bgm_ptr++;
                     uint8_t hi = *s_bgm_ptr++;
-                    if (!(g_sfx_own & 2)) {
+                    if (hi & 0x80) {
+                        s_ch2_hi = hi;
+                        s_ch2_age = 0;
+                    } else {
+                        s_ch2_hi = (uint8_t)((s_ch2_hi & 0xF8) | (hi & 7));
+                    }
+                    s_ch2_lo = lo;
+                    if ((lo | (hi & 7)) == 0) s_ch2_hi = 0;
+                    if (!(g_sfx_own & 2) && !jump_playing()) {
                         uint16_t per = lo | ((uint16_t)(hi & 7) << 8);
                         if (per == 0) {
                             NR22_REG = 0x00;
@@ -429,11 +443,26 @@ void hw_sound_tick(void) {
     }
 
     /* 2. Sound effect stream (tools/sfx_gbc.py, src/sfx_player.c) */
-    if (g_sfx_own) {
-        SWITCH_ROM(SFX_GB_BANK);
-        sfx_tick_b8(jump_playing());
+    {
+        uint8_t ch2_busy = (uint8_t)((g_sfx_own & 2) || jump_playing());
+        if (g_sfx_own) {
+            SWITCH_ROM(SFX_GB_BANK);
+            sfx_tick_b8(jump_playing());
+        }
+        jump_tick();
+        if (s_ch2_age != 0xFF) s_ch2_age++;
+        if (ch2_busy && !(g_sfx_own & 2) && !jump_playing() && s_ch2_hi) {
+            /* CH2 is back: resume the music's held note at the volume its decay (step every 4/64 s) has reached */
+            uint8_t vol = (uint8_t)((s_ch2_hi >> 3) & 0x0F);
+            uint8_t fall = (uint8_t)(s_ch2_age >> 2);
+            if (vol > fall) {
+                NR21_REG = 0x40;
+                NR22_REG = (uint8_t)(((vol - fall) << 4) | 0x04);
+                NR23_REG = s_ch2_lo;
+                NR24_REG = (uint8_t)(0x80 | (s_ch2_hi & 0x07));
+            }
+        }
     }
-    jump_tick();
     SWITCH_ROM(prev);
 }
 
