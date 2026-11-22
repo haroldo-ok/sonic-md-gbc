@@ -196,9 +196,8 @@ static uint8_t s_bgm_bank = 0;
 static const uint8_t *s_bgm_base = 0;
 static const uint8_t *s_bgm_ptr = 0;
 static uint8_t s_bgm_wait = 0;
-static uint8_t s_sfx_active = 0;
-static const uint8_t *s_sfx_ptr = 0;
-static uint8_t s_sfx_wait = 0;
+/* Sound effects ($A1..$D0): src/sfx_player.c (bank 8, next to its data). g_sfx_own = GB channels lent to the
+ * current SFX stream (bit0 CH1, bit1 CH2, bit3 CH4); the music skips them. */
 static uint8_t s_dac_drum_kind = 0;
 static uint8_t s_dac_drum_pkt = 0;
 static uint8_t s_bass_dirty = 0;
@@ -262,7 +261,13 @@ void hw_play_bgm(uint8_t bgm_id) {
  * `smpsModSet 2, 1, -8, 101` rises the pitch after a 2-frame wait, restarting for each note;
  * the PSG voice 0 envelope sets the volume per frame. Played on CH2; CH1 stays with the music. */
 #include "../generated/sfx_jump.h"
+#include "../generated/sfx_gb.h"
+#include "sfx_player.h"
 static uint8_t s_jump_t = 0xFF;   /* 0xFF = inactive */
+
+static uint8_t jump_playing(void) {
+    return (uint8_t)(s_jump_t != 0xFF);
+}
 
 static void jump_tick(void) {
     if (s_jump_t == 0xFF) return;
@@ -280,36 +285,14 @@ static void jump_tick(void) {
 
 void hw_play_sfx(uint8_t sfx_id) {
     uint8_t prev;
-    uint16_t off;
-    if (sfx_id < 0xA0 || sfx_id > 0xD0) return;
-    if (sfx_id == SFX_JUMP) {                  /* see `jump_tick` */
-        s_sfx_active = 0;
+    if (sfx_id == SFX_JUMP) {                  /* see `jump_tick`; PSG1 on the MD, plays over other SFX */
         s_jump_t = 0;
         return;
     }
     s_audio_lock = 1;
     prev = CURRENT_BANK;
-    g_cur_sfx = sfx_id;
-    SWITCH_ROM(4);
-    off = sfx_table_offsets[sfx_id - 0xA0];
-    s_sfx_ptr = &all_sfx_blob[off];
-    s_sfx_active = 1;
-    s_sfx_wait = 0;
-    g_sound_events++;
-
-    /* Warm, authentic hardware sweep transients for signature Sonic SFX (`Ring`, `Spring`) */
-    if (sfx_id == SFX_RING) {
-        NR21_REG = 0x80;
-        NR22_REG = 0xB2;
-        NR23_REG = 0x4E;
-        NR24_REG = 0x87;
-    } else if (sfx_id == SFX_SPRING) {
-        NR10_REG = 0x1D;
-        NR11_REG = 0x80;
-        NR12_REG = 0xB2;
-        NR13_REG = 0x18;
-        NR14_REG = 0x86;
-    }
+    SWITCH_ROM(SFX_GB_BANK);
+    sfx_start_b8(sfx_id, jump_playing());
     SWITCH_ROM(prev);
     s_audio_lock = 0;
 }
@@ -346,7 +329,9 @@ void hw_sound_tick(void) {
                     uint8_t lo = *s_bgm_ptr++;
                     uint8_t hi = *s_bgm_ptr++;
                     uint16_t per = lo | ((uint16_t)(hi & 7) << 8);
-                    if (per == 0) {
+                    if (g_sfx_own & 1) {
+                        /* channel lent to a sound effect */
+                    } else if (per == 0) {
                         NR12_REG = 0x00;
                     } else if (hi & 0x80) {
                         uint8_t vol = (hi >> 3) & 0x0F;
@@ -363,7 +348,7 @@ void hw_sound_tick(void) {
                 if (op & 2) { /* CH2 Balanced 25% Harmony / Counter-Melody */
                     uint8_t lo = *s_bgm_ptr++;
                     uint8_t hi = *s_bgm_ptr++;
-                    if (!s_sfx_active) {
+                    if (!(g_sfx_own & 2)) {
                         uint16_t per = lo | ((uint16_t)(hi & 7) << 8);
                         if (per == 0) {
                             NR22_REG = 0x00;
@@ -403,7 +388,7 @@ void hw_sound_tick(void) {
                     uint8_t drum = *s_bgm_ptr++;
                     if (drum == 5) {
                         /* Soft brushed closed hi-hat (low LFSR clock + short 15 ms length gate) */
-                        NR41_REG = 0x3C; NR42_REG = 0x21; NR43_REG = 0x43; NR44_REG = 0xC0;
+                        if (!(g_sfx_own & 8)) { NR41_REG = 0x3C; NR42_REG = 0x21; NR43_REG = 0x43; NR44_REG = 0xC0; }
                     } else {
                         if (s_ch3_bass_per == 0) {
                             s_dac_drum_kind = drum ? drum : 1;
@@ -413,7 +398,8 @@ void hw_sound_tick(void) {
                         } else {
                             g_dac_drum_packets++;
                         }
-                        if (drum == 1) {        /* Warm Punchy Kick (`1.1 kHz` LFSR thump) */
+                        if (g_sfx_own & 8) {    /* noise channel lent to a sound effect */
+                        } else if (drum == 1) { /* Warm Punchy Kick (`1.1 kHz` LFSR thump) */
                             NR41_REG = 0x36; NR42_REG = 0x61; NR43_REG = 0x57; NR44_REG = 0xC0;
                         } else if (drum == 2) { /* Warm Crisp Snare (`3.2 kHz` body, zero white hiss) */
                             NR41_REG = 0x34; NR42_REG = 0x51; NR43_REG = 0x44; NR44_REG = 0xC0;
@@ -442,35 +428,10 @@ void hw_sound_tick(void) {
         }
     }
 
-    /* 2. Step SMPS Sound Effect Overlay on CH2 / CH4 */
-    if (s_sfx_active && s_sfx_ptr != 0) {
-        if (s_sfx_wait > 0) {
-            s_sfx_wait--;
-        } else {
-            uint8_t dur;
-            SWITCH_ROM(SFX_DATA_BANK);
-            dur = *s_sfx_ptr++;
-            if (dur == 0) {
-                s_sfx_active = 0;
-            } else {
-                uint8_t mode = *s_sfx_ptr++;
-                uint8_t lo = *s_sfx_ptr++;
-                uint8_t hi = *s_sfx_ptr++;
-                s_sfx_wait = dur - 1;
-                if ((mode & 1) && (lo | hi)) {
-                    NR21_REG = 0x80;
-                    NR22_REG = 0xA2;
-                    NR23_REG = lo;
-                    NR24_REG = 0x80 | (hi & 0x07);
-                }
-                if (mode & 2) {
-                    NR41_REG = 0x20;
-                    NR42_REG = 0x92;
-                    NR43_REG = 0x33;
-                    NR44_REG = 0xC0;
-                }
-            }
-        }
+    /* 2. Sound effect stream (tools/sfx_gbc.py, src/sfx_player.c) */
+    if (g_sfx_own) {
+        SWITCH_ROM(SFX_GB_BANK);
+        sfx_tick_b8(jump_playing());
     }
     jump_tick();
     SWITCH_ROM(prev);
@@ -540,7 +501,7 @@ void hw_start_sega_chant(void) {
     s_sega_prev_b = 0xFF;
     g_sega_pcm_playing = 1;
     s_bgm_ptr = 0;
-    s_sfx_active = 0;
+    sfx_stop_b0();
     NR12_REG = 0x00;
     NR22_REG = 0x00;
     NR42_REG = 0x00;

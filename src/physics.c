@@ -36,15 +36,18 @@ static void compute_camera_target(int16_t *out_cx, int16_t *out_cy) {
     *out_cy = ty;
 }
 
-static void sonic_enter_roll(uint8_t force_tunnel) {
+/* mode bit0: force the tunnel push; bit1: silent (jumping curls Sonic up without `sfx_Roll`, as in Sonic_Jump). */
+#define ROLL_TUNNEL 1
+#define ROLL_SILENT 2
+static void sonic_enter_roll(uint8_t mode) {
     if (!g_sonic.rolling) {
         g_sonic.rolling = 1;
         g_sonic.anim = ANI_ROLL;
         g_sonic.y += 5;
         g_sonic.y_sub += (5L << 8);
-        hw_play_sfx(SFX_ROLL);
+        if (!(mode & ROLL_SILENT)) hw_play_sfx(SFX_ROLL);
     }
-    if (force_tunnel && g_sonic.gsp == 0) {
+    if ((mode & ROLL_TUNNEL) && g_sonic.gsp == 0) {
         g_sonic.gsp = 0x0200;
     }
 }
@@ -824,7 +827,7 @@ void physics_update_level(void) BANKED {
                 g_sonic.ysp = (int16_t)(((int32_t)g_sonic.gsp * sin_a - (int32_t)j * cos_a) >> 8);
                 g_sonic.on_ground = 0;
                 g_sonic.jumping = 1;
-                sonic_enter_roll(0);
+                sonic_enter_roll(ROLL_SILENT);
                 g_sonic.angle = 0;
                 hw_play_sfx(SFX_JUMP);
             }

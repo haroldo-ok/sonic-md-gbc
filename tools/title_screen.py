@@ -679,7 +679,7 @@ def rgb555(c) -> int:
 # Banks 11..46, 47..63 (odd) and 71..73 hold a multiple of 16 bytes of older data, so arrays appended there stay
 # 16-byte aligned (required for the GDMA'd row tables).
 ALIGNED_BANKS = set(range(11, 47)) | set(range(47, 64, 2)) | {71, 72, 73}
-DATA_BANKS = ([(120, 15000), (8, 13000)] + [(b, 8000) for b in range(11, 47)] +
+DATA_BANKS = ([(120, 15000)] + [(b, 8000) for b in range(11, 47)] +
               [(b, 6900) for b in range(47, 64, 2)] + [(b, 8200) for b in (71, 72, 73)])
 CODE_BANK = 7
 

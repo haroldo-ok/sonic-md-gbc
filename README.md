@@ -8,6 +8,51 @@ Every single one of the **`946 / 946` non-`.git` files** in `s1disasm` is hashed
 
 ## Summary of Latest Engineering Improvements
 
+### 0000. Sound Effects Rebuilt from the SMPS Sources (2026-11-22)
+All sound effects except the jump ($A1..$D0) are now built the way the jump fix was: from the s1disasm sources, frame by frame, instead of the old converter's "highest note per frame at a fixed volume". The jump ($A0, `tools/jump_sfx.py`) is unchanged.
+- **Driver model** (`tools/sfx_smps.py`): assembles the SMPS2ASM macros of `sound/sfx/*.asm` and runs them through a model of the Sonic 1 68k driver (`s1.sounddriver.asm`).
+  - Durations times the tempo divider; note fill; the `$E7` hold (no re-attack, used by 13 effects).
+  - Modulation: wait, speed, delta, and steps halved at note start, negated when they run out.
+  - Detune, volume, transposition, loops, jumps, `smpsStop`, `smpsClearPush`.
+  - PSG volume envelopes `PSG1..PSG9`, and the `$E7` noise clocked by PSG3.
+  - FM voices with their carrier operators and track volume.
+  - Notes that SS Goal transposes past the end of the FM table (garbage reads on the real driver) continue the scale instead.
+- **Reference render** (`tools/md_synth.py`): a small YM2612 model (operators, 8 algorithms, feedback, MAME-style envelope generator) plus an SN76489 model. It measures each track's per-frame loudness, brightness and noisiness.
+- **Game Boy mapping** (`tools/sfx_gbc.py`):
+  - Clean FM tones become one pulse voice per carrier operator, at note x operator multiple, so the ring plays its x2 and x9 partials on CH1 + CH2. Carriers at the same pitch merge. The duty is picked from the render's brightness.
+  - Each FM carrier operator is classified on its own render, not the whole channel: a clean carrier becomes a tone, a carrier fed by a chaotic (high-feedback) modulator becomes noise, and a very bright one becomes a 7-bit buzz. The roll is a rising ~4.5-6 kHz whistle (operator 4) plus a hiss (operator 2); it used to be all white noise and sounded like a splash.
+  - CH4 noise settings (LFSR clock and width) are chosen by matching the GB noise spectrum to the carrier *as heard through the Mega Drive's ~3.4 kHz output low-pass*, and the level is measured after that filter too. The GB has no such filter, so unfiltered FM noise came out as bright "shhh". Clocks below 5 kHz are excluded because they flutter at frame rate. Noise-only effects (explosions, waterfall, saw) keep their loudness and only get darker.
+  - Bright metallic FM (brightness > 16x the fundamental: push block, door, rumbling, Bumper's 35 Hz thump...) becomes CH4's 7-bit LFSR "buzz" at the same pitch.
+  - PSG tones become pulses at the driver's PSG frequencies; PSG noise becomes CH4.
+  - Loudness becomes GB volume (attenuation 0 = 15, as in the jump table). The GB hardware envelope is fitted to each note, so a channel is only retriggered on a new note or when the envelope can no longer follow. `smpsPan` sets NR51.
+  - Output: 5.7 KB of streams in `generated/sfx_gb.c` (bank 8).
+- **Player** (`src/sfx_player.c`, bank 8 next to its data; thin wrappers in `main.c`):
+  - Driver rules kept: `SoundPriorities` (a lower-priority effect is ignored while one plays; `$80` entries don't change the priority, which is cleared when the effect ends).
+  - Ring alternates right `$B5` / left `$CE` (`v_ring_speaker`).
+  - The push sound doesn't restart until its `smpsClearPush` (`f_push_playing`).
+  - The jump plays alongside another effect, as PSG1 does on the Mega Drive. It keeps CH2 while it plays.
+  - Music skips the channels an effect owns and resumes on its next note.
+  - WRAM: +2 bytes (`l__DATA` 0x1CFD).
+- **Measured** (PyBoy recordings through the level-select sound test with the music stopped, against the reference render, 48 effects):
+
+  | | before | after |
+  |---|---|---|
+  | loudness-envelope correlation | 0.57 | 0.96 |
+  | median brightness error | 1.41 octaves | 0.51 octaves |
+  | average length error | 28.8 frames | 4.0 frames |
+
+  Five effects that were silent before now play: `$A2`, `$AB`, `$B6`, `$B8`, Burning `$C8`.
+- **Jump + roll fix**: `Sonic_Jump` curls Sonic up without `sfx_Roll`, but the port's jump called `sonic_enter_roll()`, which played the roll sound first. The old player hid this because a jump cancelled any other SFX. With effects now playing side by side, the new roll whoosh sounded like a splash under the jump. The jump path now rolls silently (`ROLL_SILENT` in `src/physics.c`), and the in-game jump records identically to the original ROM.
+- **Jump, for the record**: the driver model plays the jump slightly differently from `generated/sfx_jump.h`. The source applies `smpsModSet` only to the second note, and `smpsPSGvoice $00` means "no volume envelope" in `PSGDoVolFX`. The jump was left as it is because it was confirmed by ear.
+- **Known limits**:
+  - One effect stream plus the jump at a time (WRAM is full), so two simultaneous FM effects (ring + spring) replace each other by priority instead of mixing.
+  - CH3 is not used for effects; three-voice chords (Get Continue) drop to two.
+  - FM detune and LFO are ignored. Pure FM tones are inherently brighter as GB pulses.
+  - Low noise rates are a soft rumble on both machines but nearly vanish in PyBoy's high-pass filter.
+  - `sonic-30fps.gbc` has no Makefile target and was not rebuilt.
+  - Not yet checked on hardware or by ear.
+- **Regenerating**: `python3 tools/sfx_gbc.py` (about 15 s; needs `vendor/s1disasm`), also run by `make assets`. The old `all_sfx_blob` from `convert_all.py` is no longer used.
+
 ### 000. Animated Title Screen, closer to the Mega Drive (2026-11-21)
 The title used to be one static 160x144 picture. It now plays the way `GM_Title` does (`sonic.asm`, `Deform_GHZ`, objects `0E`/`0F`, `PalCycle_Title`). See `verification/title_animated.gif` and `verification/title_md_vs_gbc.png`.
 - **Order of events**: a "SONIC TEAM / PRESENTS" card is shown while the title loads behind it. The palettes then fade in (`PaletteFadeIn`, 2 levels per frame; it starts from a dim step, not black, so no frame is fully black). After 28 frames big Sonic rises from behind the emblem, 8 px per frame from y=$5E to y=$16. He then plays images 1..5 and loops the finger-wag images 6/7, 8 frames each (`Ani_TSon`). "PRESS START BUTTON" flashes 32 frames off / 32 on (`Ani_PSBTM`). The water colours rotate every 6 frames (`Pal_TitleCyc_Water`). The attract demo now starts after 480 frames (was 420), so the title stays up about as long as on the Mega Drive after the card and fade-in.
