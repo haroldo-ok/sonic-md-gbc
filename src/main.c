@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "title_isr.h"
 #include "ghz_pals.h"
 #include "zp_pals.h"
 #include <stddef.h>
@@ -2579,16 +2580,7 @@ void hw_animate_level_gfx(void) {
     uint8_t phase;
 
     if (g_game_mode == GM_TITLE) {
-        /* Authentic `PalCycle_Title`: Cycle Title Screen Water Palette (`s1_title_water_cycle`) */
-        if ((g_frame_counter & 7) == 0) {
-            prev = CURRENT_BANK;
-            SWITCH_ROM(SUPPLEMENT_ANIM_BANK);
-            phase = ((g_frame_counter >> 3) & 3) << 2;
-            set_bkg_palette(2, 1, &s1_title_water_cycle[phase]);
-            g_pal_cycles++;
-            SWITCH_ROM(prev);
-        }
-        return;
+        return;   /* the animated title screen does its VBlank work from its own VBlank handler (src/title_isr.c) */
     }
     if ((g_game_mode != GM_LEVEL && g_game_mode != GM_ACT_CLEAR && g_game_mode != GM_ENDING) || WY_REG < 128) {
         return;

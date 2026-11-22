@@ -239,6 +239,10 @@ def test_full_end_to_end_boot_gameplay_all_zones_special_stages_and_audio() -> N
         tap_button(pb, "up", hold_frames=2, release_frames=3, check_ctx="Select_Title_Entry")
         tap_button(pb, "start", hold_frames=4, release_frames=20, check_ctx="To_Title")
         assert pb.memory[sym_mode] == 1, f"Expected Title Screen (1), got {pb.memory[sym_mode]}"
+        # "SONIC TEAM PRESENTS" card, fade-in, then big Sonic rises (GM_Title order): watch every frame until he is up.
+        for t_f in range(130):
+            pb.tick()
+            analyze_frame(pb.screen.ndarray[:, :, :3], f"Title_Intro_f{t_f}", min_uniq=2)
         title_stats = analyze_frame(pb.screen.ndarray[:, :, :3], "Title_Screen_Active")
         report_frames.append(title_stats)
         title_shot = pb.screen.image.copy()
@@ -1667,7 +1671,9 @@ def test_09_background_map_integrity_pupils_sega_and_fps():
             pb.tick(1, False, False)
         pb.memory[syms["_g_next_mode"]] = 1
         pb.memory[syms["_g_mode_init_done"]] = 0
-        for _ in range(30):
+        # GM_Title order: "SONIC TEAM PRESENTS" card, fade-in, then big Sonic rises from behind the emblem
+        # (30-frame delay + 10 rise frames); wait until he is up before checking his face.
+        for _ in range(150):
             pb.tick(1, True, False)
         assert pb.memory[0xFF4A] == 144, f"Title Screen window not hidden: WY={pb.memory[0xFF4A]}"
         title_arr = pb.screen.ndarray[:, :, :3]

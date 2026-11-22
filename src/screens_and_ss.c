@@ -1,5 +1,6 @@
 #pragma bank 3
 #include "engine.h"
+#include "title_isr.h"
 #include <string.h>
 
 /* Exposed for PyBoy E2E Verification of Live 360° Special Stage Rotation! */
@@ -154,41 +155,6 @@ extern const uint8_t *g_ss_dma_ptr;
 static uint8_t *s_ss_rows[64];
 static uint8_t s_ss_dma_raw[1040];
 
-/* Crisp `OBP0` + `OBP3` Title-Screen Sonic Eye Pupils, Glossy Bean Nose & Muzzle Overlay (`0E Title Screen Sonic`) */
-static const uint16_t s_tson_face_pals[8] = {
-    RGB8(0, 0, 0), RGB8(0, 0, 8),    RGB8(36, 76, 248), RGB8(252, 248, 244), /* OBP0: Jet-Black Pupil/Nose + Cobalt + Pure White Sclera */
-    RGB8(0, 0, 0), RGB8(148, 72, 40),RGB8(232, 148, 96),RGB8(252, 196, 148)  /* OBP1: Warm Peach Muzzle + Soft Smile Shadow */
-};
-static const uint8_t s_tson_face_tiles[48] = {
-    /* Tile 0 (`x=72..79, y=47..54` on OBP0): Two bright white arched eyes + `1x3` jet-black vertical pupils!
-     * Row0: .333.33. -> lo=0x76, hi=0x76
-     * Row1: 33333333 -> lo=0xFF, hi=0xFF
-     * Row2: 33313313 -> lo=0xFF, hi=0xED (col1 `1` = ink-black pupils at x=75 & x=78!)
-     * Row3: 33313313 -> lo=0xFF, hi=0xED
-     * Row4: 33313313 -> lo=0xFF, hi=0xED
-     * Row5: .333333. -> lo=0x7E, hi=0x7E
-     * Row6: ........ -> 0x00, 0x00
-     * Row7: ........ -> 0x00, 0x00 */
-    0x76,0x76, 0xFF,0xFF, 0xFF,0xED, 0xFF,0xED, 0xFF,0xED, 0x7E,0x7E, 0x00,0x00, 0x00,0x00,
-    /* Tile 1 (`x=80..87, y=49..56` on OBP0): Glossy jet-black bean nose (`1`) + white glint (`3`)!
-     * Row0..2: ........
-     * Row3: .1311... -> lo=0x78, hi=0x20
-     * Row4: .1111... -> lo=0x78, hi=0x00
-     * Row5..7: ........ */
-    0x00,0x00, 0x00,0x00, 0x00,0x00, 0x78,0x20, 0x78,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00,
-    /* Tile 2 (`x=73..80, y=52..59` on OBP1): Clean warm peach muzzle (`3`/`2`) replacing dark red BG shadow! */
-    0x00,0x00, 0x7F,0x7F, 0xFF,0xDF, 0xFF,0xFF, 0x7E,0x7E, 0x00,0x00, 0x00,0x00, 0x00,0x00
-};
-
-static void draw_title_sonic_face_oam(void) {
-    g_oam_next = 0;
-    hw_put_sprite8(72, 47, 0, 0); /* Crisp white eyes + 1x3 jet-black vertical pupils (highest OAM priority!) */
-    hw_put_sprite8(80, 49, 1, 0); /* Glossy jet-black bean nose + specular glint */
-    hw_put_sprite8(73, 52, 2, 1); /* Warm peach muzzle underneath eyes & nose */
-    hw_put_sprite8(77, 52, 2, 1);
-    hw_clear_remaining_oam();
-}
-
 static uint8_t s_ss_field = 0;
 
 static void ss_render_rotating_viewport_field(uint8_t par) {
@@ -242,6 +208,7 @@ static void ss_render_rotating_viewport(void) {
  * ============================================================================================ */
 void screens_init_mode(uint8_t mode) BANKED {
     s_mode_timer = 0;
+    if (LCDC_REG & LCDCF_OBJ16) title_exit();   /* leaving the animated title screen */
     g_oam_next = 0;
     hw_clear_remaining_oam();
 
@@ -258,11 +225,7 @@ void screens_init_mode(uint8_t mode) BANKED {
         }
     } else if (mode == GM_TITLE) {
         memset(s_cheat_pos, 0, N_CHEATS);
-        hw_load_fullscreen_screen(1);
-        VBK_REG = 0;
-        set_sprite_data(0, 3, s_tson_face_tiles);
-        set_sprite_palette(0, 2, s_tson_face_pals);
-        draw_title_sonic_face_oam();
+        title_init();
         hw_play_bgm(BGM_TITLE);
     } else if (mode == GM_LEVEL_SELECT) {
         s_ls_sel = g_cur_act < 19 ? g_cur_act : 0;
@@ -398,6 +361,7 @@ void screens_update_mode(uint8_t mode) BANKED {
     /* 2. Title Screen: START begins a new game at Green Hill 1 (or opens the Level Select once its code was entered);
           cheat codes are typed on the D-pad / A / B while the title is up; 4-zone attract demo after 7 s. */
     if (mode == GM_TITLE) {
+        title_update();
         s_mode_timer++;
         if (g_joy_pressed) {
             uint8_t c;
@@ -410,7 +374,9 @@ void screens_update_mode(uint8_t mode) BANKED {
                         pos = 0;
                         if (k->flag == 0xFF) {                      /* Japanese credits names */
                             g_jp_credits = !g_jp_credits;
+                            set_interrupts(VBL_IFLAG | TIM_IFLAG);   /* the title LYC handler reads SRAM bank 1 */
                             sram_save_progress();
+                            set_interrupts(VBL_IFLAG | TIM_IFLAG | LCD_IFLAG);
                             hw_play_sfx(SFX_ENTERSPEC);
                         } else if (k->flag == 0xFE) {               /* debug mode */
                             g_debug_unlocked = 1;
@@ -442,7 +408,7 @@ void screens_update_mode(uint8_t mode) BANKED {
             }
             return;
         }
-        if (s_mode_timer >= 420) {
+        if (s_mode_timer >= 480) {   /* ~6.3 s of title after the SONIC TEAM card and fade-in (GM_Title: 376 frames) */
             g_demo_mode = 1;
             g_demo_timer = 540;
             g_cur_act = s_attract_acts[s_attract_idx & 3];
