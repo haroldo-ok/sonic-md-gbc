@@ -15,11 +15,54 @@ static uint8_t box_overlap(int16_t ax, int16_t ay, int16_t aw, int16_t ah,
 /* ids implemented in `zp_object()` (bitmap, 1 bit per object id) */
 static const uint8_t k_zp_ids[16] = { 0x00, 0x18, 0x6C, 0x11, 0x00, 0x84, 0x0F, 0x10, 0xC0, 0x50, 0xDE, 0x7F, 0xFE, 0xFF, 0x07, 0x00 };
 
+/* Pending power-up from a broken monitor (`Pow_Checks` runs when the rising icon stops). */
+static uint8_t s_pow_sub = 0;
+static uint8_t s_pow_timer = 0;
+
+static void monitor_reward(uint8_t sub) {
+    s_pow_timer = 0;
+    if (sub == 0x01) {
+        sonic_hurt_or_kill(0);
+    } else if (sub == 0x02) {
+        g_lives++;
+        g_hud_dirty = 1;
+        hw_play_bgm(BGM_EXTRALIFE);
+    } else if (sub == 0x03) {
+        g_sonic.shoes = 1200;
+        hw_play_sfx(SFX_SPRING);
+    } else if (sub == 0x04) {
+        g_sonic.shield = 1;
+        hw_play_sfx(SFX_SHIELD);
+    } else if (sub == 0x05) {
+        __critical {
+            g_invinc_vblanks_pending = 0;
+            g_sonic.invinc = 1200;
+        }
+        hw_play_bgm(BGM_INVINC);
+    } else if (sub == 0x07) {
+        g_rings += 50;
+        g_sonic.shield = 1;
+        g_sonic.shoes = 1200;
+        __critical {
+            g_invinc_vblanks_pending = 0;
+            g_sonic.invinc = 1200;
+        }
+        g_hud_dirty = 1;
+        hw_play_bgm(BGM_INVINC);
+    } else {
+        g_rings += 10;
+        g_score += 100;
+        g_hud_dirty = 1;
+        hw_play_sfx(SFX_RING);
+    }
+}
+
 void objects_reset_for_act(void) BANKED {
     memset(g_objs, 0, sizeof(g_objs));
     memset(g_lost_rings, 0, sizeof(g_lost_rings));
     memset(g_obj_taken, 0, sizeof(g_obj_taken));
     ghz_objects_reset();
+    s_pow_timer = 0;
     g_signpost_passed = 0;
     g_act_clear_done = 0;
     g_boss_active = 0;
@@ -1186,40 +1229,12 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
             uint8_t mon_tile, mon_pal;
             if (sonic_spinning && box_overlap(g_sonic.x, g_sonic.y, 12, 18, o->x, o->y, 14, 14)) {
                 if (g_sonic.ysp > 0) g_sonic.ysp = -g_sonic.ysp;
-                if (sub == 0x01) {
-                    sonic_hurt_or_kill(0);
-                } else if (sub == 0x02) {
-                    g_lives++;
-                    g_hud_dirty = 1;
-                    hw_play_bgm(BGM_EXTRALIFE);
-                } else if (sub == 0x03) {
-                    g_sonic.shoes = 1200;
-                    hw_play_sfx(SFX_SPRING);
-                } else if (sub == 0x04) {
-                    g_sonic.shield = 1;
-                    hw_play_sfx(SFX_SHIELD);
-                } else if (sub == 0x05) {
-                    __critical {
-                        g_invinc_vblanks_pending = 0;
-                        g_sonic.invinc = 1200;
-                    }
-                    hw_play_bgm(BGM_INVINC);
-                } else if (sub == 0x07) {
-                    g_rings += 50;
-                    g_sonic.shield = 1;
-                    g_sonic.shoes = 1200;
-                    __critical {
-                        g_invinc_vblanks_pending = 0;
-                        g_sonic.invinc = 1200;
-                    }
-                    g_hud_dirty = 1;
-                    hw_play_bgm(BGM_INVINC);
-                } else {
-                    g_rings += 10;
-                    g_score += 100;
-                    g_hud_dirty = 1;
-                    hw_play_sfx(SFX_RING);
-                }
+                /* `26 Monitor.asm`: the monitor breaks now (`sfx_BreakItem`); the power-up icon (`Pow_Move`) rises at
+                 * -$300 slowing by $18 a frame and only gives its reward, with its own sound, 32 frames later.
+                 * Giving it on the break frame let the break sound swallow the ring monitor's ring sound. */
+                if (s_pow_timer) monitor_reward(s_pow_sub);
+                s_pow_sub = sub;
+                s_pow_timer = 32;
                 hw_play_sfx(SFX_BREAK);
                 g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
                 o->state = 99;
@@ -1313,13 +1328,9 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
         return 0;
         }
 
-        /* --- SPIKES (`0x36` — `36 Spikes.asm` including moving retractable & ceiling spikes!) --- */
+        /* --- SPIKES (`0x36` — `36 Spikes.asm`: solid, six layouts, flips, retracting / sliding; `src/spikes.c`) --- */
         if (id == 0x36) {
-            int16_t off_y = ((o->subtype & 0x0F) == 1 && ((g_frame_counter & 63) >= 32)) ? 16 : 0;
-            if (!g_sonic.dead && box_overlap(g_sonic.x, g_sonic.y, 10, 16, o->x, o->y + off_y, 14, 14)) {
-                sonic_hurt_or_kill(0);
-            }
-            hw_put_sprite16(sx, sy + (off_y >> 1), SPR_TILE_SPIKES, 5);
+            spikes_object(o);
         return 0;
         }
 
@@ -1523,6 +1534,8 @@ void objects_update_and_draw(void) BANKED {
     int16_t sonic_y = g_sonic.y;
     int16_t cam_x = g_cam_x;
     int16_t cam_y = g_cam_y;
+
+    if (s_pow_timer && --s_pow_timer == 0) monitor_reward(s_pow_sub);
 
     /* 1. Draw Sonic Sprite + Shield/Invincibility Halo (`hw_draw_sonic_sprite` in Bank 0) */
     hw_draw_sonic_sprite();

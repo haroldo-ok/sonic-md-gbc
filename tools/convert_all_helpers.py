@@ -851,30 +851,6 @@ def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, byt
             raise ValueError(f"Unknown zone hazard icon: {kind}")
         return slice_col_major_tiles(a)
 
-    def build_symmetric_spikes_4tiles() -> list[bytes]:
-        """Composite 3 evenly-spaced razor steel spikes from `Spikes.nem` (`t=4..7`, `8x32` upright spike) onto `32x32 -> 16x16`!"""
-        sp_raw = get_art_bytes("Spikes.nem")
-        one_spike = np.vstack([decode_4bpp_tile(sp_raw[(4 + r) * 32:(5 + r) * 32]) for r in range(4)])  # (32, 8)
-        canvas = np.zeros((32, 32), dtype=np.uint8)
-        for sx in (1, 12, 23):
-            m = one_spike > 0
-            canvas[:, sx:sx + 8][m] = one_spike[m]
-        gbc = np.zeros((16, 16), dtype=np.uint8)
-        for oy in range(16):
-            for ox in range(16):
-                cell = canvas[oy * 2:oy * 2 + 2, ox * 2:ox * 2 + 2]
-                nz = cell[cell > 0]
-                if len(nz) == 0:
-                    continue
-                lums = [0.299 * rgb555_to_rgb8(sonic_pal[int(v)])[0] + 0.587 * rgb555_to_rgb8(sonic_pal[int(v)])[1] + 0.114 * rgb555_to_rgb8(sonic_pal[int(v)])[2] for v in nz]
-                if max(lums) >= 185:
-                    gbc[oy, ox] = 3
-                elif min(lums) < 85:
-                    gbc[oy, ox] = 1
-                else:
-                    gbc[oy, ox] = 2
-        return slice_col_major_tiles(gbc)
-
     def build_orbinaut_frames() -> tuple[list[bytes], list[bytes]]:
         """Composite angry Orbinaut core (`Map_Orb[0]`) + 4 orbiting spiked satellites (`Map_Orb[2]`) at 0° and 45°!"""
         orb_raw = get_art_bytes("Enemy Orbinaut.nem")
@@ -949,7 +925,9 @@ def build_common_and_zone_sprites(s1: S1DisasmROM) -> tuple[bytes, dict[str, byt
     common.extend(spr_v4)
     common.extend(spr_h4)
     # 64..67 (4t = 1 x `16x16` `2x2` Symmetric 3-Spike Steel Cluster!)
-    common.extend(build_symmetric_spikes_4tiles())
+    # one upright + one sideways spike piece, assembled per layout at run time (`tools/spike_tiles.py`)
+    import spike_tiles
+    common.extend(spike_tiles.build(get_art_bytes("Spikes.nem"), sonic_pal))
     # 68..71 (4t = 1 x `16x16` `2x2` Checkered Starpost / Lamppost!)
     common.extend(render_mapped_sprite_2bpp("Lamppost.nem", "Map_Lamp", [0], 16, 16, align_bottom=True))
     # 72..78 (7t = Dedicated Crisp `8x8` Enemy Shots & Projectiles!):

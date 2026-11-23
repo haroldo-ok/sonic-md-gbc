@@ -727,6 +727,8 @@ void physics_update_level(void) BANKED {
         if (g_sonic.spindash) {
             g_sonic.anim = ANI_ROLL;
             if (pad & J_DOWN) {
+                /* hold still while charging (as in Sonic 2): the slope term above used to slide Sonic downhill */
+                g_sonic.gsp = 0;
                 if (pressed & (J_A | J_B)) {
                     if (g_sonic.spindash_rev < 0x0600) g_sonic.spindash_rev += 0x0180;
                     hw_play_sfx(SFX_ROLL);

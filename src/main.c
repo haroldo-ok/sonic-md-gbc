@@ -425,6 +425,14 @@ void hw_sound_tick(void) {
                     }
                 }
                 g_sound_events++;
+                /* The converter writes each frame's note command followed by the frames until the next one
+                 * (`cmd, n`). Read that wait on the same tick: reading it on the next tick made every note event one
+                 * frame long and played the songs 4-48% slow (GHZ 28%), with busy passages dragging the most. */
+                op = *s_bgm_ptr;
+                if (op >= 1 && op <= 0x7F) {
+                    s_bgm_ptr++;
+                    s_bgm_wait = op - 1;
+                }
             }
         }
     }

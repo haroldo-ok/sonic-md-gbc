@@ -9,8 +9,8 @@
   "acts_verified": 20,
   "special_stages_verified": 6,
   "palette_cycles_recorded": 129,
-  "animated_tile_uploads": 41,
-  "sampled_dac_drum_packets": 45,
+  "animated_tile_uploads": 40,
+  "sampled_dac_drum_packets": 51,
   "syz3_blocks_remaining_after_spike_dive": "0x3fb",
   "battery_sram_restored_high_score": 50000,
   "battery_sram_restored_unlocked_act": 19,
@@ -20,11 +20,11 @@
   "debug_mode_verified": true,
   "ss_results_and_good_ending_verified": true,
   "sonic_ghz1_start_x": 80,
-  "sonic_ghz1_end_x": 1557,
-  "camera_ghz1_end_x": 1429,
-  "rings_collected_in_ghz1": 2,
-  "score_in_ghz1": 120,
-  "apu_sound_events": 1814,
+  "sonic_ghz1_end_x": 1507,
+  "camera_ghz1_end_x": 1379,
+  "rings_collected_in_ghz1": 1,
+  "score_in_ghz1": 110,
+  "apu_sound_events": 1837,
   "ghz1_wall_flicker_pixels_32_frames": 0,
   "ghz1_360_loop_verified": true,
   "ghz1_double_s_tunnel_verified": true,
@@ -55,19 +55,19 @@
     },
     {
       "context": "GHZ1_Gameplay_f160",
-      "mean_rgb": 111.71,
-      "std_rgb": 77.22,
+      "mean_rgb": 112.88,
+      "std_rgb": 76.9,
       "black_fraction": 0.0,
-      "white_fraction": 0.0334,
+      "white_fraction": 0.0337,
       "unique_colors": 31
     },
     {
       "context": "Act_0_Live_f19",
-      "mean_rgb": 109.12,
-      "std_rgb": 77.52,
+      "mean_rgb": 109.04,
+      "std_rgb": 77.38,
       "black_fraction": 0.0,
-      "white_fraction": 0.0334,
-      "unique_colors": 25
+      "white_fraction": 0.027,
+      "unique_colors": 26
     },
     {
       "context": "Act_1_Live_f19",
@@ -79,58 +79,58 @@
     },
     {
       "context": "Act_2_Live_f19",
-      "mean_rgb": 109.74,
-      "std_rgb": 77.64,
+      "mean_rgb": 109.73,
+      "std_rgb": 77.62,
       "black_fraction": 0.0,
-      "white_fraction": 0.0334,
+      "white_fraction": 0.0328,
       "unique_colors": 28
     },
     {
       "context": "Act_3_Live_f19",
-      "mean_rgb": 101.15,
-      "std_rgb": 67.48,
+      "mean_rgb": 100.72,
+      "std_rgb": 67.38,
       "black_fraction": 0.0,
       "white_fraction": 0.027,
       "unique_colors": 29
     },
     {
       "context": "Act_4_Live_f19",
-      "mean_rgb": 95.15,
-      "std_rgb": 66.92,
+      "mean_rgb": 94.89,
+      "std_rgb": 66.83,
       "black_fraction": 0.0,
       "white_fraction": 0.0264,
       "unique_colors": 35
     },
     {
       "context": "Act_5_Live_f19",
-      "mean_rgb": 100.17,
-      "std_rgb": 67.46,
+      "mean_rgb": 99.99,
+      "std_rgb": 67.41,
       "black_fraction": 0.0,
-      "white_fraction": 0.025,
+      "white_fraction": 0.0256,
       "unique_colors": 35
     },
     {
       "context": "Act_6_Live_f19",
-      "mean_rgb": 85.27,
-      "std_rgb": 62.56,
+      "mean_rgb": 85.24,
+      "std_rgb": 62.57,
       "black_fraction": 0.0,
       "white_fraction": 0.027,
       "unique_colors": 28
     },
     {
       "context": "Act_7_Live_f19",
-      "mean_rgb": 81.16,
-      "std_rgb": 59.49,
+      "mean_rgb": 81.18,
+      "std_rgb": 59.44,
       "black_fraction": 0.0,
-      "white_fraction": 0.0284,
+      "white_fraction": 0.0278,
       "unique_colors": 26
     },
     {
       "context": "Act_8_Live_f19",
-      "mean_rgb": 82.13,
-      "std_rgb": 59.24,
+      "mean_rgb": 82.14,
+      "std_rgb": 59.2,
       "black_fraction": 0.0,
-      "white_fraction": 0.0276,
+      "white_fraction": 0.027,
       "unique_colors": 26
     },
     {
@@ -143,88 +143,88 @@
     },
     {
       "context": "Act_10_Live_f19",
-      "mean_rgb": 81.31,
-      "std_rgb": 72.36,
+      "mean_rgb": 81.35,
+      "std_rgb": 72.38,
       "black_fraction": 0.0,
       "white_fraction": 0.0276,
       "unique_colors": 24
     },
     {
       "context": "Act_11_Live_f19",
-      "mean_rgb": 92.82,
-      "std_rgb": 77.27,
+      "mean_rgb": 92.87,
+      "std_rgb": 77.29,
       "black_fraction": 0.0,
-      "white_fraction": 0.0296,
+      "white_fraction": 0.0298,
       "unique_colors": 27
     },
     {
       "context": "Act_12_Live_f19",
-      "mean_rgb": 64.35,
-      "std_rgb": 57.13,
+      "mean_rgb": 64.19,
+      "std_rgb": 56.84,
       "black_fraction": 0.0,
       "white_fraction": 0.027,
       "unique_colors": 25
     },
     {
       "context": "Act_13_Live_f19",
-      "mean_rgb": 51.18,
-      "std_rgb": 56.32,
+      "mean_rgb": 51.34,
+      "std_rgb": 56.76,
       "black_fraction": 0.0,
       "white_fraction": 0.0278,
       "unique_colors": 22
     },
     {
       "context": "Act_14_Live_f19",
-      "mean_rgb": 51.05,
-      "std_rgb": 56.38,
+      "mean_rgb": 51.02,
+      "std_rgb": 56.26,
       "black_fraction": 0.0,
       "white_fraction": 0.027,
       "unique_colors": 22
     },
     {
       "context": "Act_15_Live_f19",
-      "mean_rgb": 81.69,
-      "std_rgb": 52.48,
+      "mean_rgb": 81.58,
+      "std_rgb": 52.41,
       "black_fraction": 0.0,
       "white_fraction": 0.027,
       "unique_colors": 26
     },
     {
       "context": "Act_16_Live_f19",
-      "mean_rgb": 91.81,
-      "std_rgb": 62.29,
+      "mean_rgb": 92.81,
+      "std_rgb": 63.29,
       "black_fraction": 0.034,
       "white_fraction": 0.027,
       "unique_colors": 27
     },
     {
       "context": "Act_17_Live_f19",
-      "mean_rgb": 122.39,
-      "std_rgb": 68.55,
+      "mean_rgb": 121.07,
+      "std_rgb": 67.17,
       "black_fraction": 0.0,
       "white_fraction": 0.0274,
-      "unique_colors": 22
+      "unique_colors": 23
     },
     {
       "context": "Act_18_Live_f19",
-      "mean_rgb": 74.44,
-      "std_rgb": 59.41,
+      "mean_rgb": 74.49,
+      "std_rgb": 59.43,
       "black_fraction": 0.0125,
       "white_fraction": 0.0276,
       "unique_colors": 22
     },
     {
       "context": "Act_19_Live_f19",
-      "mean_rgb": 85.38,
-      "std_rgb": 80.6,
+      "mean_rgb": 85.64,
+      "std_rgb": 81.01,
       "black_fraction": 0.0,
-      "white_fraction": 0.0276,
-      "unique_colors": 28
+      "white_fraction": 0.0353,
+      "unique_colors": 27
     },
     {
       "context": "SpecialStage_1_Live_35",
-      "mean_rgb": 83.57,
-      "std_rgb": 73.83,
+      "mean_rgb": 83.56,
+      "std_rgb": 73.82,
       "black_fraction": 0.0,
       "white_fraction": 0.0692,
       "unique_colors": 19

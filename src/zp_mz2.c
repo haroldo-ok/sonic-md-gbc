@@ -151,7 +151,7 @@ static void mz_smash(ActiveObj *o) {
             o->timer = 0;
             pr_taken(o);
             add_score_points(100);
-            hw_play_sfx(SFX_SMASH);
+            hw_play_sfx(SFX_WALLSMASH);
         } else {
             pr_cells(sx, sy, zp_mz_smab, ZP_MZ_SMAB_N, 0);
             return;

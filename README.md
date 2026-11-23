@@ -8,6 +8,26 @@ Every single one of the **`946 / 946` non-`.git` files** in `s1disasm` is hashed
 
 ## Summary of Latest Engineering Improvements
 
+### 000000. Player Reports: Spikes, Marble Zone Swing, Monitors (2026-11-22)
+
+- **Spikes rebuilt** (`src/spikes.c`, bank 9), a port of `36 Spikes.asm`. They used to be a single 16x16 sprite with a fixed hurt box that hurt from any side and was not solid: Sonic walked into them, fell through them while flashing, and every layout looked the same. Now:
+  - they are solid (`SolidObject`);
+  - all six `Spikes_Config` layouts are drawn and collide at their real widths (1, 3, wide 3, 6 upright; 1 and 3 sideways), with X/Y flips for left-facing and ceiling spikes;
+  - retracting (up/down) and sliding (left/right) spikes move 32 px in 8 px steps with a one-second pause and `sfx_SpikesMove`;
+  - only the pointed end hurts, a flashing Sonic is not hurt again, and Sonic is moved back by his fall speed before the knock-back. These are the disassembly's `FixBugs` variants; the unfixed original also hurts through the backside and lets a just-hurt Sonic be hit again.
+- **Spike art and encoding.** The four common tiles at `SPR_TILE_SPIKES` are one upright and one sideways spike piece at half scale (`tools/spike_tiles.py`); layouts are assembled from them at run time. Spike subtypes are now packed losslessly (`spike_subtype()`: layout, movement, flips). The generic `subtype | flips << 6` packing turned an X-flipped `$10` into `$50`. `convert_all.py` and `build_complete_supplement.py` use the new packing, and the 239 spike records already in `generated/` were re-encoded in place.
+- **Marble Zone swinging platforms** (`0x15`, MZ2/MZ3) use the real `pr_swing` port (`src/zp_swing.c`, bank 124) instead of a placeholder that slid left and right at a fixed height and drew no plank. The plank now swings on its chain through the full arc and carries Sonic. Its art is the original's (`Map_Swing_GHZ`, which GHZ and MZ share) in MZ colours: a blue striped plank and anchor (cobalt OBJ palette; the original is blue-violet) and grey chain links. It is drawn from the unused Splats slots of the MZ sprite bank (`tools/mz_swing.py`). MZ1 has no swinging platforms in the original.
+- **Monitors** give their reward when the rising icon stops, 32 frames after the break (`Pow_Move` / `Pow_Checks`), so the ring monitor's ring sound is heard instead of being cut by the break sound on the same frame.
+- **Sound IDs.** Several constants were checked against the disassembly and corrected: `SFX_BREAK` was `$CB` (wall smash) instead of `$C1` (item break, used for badniks / monitors / capsule) and `SFX_FLAMETHROW` was `$B2` (drown death) instead of `$B3`. The special stage glass blocks now use `$BA`, chained stompers `$BD`, and smashable green blocks / SYZ boss blocks the wall smash `$CB`.
+- **Spin dash:** Sonic no longer builds hidden ground speed down a slope while charging.
+- **Checked, not changed:**
+  - Respawning at every MZ lamppost (pit and hazard deaths, 15 deaths across the three acts) did not crash in PyBoy.
+  - The MZ moving blocks (`0x52`) are grey-green in the original (`Tile_Pal3` = MZ palette line 2) and already match, as does their left-right motion.
+
+### 00000. Music Tempo Fixed (2026-11-22)
+
+The songs played slower than the original's 60 Hz. The converter (`tools/smps_converter.py`) simulates the SMPS driver frame by frame, tempo included, and writes each frame's note command followed by the frames until the next note (`cmd, n`). The player in `hw_sound_tick` (`src/main.c`) read that wait on the tick *after* the command, so every note event cost one extra frame. Songs ran 4-48% long (GHZ 28%, LZ 17%, SBZ 25%, Final Zone 12%), and busy passages dragged more than sparse ones, so the rhythm was uneven as well. The wait is now read on the same tick as its command. In PyBoy the number of note events over 30 s now matches the song data exactly for GHZ, LZ, MZ and SBZ, and gameplay never misses a VBlank music tick (1800/1800).
+
 ### 0000. Sound Effects Rebuilt from the SMPS Sources (2026-11-22)
 All sound effects except the jump ($A1..$D0) are now built the way the jump fix was: from the s1disasm sources, frame by frame, instead of the old converter's "highest note per frame at a fixed volume". The jump ($A0, `tools/jump_sfx.py`) is unchanged.
 - **Driver model** (`tools/sfx_smps.py`): assembles the SMPS2ASM macros of `sound/sfx/*.asm` and runs them through a model of the Sonic 1 68k driver (`s1.sounddriver.asm`).

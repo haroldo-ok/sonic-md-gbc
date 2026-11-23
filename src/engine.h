@@ -63,7 +63,7 @@ void *safe_set_bytes(void *dst, uint8_t val, uint16_t n);
 #define SFX_SHIELD       0xAF
 #define SFX_SAW          0xB0
 #define SFX_ELECTRIC     0xB1
-#define SFX_FLAMETHROW   0xB2
+#define SFX_FLAMETHROW   0xB3
 #define SFX_BUMPER       0xB4
 #define SFX_RING         0xB5
 #define SFX_SMASH        0xB9
@@ -80,8 +80,11 @@ void *safe_set_bytes(void *dst, uint8_t val, uint16_t n);
 #define SFX_SWITCH       0xCD
 #define SFX_SIGNPOST     0xCF
 #define SFX_COLLAPSE     0xB9
-#define SFX_BREAK        0xCB
+#define SFX_BREAK        0xC1   /* sfx_BreakItem: badnik / monitor puff (`27 Explosions.asm`) */
 #define SFX_ROLL         0xBE
+#define SFX_SPIKESMOVE   0xB6
+#define SFX_SSGLASS      0xBA
+#define SFX_CHAINSTOMP   0xBD
 
 /* Sonic Animation IDs matching `s1disasm/_anim/Sonic.asm` */
 #define ANI_WALK         0x00
@@ -399,6 +402,7 @@ void ghz_objects_reset(void) BANKED;
 void ghz_object(ActiveObj *o, int16_t sx, int16_t sy) BANKED;
 /* Bank 123: MZ/SYZ/LZ/SLZ/SBZ interactive props (`src/zp_zones.c`); returns 1 when handled. */
 uint8_t zp_object(ActiveObj *o) BANKED;
+void spikes_object(ActiveObj *o) BANKED;   /* src/spikes.c (bank 9) */
 void physics_land_on_object(void) BANKED;
 
 /* Bank 2: Level Objects & All 16 Sonic 1 Badnik AIs (`src/objects.c`) */

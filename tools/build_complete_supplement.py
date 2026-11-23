@@ -13,6 +13,9 @@ with ZERO placeholders!
 """
 
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from spike_tiles import spike_subtype  # noqa: E402
 import hashlib
 import json
 import os
@@ -79,6 +82,8 @@ def parse_objpos_bin(path: str, max_entries: int = 128) -> bytes:
         oy = oy_raw & 0x0FFF
         oid = raw[i + 4] & 0x7F
         osub = raw[i + 5]
+        if oid == 0x36:                      # spikes keep their flips (ceiling spikes in LZ1)
+            osub = spike_subtype(osub, (oy_raw >> 14) & 3)
         objs.append((ox, oy, oid, osub))
     objs.sort(key=lambda t: t[0])
     buf = bytearray()

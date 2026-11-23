@@ -55,7 +55,7 @@ static void mz_stomper(ActiveObj *o) {
             if (cur >= mx || cur < spd) {
                 cur = mx;
                 o->vy = 0;
-                hw_play_sfx(SFX_SMASH);
+                hw_play_sfx(SFX_CHAINSTOMP);
             }
         }
     } else {
@@ -81,7 +81,7 @@ static void mz_stomper(ActiveObj *o) {
                     o->vy = 0;
                     o->hp = 1;
                     o->timer = 60;
-                    hw_play_sfx(SFX_SMASH);
+                    hw_play_sfx(SFX_CHAINSTOMP);
                 }
             }
         }
@@ -398,6 +398,7 @@ static uint8_t zp_marble(ActiveObj *o) {
 
 extern uint8_t zp_syz_slz_object(ActiveObj *o) BANKED;
 extern uint8_t zp_lz_sbz_object(ActiveObj *o) BANKED;
+extern uint8_t zp_swing_object(ActiveObj *o) BANKED;
 
 /* Entry point called by `objects.c` for the non-GHZ zones (bank 123): returns 1 when the object was handled. */
 uint8_t zp_object(ActiveObj *o) BANKED {
@@ -416,6 +417,9 @@ uint8_t zp_object(ActiveObj *o) BANKED {
     case 0x71:
         zp_barrier(o);
         return 1;
+    case 0x15:
+        if (v == 2) return zp_swing_object(o);       /* MZ swinging platform: `src/zp_swing.c` (bank 124) */
+        return 0;
     case 0x53:
         if (v == 3) zp_cflo(o, zp_slz_cflo, ZP_SLZ_CFLO_N);
         else if (v >= 5) return zp_lz_sbz_object(o);

@@ -668,7 +668,7 @@ void screens_update_mode(uint8_t mode) BANKED {
                 else if (hit >= 0x2D && hit <= 0x30) {
                     s_ss_ram[((uint16_t)cy << 6) | cx] = (hit == 0x30) ? 0 : (hit + 1);
                     s_ss_vx = -s_ss_vx;
-                    hw_play_sfx(SFX_BREAK);
+                    hw_play_sfx(SFX_SSGLASS);
                 } else {
                     s_ss_vx = -(s_ss_vx >> 1);
                 }
@@ -689,7 +689,7 @@ void screens_update_mode(uint8_t mode) BANKED {
                 else if (hit >= 0x2D && hit <= 0x30) {
                     s_ss_ram[((uint16_t)cy << 6) | cx] = (hit == 0x30) ? 0 : (hit + 1);
                     s_ss_vy = -s_ss_vy;
-                    hw_play_sfx(SFX_BREAK);
+                    hw_play_sfx(SFX_SSGLASS);
                 } else {
                     s_ss_vy = -(s_ss_vy >> 1);
                 }

@@ -13,6 +13,7 @@ import numpy as np
 
 from compression import decompress_nemesis, decompress_kosinski, decompress_enigma
 from md_symbols import S1DisasmROM
+from spike_tiles import spike_subtype
 from gfx_converter import (
     BG_VRAM_SLOTS,
     decode_4bpp_tile,
@@ -404,6 +405,8 @@ def main() -> None:
                 dx, dy = ring_dirs[dir_idx]
                 for rk in range(cnt):
                     objs_parsed.append(((ox + rk * dx) & 0xFFFF, (oy + rk * dy) & 0xFFFF, 0x25, 0))
+            elif oid == 0x36:
+                objs_parsed.append((ox, oy, oid, spike_subtype(osub, flags_hv)))
             else:
                 objs_parsed.append((ox, oy, oid, osub | (flags_hv << 6)))
 
