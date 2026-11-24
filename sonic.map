@@ -11,16 +11,15 @@ Area                       Addr        Size        Decimal Bytes (Attributes)
      00000000  l__BASE   |    00000000  l__BSS    |    00000000  l__CABS  
      00000000  l__CODE_0 |    00000000  l__DABS   |    00000000  l__HEADER
      00000000  l__HEADER |    00000000  l__HEAP   |    00000000  l__HEAP_E
-     00000000  l__HRAM   |    00000000  l__LIT    |    00000000  s__CABS  
-     00000000  s__CABS0  |    00000000  s__DABS   |    00000000  s__HEADER
+     00000000  l__LIT    |    00000000  s__CABS   |    00000000  s__CABS0 
+     00000000  s__DABS   |    00000000  s__HEADER |    00000000  s__HEADER
      00000000  s__HEADER |    00000000  s__HEADER |    00000000  s__HEADER
      00000000  s__HEADER |    00000000  s__HEADER |    00000000  s__HEADER
      00000000  s__HEADER |    00000000  s__HEADER |    00000000  s__HEADER
      00000000  s__HEADER |    00000000  s__HEADER |    00000000  s__HEADER
      00000000  s__HEADER |    00000000  s__HEADER |    00000000  s__HEADER
      00000000  s__HEADER |    00000000  s__HEADER |    00000000  s__HEADER
-     00000000  s__HEADER |    00000000  s__HEADER |    00000000  s__HRAM  
-     00000000  s__HRAM12 |    00000001  b_physics |    00000001  b_physics
+     00000000  s__HEADER |    00000001  b_physics |    00000001  b_physics
      00000001  b_physics |    00000001  b_sonic_h |    00000001  l__GSFINA
      00000001  l__HEADER |    00000001  l__HEADER |    00000001  l__HEADER
      00000001  l__HEADER |    00000001  l__HEADER |    00000001  l__HEADER
@@ -28,10 +27,10 @@ Area                       Addr        Size        Decimal Bytes (Attributes)
      00000002  b_objects |    00000002  b_objects |    00000002  l__HEADER
      00000002  l__HEADER |    00000002  l__HEADER |    00000003  b_screens
      00000003  b_screens |    00000003  l__CABS0  |    00000003  l__HEADER
-     00000003  l__HRAM12 |    00000005  l__HEADER |    00000006  l__HEADER
-     00000007  b_title_e |    00000007  b_title_i |    00000007  b_title_u
-     00000007  l__HEADER |    00000008  l__HEADER |    00000008  l__HEADER
-     0000000C  l__GSINIT |    00000030  l__HEADER |    00000060  l__HEADER
+     00000005  l__HEADER |    00000006  l__HEADER |    00000007  b_title_e
+     00000007  b_title_i |    00000007  b_title_u |    00000007  l__HEADER
+     00000008  l__HEADER |    00000008  l__HEADER |    0000000C  l__GSINIT
+     00000013  l__HRAM   |    00000030  l__HEADER |    00000060  l__HEADER
      00000079  b_zp_sbz_ |    0000007A  b_zp_syz_ |    0000007B  b_zp_obje
      0000007C  b_zp_lz_s |    0000007D  b_decor_a |    0000007D  b_decor_s
      0000007D  b_zp_mz2_ |    0000007E  b_boss_an |    0000007E  b_boss_ch
@@ -45,18 +44,19 @@ Area                       Addr        Size        Decimal Bytes (Attributes)
      0000007F  b_hw_upda |    0000007F  b_osc_res |    0000007F  b_osc_ste
      0000007F  b_print_w |    0000007F  b_sonic_a |    0000007F  b_spawn_t
      0000007F  b_sram_lo |    0000007F  b_sram_sa |    000000AB  l__HEADER
-     000000BC  l__INITIA |    000000BC  l__INITIA |    00000200  s__CODE  
-     00000472  l__HOME   |    00000678  l__CODE_6 |    00000688  l__CODE_5
+     000000BE  l__INITIA |    000000BE  l__INITIA |    00000200  s__CODE  
+     0000046C  l__HOME   |    00000678  l__CODE_6 |    00000688  l__CODE_5
      00000688  l__CODE_6 |    0000073E  l__CODE_6 |    00000756  l__CODE_6
      000007E8  l__CODE_5 |    0000083C  l__CODE_5 |    0000085E  l__CODE_5
      0000086E  l__CODE_4 |    000009B4  l__CODE_5 |    000009B4  l__CODE_6
      000009E5  l__CODE_1 |    00000C84  l__CODE_7 |    00000D62  l__CODE_4
-     00001272  l__CODE_9 |    00001C60  l__CODE_8 |    00001CFD  l__DATA  
+     0000124B  l__CODE_1 |    00001272  l__CODE_9 |    00001340  l__CODE_8
+     00001C0C  l__CODE_7 |    00001C60  l__CODE_8 |    00001D28  l__DATA  
      00001D46  l__CODE_1 |    00001FD0  l__CODE_7 |    00001FD0  l__CODE_7
      00001FD0  l__CODE_7 |    00002000  _rROMB0   |    00002110  l__CODE_9
      00002127  l__CODE_1 |    00002130  l__CODE_8 |    00002159  l__CODE_8
-     0000218D  l__CODE_8 |    00002210  l__CODE_6 |    00002290  l__CODE_7
-     000023B4  l__CODE_5 |    00002430  l__CODE_1 |    000024AB  l__CODE_3
+     00002210  l__CODE_6 |    00002290  l__CODE_7 |    000023B4  l__CODE_5
+     00002430  l__CODE_1 |    000024AB  l__CODE_3 |    00002500  l__CODE_6
 ASxxxx Linker V03.00/V05.40 + sdld,  page 2.
 Hexadecimal  [32-Bits]
 
@@ -66,57 +66,57 @@ Area                       Addr        Size        Decimal Bytes (Attributes)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     00002500  l__CODE_6 |    00002500  l__CODE_6 |    0000255A  l__CODE_1
-     000027F0  l__CODE_9 |    00002849  l__CODE_1 |    00002970  l__CODE_8
-     00002A50  l__CODE_1 |    00002A60  l__CODE_1 |    00002B62  l__CODE_9
-     00002B70  l__CODE_8 |    00002C4D  l__CODE_1 |    00002CAC  l__CODE_1
-     00002CB2  l__CODE_1 |    00002D38  l__CODE_9 |    00002D4C  l__CODE_1
-     00002EA6  l__CODE_1 |    00002ED9  l__CODE_7 |    00002F60  l__CODE_9
-     00003000  _rROMB1   |    00003000  l__CODE_1 |    00003000  l__CODE_1
-     00003000  l__CODE_7 |    00003030  l__CODE_9 |    00003290  l__CODE_8
-     000032B1  l__CODE_1 |    000032C0  l__CODE_9 |    000033E0  l__CODE_8
-     000033F6  l__CODE_6 |    00003400  l__CODE_7 |    0000348C  l__CODE_1
-     000034B0  l__CODE_1 |    000034D2  l__CODE_1 |    0000354E  l__CODE_6
-     000035C4  l__CODE_6 |    0000364C  l__CODE_1 |    00003670  l__CODE_8
-     00003699  l__CODE_7 |    000036E8  l__CODE_1 |    000037AC  l__CODE_2
-     000037C0  l__CODE_1 |    000037FB  l__CODE   |    0000383B  l__CODE_1
-     00003840  l__CODE_5 |    00003840  l__CODE_8 |    0000384A  l__CODE_1
-     00003850  l__CODE_8 |    0000386E  l__CODE_7 |    00003876  l__CODE_1
-     0000387E  l__CODE_7 |    000038D2  l__CODE_9 |    000038E4  l__CODE_1
-     00003910  l__CODE_9 |    00003950  l__CODE_9 |    000039AE  l__CODE_1
-     000039FB  s__HOME   |    00003A00  l__CODE_2 |    00003A00  l__CODE_2
-     00003A00  l__CODE_2 |    00003A00  l__CODE_2 |    00003A00  l__CODE_3
+     00002500  l__CODE_6 |    0000255A  l__CODE_1 |    000027F0  l__CODE_9
+     00002849  l__CODE_1 |    00002970  l__CODE_8 |    00002A50  l__CODE_1
+     00002A60  l__CODE_1 |    00002B62  l__CODE_9 |    00002B70  l__CODE_8
+     00002C20  l__CODE_1 |    00002CAC  l__CODE_1 |    00002CB2  l__CODE_1
+     00002D38  l__CODE_9 |    00002D4C  l__CODE_1 |    00002EA6  l__CODE_1
+     00002ED9  l__CODE_7 |    00002F60  l__CODE_9 |    00003000  _rROMB1  
+     00003000  l__CODE_1 |    00003000  l__CODE_1 |    00003000  l__CODE_7
+     00003030  l__CODE_9 |    00003290  l__CODE_8 |    000032B1  l__CODE_1
+     000032C0  l__CODE_9 |    000033E0  l__CODE_8 |    000033F6  l__CODE_6
+     00003400  l__CODE_7 |    0000348C  l__CODE_1 |    000034B0  l__CODE_1
+     000034D2  l__CODE_1 |    0000354E  l__CODE_6 |    000035C4  l__CODE_6
+     0000364C  l__CODE_1 |    00003670  l__CODE_8 |    00003699  l__CODE_7
+     000036E8  l__CODE_1 |    000037AC  l__CODE_2 |    000037C0  l__CODE_1
+     0000383B  l__CODE_1 |    00003840  l__CODE_5 |    00003840  l__CODE_8
+     0000384A  l__CODE_1 |    00003850  l__CODE_8 |    0000386E  l__CODE_7
+     00003876  l__CODE_1 |    000038B3  l__CODE   |    000038D2  l__CODE_9
+     000038E4  l__CODE_1 |    00003910  l__CODE_9 |    00003950  l__CODE_9
+     000039AE  l__CODE_1 |    000039B0  l__CODE_1 |    00003A00  l__CODE_2
+     00003A00  l__CODE_2 |    00003A00  l__CODE_2 |    00003A00  l__CODE_2
      00003A00  l__CODE_3 |    00003A00  l__CODE_3 |    00003A00  l__CODE_3
-     00003A00  l__CODE_3 |    00003A00  l__CODE_3 |    00003A20  l__CODE_4
+     00003A00  l__CODE_3 |    00003A00  l__CODE_3 |    00003A00  l__CODE_3
      00003A20  l__CODE_4 |    00003A20  l__CODE_4 |    00003A20  l__CODE_4
-     00003A20  l__CODE_4 |    00003A20  l__CODE_4 |    00003A90  l__CODE_3
+     00003A20  l__CODE_4 |    00003A20  l__CODE_4 |    00003A20  l__CODE_4
      00003A90  l__CODE_3 |    00003A90  l__CODE_3 |    00003A90  l__CODE_3
-     00003A90  l__CODE_4 |    00003C5A  l__CODE_1 |    00003CC0  l__CODE_1
-     00003CE0  l__CODE_2 |    00003D20  l__CODE_2 |    00003D60  l__CODE_2
-     00003D80  l__CODE_1 |    00003D80  l__CODE_2 |    00003D80  l__CODE_2
+     00003A90  l__CODE_3 |    00003A90  l__CODE_4 |    00003AB3  s__HOME  
+     00003C5A  l__CODE_1 |    00003CB0  l__CODE_1 |    00003CC0  l__CODE_1
+     00003CE0  l__CODE_1 |    00003CE0  l__CODE_2 |    00003D20  l__CODE_2
+     00003D40  l__CODE_1 |    00003D60  l__CODE_2 |    00003D80  l__CODE_1
+     00003D80  l__CODE_2 |    00003D80  l__CODE_2 |    00003D90  l__CODE_1
      00003DA0  l__CODE_1 |    00003DA0  l__CODE_1 |    00003DA0  l__CODE_2
-     00003DC1  l__CODE_1 |    00003DD0  l__CODE_1 |    00003DD0  l__CODE_1
-     00003DE0  l__CODE_1 |    00003E6D  s__BASE   |    00003E6D  s__CODE_0
-     00003E6D  s__INITIA |    00003E6D  s__LIT    |    00003F00  l__CODE_1
-     00003F20  l__CODE_4 |    00003F20  l__CODE_4 |    00003F20  l__CODE_5
+     00003DB0  l__CODE_1 |    00003DC1  l__CODE_1 |    00003DD0  l__CODE_1
+     00003DD0  l__CODE_1 |    00003DE0  l__CODE_1 |    00003E00  l__CODE_1
+     00003E20  l__CODE_1 |    00003E30  l__CODE_1 |    00003E50  l__CODE_1
+     00003E60  l__CODE_1 |    00003E80  l__CODE_1 |    00003F00  l__CODE_1
+     00003F1F  s__BASE   |    00003F1F  s__CODE_0 |    00003F1F  s__INITIA
+     00003F1F  s__LIT    |    00003F20  l__CODE_4 |    00003F20  l__CODE_4
      00003F20  l__CODE_5 |    00003F20  l__CODE_5 |    00003F20  l__CODE_5
-     00003F29  s__GSINIT |    00003F30  l__CODE_1 |    00003F35  s__GSFINA
-     00004000  _rMBC7_SR |    00004000  _rRAMB    |    00008000  __VRAM   
-     00008000  __VRAM800 |    00008800  __VRAM880 |    00009000  __VRAM900
-     00009800  __SCRN0   |    00009C00  __SCRN1   |    0000A000  __SRAM   
-     0000A000  _rMBC7_LA |    0000A010  _rMBC7_LA |    0000A020  _rMBC7_AC
-     0000A030  _rMBC7_AC |    0000A040  _rMBC7_AC |    0000A050  _rMBC7_AC
-     0000C000  __RAM     |    0000C000  _shadow_O |    0000C0A0  s__DATA  
-     0000D000  __RAMBANK |    0000DD9D  s__BSS    |    0000DD9D  s__INITIA
-     0000DE59  s__HEAP   |    0000DE59  s__HEAP_E |    0000E000  .STACK   
-     0000FE00  __OAMRAM  |    0000FF00  _P1_REG   |    0000FF00  __IO     
-     0000FF01  _SB_REG   |    0000FF02  _SC_REG   |    0000FF04  _DIV_REG 
-     0000FF05  _TIMA_REG |    0000FF06  _TMA_REG  |    0000FF07  _TAC_REG 
-     0000FF0F  _IF_REG   |    0000FF10  _NR10_REG |    0000FF11  _NR11_REG
-     0000FF12  _NR12_REG |    0000FF13  _NR13_REG |    0000FF14  _NR14_REG
-     0000FF16  _NR21_REG |    0000FF17  _NR22_REG |    0000FF18  _NR23_REG
-     0000FF19  _NR24_REG |    0000FF1A  _NR30_REG |    0000FF1B  _NR31_REG
-     0000FF1C  _NR32_REG |    0000FF1D  _NR33_REG |    0000FF1E  _NR34_REG
+     00003F20  l__CODE_5 |    00003F30  l__CODE_1 |    00003FDD  s__GSINIT
+     00003FE9  s__GSFINA |    00004000  _rMBC7_SR |    00004000  _rRAMB   
+     00008000  __VRAM    |    00008000  __VRAM800 |    00008800  __VRAM880
+     00009000  __VRAM900 |    00009800  __SCRN0   |    00009C00  __SCRN1  
+     0000A000  __SRAM    |    0000A000  _rMBC7_LA |    0000A010  _rMBC7_LA
+     0000A020  _rMBC7_AC |    0000A030  _rMBC7_AC |    0000A040  _rMBC7_AC
+     0000A050  _rMBC7_AC |    0000C000  __RAM     |    0000C000  _shadow_O
+     0000C0A0  s__DATA   |    0000D000  __RAMBANK |    0000DDC8  s__BSS   
+     0000DDC8  s__INITIA |    0000DE86  s__HEAP   |    0000DE86  s__HEAP_E
+     0000E000  .STACK    |    0000FE00  __OAMRAM  |    0000FF00  _P1_REG  
+     0000FF00  __IO      |    0000FF01  _SB_REG   |    0000FF02  _SC_REG  
+     0000FF04  _DIV_REG  |    0000FF05  _TIMA_REG |    0000FF06  _TMA_REG 
+     0000FF07  _TAC_REG  |    0000FF0F  _IF_REG   |    0000FF10  _NR10_REG
+     0000FF11  _NR11_REG |    0000FF12  _NR12_REG |    0000FF13  _NR13_REG
 ASxxxx Linker V03.00/V05.40 + sdld,  page 3.
 Hexadecimal  [32-Bits]
 
@@ -126,57 +126,57 @@ Area                       Addr        Size        Decimal Bytes (Attributes)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     0000FF20  _NR41_REG |    0000FF21  _NR42_REG |    0000FF22  _NR43_REG
-     0000FF23  _NR44_REG |    0000FF24  _NR50_REG |    0000FF25  _NR51_REG
-     0000FF26  _NR52_REG |    0000FF30  _AUD3WAVE |    0000FF30  _PCM_SAMP
-     0000FF30  __AUD3WAV |    0000FF40  _LCDC_REG |    0000FF41  _STAT_REG
-     0000FF42  _SCY_REG  |    0000FF43  _SCX_REG  |    0000FF44  _LY_REG  
-     0000FF45  _LYC_REG  |    0000FF46  _DMA_REG  |    0000FF47  _BGP_REG 
-     0000FF48  _OBP0_REG |    0000FF49  _OBP1_REG |    0000FF4A  _WY_REG  
-     0000FF4B  _WX_REG   |    0000FF4D  _KEY1_REG |    0000FF4F  _VBK_REG 
-     0000FF51  _HDMA1_RE |    0000FF52  _HDMA2_RE |    0000FF53  _HDMA3_RE
-     0000FF54  _HDMA4_RE |    0000FF55  _HDMA5_RE |    0000FF56  _RP_REG  
-     0000FF68  _BCPS_REG |    0000FF69  _BCPD_REG |    0000FF6A  _OCPS_REG
-     0000FF6B  _OCPD_REG |    0000FF70  _SVBK_REG |    0000FF76  _PCM12_RE
-     0000FF77  _PCM34_RE |    0000FF80  .refresh_ |    0000FF80  __HRAM   
-     0000FFFF  _IE_REG   |    00014000  s__CODE_1 |    00024000  s__CODE_2
-     00034000  s__CODE_3 |    00044000  s__CODE_4 |    00054000  s__CODE_5
-     00064000  s__CODE_6 |    00074000  s__CODE_7 |    00084000  s__CODE_8
-     00094000  s__CODE_9 |    000B4000  s__CODE_1 |    000C4000  s__CODE_1
-     000D4000  s__CODE_1 |    000E4000  s__CODE_1 |    000F4000  s__CODE_1
-     00104000  s__CODE_1 |    00114000  s__CODE_1 |    00124000  s__CODE_1
-     00134000  s__CODE_1 |    00144000  s__CODE_2 |    00154000  s__CODE_2
-     00164000  s__CODE_2 |    00174000  s__CODE_2 |    00184000  s__CODE_2
-     00194000  s__CODE_2 |    001A4000  s__CODE_2 |    001B4000  s__CODE_2
-     001C4000  s__CODE_2 |    001D4000  s__CODE_2 |    001E4000  s__CODE_3
-     001F4000  s__CODE_3 |    00204000  s__CODE_3 |    00214000  s__CODE_3
-     00224000  s__CODE_3 |    00234000  s__CODE_3 |    00244000  s__CODE_3
-     00254000  s__CODE_3 |    00264000  s__CODE_3 |    00274000  s__CODE_3
-     00284000  s__CODE_4 |    00294000  s__CODE_4 |    002A4000  s__CODE_4
-     002B4000  s__CODE_4 |    002C4000  s__CODE_4 |    002D4000  s__CODE_4
-     002E4000  s__CODE_4 |    002F4000  s__CODE_4 |    00304000  s__CODE_4
-     00314000  s__CODE_4 |    00324000  s__CODE_5 |    00334000  s__CODE_5
-     00344000  s__CODE_5 |    00354000  s__CODE_5 |    00364000  s__CODE_5
-     00374000  s__CODE_5 |    00384000  s__CODE_5 |    00394000  s__CODE_5
-     003A4000  s__CODE_5 |    003B4000  s__CODE_5 |    003C4000  s__CODE_6
-     003D4000  s__CODE_6 |    003E4000  s__CODE_6 |    003F4000  s__CODE_6
-     00404000  s__CODE_6 |    00414000  s__CODE_6 |    00424000  s__CODE_6
-     00434000  s__CODE_6 |    00444000  s__CODE_6 |    00454000  s__CODE_6
-     00464000  s__CODE_7 |    00474000  s__CODE_7 |    00484000  s__CODE_7
-     00494000  s__CODE_7 |    004A4000  s__CODE_7 |    004B4000  s__CODE_7
-     004C4000  s__CODE_7 |    004D4000  s__CODE_7 |    004E4000  s__CODE_7
-     004F4000  s__CODE_7 |    00504000  s__CODE_8 |    00514000  s__CODE_8
-     00524000  s__CODE_8 |    00534000  s__CODE_8 |    00544000  s__CODE_8
-     00554000  s__CODE_8 |    00564000  s__CODE_8 |    00574000  s__CODE_8
-     00584000  s__CODE_8 |    00594000  s__CODE_8 |    005A4000  s__CODE_9
-     005B4000  s__CODE_9 |    005C4000  s__CODE_9 |    005D4000  s__CODE_9
-     005E4000  s__CODE_9 |    005F4000  s__CODE_9 |    00604000  s__CODE_9
-     00614000  s__CODE_9 |    00624000  s__CODE_9 |    00634000  s__CODE_9
-     00644000  s__CODE_1 |    00654000  s__CODE_1 |    00664000  s__CODE_1
-     00674000  s__CODE_1 |    00684000  s__CODE_1 |    00694000  s__CODE_1
-     006A4000  s__CODE_1 |    006B4000  s__CODE_1 |    006C4000  s__CODE_1
-     006D4000  s__CODE_1 |    006E4000  s__CODE_1 |    006F4000  s__CODE_1
-     00704000  s__CODE_1 |    00714000  s__CODE_1 |    00724000  s__CODE_1
+     0000FF14  _NR14_REG |    0000FF16  _NR21_REG |    0000FF17  _NR22_REG
+     0000FF18  _NR23_REG |    0000FF19  _NR24_REG |    0000FF1A  _NR30_REG
+     0000FF1B  _NR31_REG |    0000FF1C  _NR32_REG |    0000FF1D  _NR33_REG
+     0000FF1E  _NR34_REG |    0000FF20  _NR41_REG |    0000FF21  _NR42_REG
+     0000FF22  _NR43_REG |    0000FF23  _NR44_REG |    0000FF24  _NR50_REG
+     0000FF25  _NR51_REG |    0000FF26  _NR52_REG |    0000FF30  _AUD3WAVE
+     0000FF30  _PCM_SAMP |    0000FF30  __AUD3WAV |    0000FF40  _LCDC_REG
+     0000FF41  _STAT_REG |    0000FF42  _SCY_REG  |    0000FF43  _SCX_REG 
+     0000FF44  _LY_REG   |    0000FF45  _LYC_REG  |    0000FF46  _DMA_REG 
+     0000FF47  _BGP_REG  |    0000FF48  _OBP0_REG |    0000FF49  _OBP1_REG
+     0000FF4A  _WY_REG   |    0000FF4B  _WX_REG   |    0000FF4D  _KEY1_REG
+     0000FF4F  _VBK_REG  |    0000FF51  _HDMA1_RE |    0000FF52  _HDMA2_RE
+     0000FF53  _HDMA3_RE |    0000FF54  _HDMA4_RE |    0000FF55  _HDMA5_RE
+     0000FF56  _RP_REG   |    0000FF68  _BCPS_REG |    0000FF69  _BCPD_REG
+     0000FF6A  _OCPS_REG |    0000FF6B  _OCPD_REG |    0000FF70  _SVBK_REG
+     0000FF76  _PCM12_RE |    0000FF77  _PCM34_RE |    0000FF80  __HRAM   
+     0000FF80  s__HRAM   |    0000FFFF  _IE_REG   |    00014000  s__CODE_1
+     00024000  s__CODE_2 |    00034000  s__CODE_3 |    00044000  s__CODE_4
+     00054000  s__CODE_5 |    00064000  s__CODE_6 |    00074000  s__CODE_7
+     00084000  s__CODE_8 |    00094000  s__CODE_9 |    000B4000  s__CODE_1
+     000C4000  s__CODE_1 |    000D4000  s__CODE_1 |    000E4000  s__CODE_1
+     000F4000  s__CODE_1 |    00104000  s__CODE_1 |    00114000  s__CODE_1
+     00124000  s__CODE_1 |    00134000  s__CODE_1 |    00144000  s__CODE_2
+     00154000  s__CODE_2 |    00164000  s__CODE_2 |    00174000  s__CODE_2
+     00184000  s__CODE_2 |    00194000  s__CODE_2 |    001A4000  s__CODE_2
+     001B4000  s__CODE_2 |    001C4000  s__CODE_2 |    001D4000  s__CODE_2
+     001E4000  s__CODE_3 |    001F4000  s__CODE_3 |    00204000  s__CODE_3
+     00214000  s__CODE_3 |    00224000  s__CODE_3 |    00234000  s__CODE_3
+     00244000  s__CODE_3 |    00254000  s__CODE_3 |    00264000  s__CODE_3
+     00274000  s__CODE_3 |    00284000  s__CODE_4 |    00294000  s__CODE_4
+     002A4000  s__CODE_4 |    002B4000  s__CODE_4 |    002C4000  s__CODE_4
+     002D4000  s__CODE_4 |    002E4000  s__CODE_4 |    002F4000  s__CODE_4
+     00304000  s__CODE_4 |    00314000  s__CODE_4 |    00324000  s__CODE_5
+     00334000  s__CODE_5 |    00344000  s__CODE_5 |    00354000  s__CODE_5
+     00364000  s__CODE_5 |    00374000  s__CODE_5 |    00384000  s__CODE_5
+     00394000  s__CODE_5 |    003A4000  s__CODE_5 |    003B4000  s__CODE_5
+     003C4000  s__CODE_6 |    003D4000  s__CODE_6 |    003E4000  s__CODE_6
+     003F4000  s__CODE_6 |    00404000  s__CODE_6 |    00414000  s__CODE_6
+     00424000  s__CODE_6 |    00434000  s__CODE_6 |    00444000  s__CODE_6
+     00454000  s__CODE_6 |    00464000  s__CODE_7 |    00474000  s__CODE_7
+     00484000  s__CODE_7 |    00494000  s__CODE_7 |    004A4000  s__CODE_7
+     004B4000  s__CODE_7 |    004C4000  s__CODE_7 |    004D4000  s__CODE_7
+     004E4000  s__CODE_7 |    004F4000  s__CODE_7 |    00504000  s__CODE_8
+     00514000  s__CODE_8 |    00524000  s__CODE_8 |    00534000  s__CODE_8
+     00544000  s__CODE_8 |    00554000  s__CODE_8 |    00564000  s__CODE_8
+     00574000  s__CODE_8 |    00584000  s__CODE_8 |    00594000  s__CODE_8
+     005A4000  s__CODE_9 |    005B4000  s__CODE_9 |    005C4000  s__CODE_9
+     005D4000  s__CODE_9 |    005E4000  s__CODE_9 |    005F4000  s__CODE_9
+     00604000  s__CODE_9 |    00614000  s__CODE_9 |    00624000  s__CODE_9
+     00634000  s__CODE_9 |    00644000  s__CODE_1 |    00654000  s__CODE_1
+     00664000  s__CODE_1 |    00674000  s__CODE_1 |    00684000  s__CODE_1
 ASxxxx Linker V03.00/V05.40 + sdld,  page 4.
 Hexadecimal  [32-Bits]
 
@@ -186,48 +186,56 @@ Area                       Addr        Size        Decimal Bytes (Attributes)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     00734000  s__CODE_1 |    00744000  s__CODE_1 |    00754000  s__CODE_1
-     00764000  s__CODE_1 |    00774000  s__CODE_1 |    00784000  s__CODE_1
-     00794000  s__CODE_1 |    007A4000  s__CODE_1 |    007B4000  s__CODE_1
-     007C4000  s__CODE_1 |    007D4000  s__CODE_1 |    007E4000  s__CODE_1
-     007F4000  s__CODE_1
+     00694000  s__CODE_1 |    006A4000  s__CODE_1 |    006B4000  s__CODE_1
+     006C4000  s__CODE_1 |    006D4000  s__CODE_1 |    006E4000  s__CODE_1
+     006F4000  s__CODE_1 |    00704000  s__CODE_1 |    00714000  s__CODE_1
+     00724000  s__CODE_1 |    00734000  s__CODE_1 |    00744000  s__CODE_1
+     00754000  s__CODE_1 |    00764000  s__CODE_1 |    00774000  s__CODE_1
+     00784000  s__CODE_1 |    00794000  s__CODE_1 |    007A4000  s__CODE_1
+     007B4000  s__CODE_1 |    007C4000  s__CODE_1 |    007D4000  s__CODE_1
+     007E4000  s__CODE_1 |    007F4000  s__CODE_1 |    00804000  s__CODE_1
+     00814000  s__CODE_1 |    00824000  s__CODE_1 |    00834000  s__CODE_1
+     00844000  s__CODE_1 |    00854000  s__CODE_1 |    00864000  s__CODE_1
+     00874000  s__CODE_1 |    00884000  s__CODE_1 |    00894000  s__CODE_1
+     008A4000  s__CODE_1 |    008B4000  s__CODE_1 |    008D4000  s__CODE_1
 ASxxxx Linker V03.00/V05.40 + sdld,  page 5.
 Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_CODE                  00000200    000037FB =       14331. bytes (REL,CON)
+_CODE                  00000200    000038B3 =       14515. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     00000200  _safe_cop |    00000250  _safe_set |    000004AD  _hw_play_
-     00000554  _hw_play_ |    00000587  _hw_sound |    0000098F  _hw_insta
-     000009B0  _g_defaul |    00000A00  _hw_stop_ |    00000A26  _hw_start
-     00000A8F  _hw_sega_ |    00000B07  _hw_sound |    00000B79  _hw_print
-     00000BCB  _hw_clear |    00000BF5  _hw_put_s |    00000C38  _hw_put_s
-     00000D2F  _hw_put_s |    00000E18  _hw_show_ |    00000F0A  _hw_load_
-     000010A6  _hw_get_r |    000010F4  _hw_get_c |    00001648  _hw_refre
-     000016E9  _hw_strea |    000019AA  _hw_load_ |    00001E0F  _hw_load_
-     00001F83  _hw_copy_ |    00001FE1  _hw_sin   |    00002056  _hw_cos  
-     0000205B  _hw_read_ |    000022E4  _hw_find_ |    00002398  _hw_find_
-     0000244F  _hw_floor |    00002492  _hw_ceil_ |    000024BB  _hw_rwall
-     000024DC  _hw_lwall |    000024FD  _hw_ceil_ |    00002525  _hw_wall_
-     000025A7  _hw_uploa |    0000261E  _hud_flus |    00002940  _hw_step_
-     00002B5A  _hw_draw_ |    00003080  _hw_init_ |    000030A4  _hw_anima
-     0000329E  _hw_scan_ |    000035F2  _main     |    00003715  _title_lc
-     000037C1  _title_ba |    000037E8  _title_is |    00003817  _title_is
-     00003830  __divsuch |    00003836  __modsuch |    0000383F  __divusch
-     00003848  __modusch |    00003854  __divscha |    00003859  __modscha
-     00003860  __divsint |    00003869  __modsint |    00003875  __divucha
-     0000387A  __moducha |    00003881  __divuint |    0000388A  __moduint
-     00003896  .div8     |    00003896  .mod8     |    0000389E  .div16   
-     0000389E  .mod16    |    000038D4  .divu8    |    000038D4  .modu8   
-     000038D7  .divu16   |    000038D7  .modu16   |    00003917  _set_spri
-     0000391C  _set_bkg_ |    0000391F  .set_pale |    0000393E  _set_spri
-     00003943  _set_bkg_ |    00003946  .set_pale |    00003962  __mulsuch
-     00003965  __mulusch |    0000396E  __mulscha |    00003976  __mulint 
-     00003995  __mulucha |    000039A7  ___memcpy |    000039A7  _memcpy  
-     000039D9  _cpu_slow |    000039F4  _cpu_fast
+     00000200  _safe_cop |    00000250  _safe_set |    000003E9  _sfx_pcm_
+     0000040F  _sfx_pcm_ |    0000068C  _hw_play_ |    00000699  _hw_play_
+     000006C2  _hw_sound |    00000A64  _hw_insta |    00000A7D  _g_defaul
+     00000ABD  _hw_stop_ |    00000AE3  _hw_start |    00000B3E  _hw_sega_
+     00000BBF  _hw_sound |    00000C31  _hw_print |    00000C83  _hw_clear
+     00000CAD  _hw_put_s |    00000CF0  _hw_put_s |    00000DE7  _hw_put_s
+     00000ED0  _hw_show_ |    00000FC2  _hw_load_ |    0000115E  _hw_get_r
+     000011AC  _hw_get_c |    00001700  _hw_refre |    000017A1  _hw_strea
+     00001A62  _hw_load_ |    00001EC7  _hw_load_ |    0000203B  _hw_copy_
+     00002099  _hw_sin   |    0000210E  _hw_cos   |    00002113  _hw_read_
+     0000239C  _hw_find_ |    00002450  _hw_find_ |    00002507  _hw_floor
+     0000254A  _hw_ceil_ |    00002573  _hw_rwall |    00002594  _hw_lwall
+     000025B5  _hw_ceil_ |    000025DD  _hw_wall_ |    0000265F  _hw_uploa
+     000026D6  _hud_flus |    000029F8  _hw_step_ |    00002C12  _hw_draw_
+     00003138  _hw_init_ |    0000315C  _hw_anima |    00003356  _hw_scan_
+     000036AA  _main     |    000037CD  _title_lc |    00003879  _title_ba
+     000038A0  _title_is |    000038CF  _title_is |    000038E8  __divsuch
+     000038EE  __modsuch |    000038F7  __divusch |    00003900  __modusch
+     0000390C  __divscha |    00003911  __modscha |    00003918  __divsint
+     00003921  __modsint |    0000392D  __divucha |    00003932  __moducha
+     00003939  __divuint |    00003942  __moduint |    0000394E  .div8    
+     0000394E  .mod8     |    00003956  .div16    |    00003956  .mod16   
+     0000398C  .divu8    |    0000398C  .modu8    |    0000398F  .divu16  
+     0000398F  .modu16   |    000039CF  _set_spri |    000039D4  _set_bkg_
+     000039D7  .set_pale |    000039F6  _set_spri |    000039FB  _set_bkg_
+     000039FE  .set_pale |    00003A1A  __mulsuch |    00003A1D  __mulusch
+     00003A26  __mulscha |    00003A2E  __mulint  |    00003A4D  __mulucha
+     00003A5F  ___memcpy |    00003A5F  _memcpy   |    00003A91  _cpu_slow
+     00003AAC  _cpu_fast
 ASxxxx Linker V03.00/V05.40 + sdld,  page 6.
 Hexadecimal  [32-Bits]
 
@@ -405,26 +413,26 @@ Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_HOME                  000039FB    00000472 =        1138. bytes (REL,CON)
+_HOME                  00003AB3    0000046C =        1132. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     000039FB  .memset_s |    00003A04  .memcpy_s |    00003A21  .display_
-     00003A21  _display_ |    00003A39  _add_TIM  |    00003A3C  _set_win_
-     00003A50  _set_tile |    00003A55  _set_bkg_ |    00003A55  _set_win_
-     00003A5D  _set_spri |    00003A8D  .add_TIM  |    00003A93  .remove_T
-     00003A93  _remove_T |    00003A99  __modulon |    00003B36  __divslon
-     00003C35  __divulon |    00003CBC  .padup    |    00003CBC  _waitpadu
-     00003CCC  .jpad     |    00003CCC  _joypad   |    00003CF4  _waitpad 
-     00003CF5  .wait_pad |    00003CFC  ___sdcc_b |    00003D16  __mullong
-     00003DFD  _set_bkg_ |    00003E11  .set_xy_w |    00003E1A  .set_xy_b
-     00003E29  .set_xy_t
+     00003AB3  .memset_s |    00003ABC  .memcpy_s |    00003AD9  .display_
+     00003AD9  _display_ |    00003AF1  _add_TIM  |    00003AF4  _set_win_
+     00003B08  _set_tile |    00003B0D  _set_bkg_ |    00003B0D  _set_win_
+     00003B15  _set_spri |    00003B45  .add_TIM  |    00003B4B  .remove_T
+     00003B4B  _remove_T |    00003B51  __modulon |    00003BEE  __divslon
+     00003CED  __divulon |    00003D74  .padup    |    00003D74  _waitpadu
+     00003D84  .jpad     |    00003D84  _joypad   |    00003DAC  _waitpad 
+     00003DAD  .wait_pad |    00003DB4  ___sdcc_b |    00003DC8  __mullong
+     00003EAF  _set_bkg_ |    00003EC3  .set_xy_w |    00003ECC  .set_xy_b
+     00003EDB  .set_xy_t
 ASxxxx Linker V03.00/V05.40 + sdld,  page 25.
 Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_INITIALIZER           00003E6D    000000BC =         188. bytes (REL,CON)
+_INITIALIZER           00003F1F    000000BE =         190. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
@@ -433,17 +441,17 @@ Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_GSINIT                00003F29    0000000C =          12. bytes (REL,CON)
+_GSINIT                00003FDD    0000000C =          12. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     00003F29  gsinit   
+     00003FDD  gsinit   
 ASxxxx Linker V03.00/V05.40 + sdld,  page 27.
 Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_GSFINAL               00003F35    00000001 =           1. bytes (REL,CON)
+_GSFINAL               00003FE9    00000001 =           1. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
@@ -452,7 +460,7 @@ Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_DATA                  0000C0A0    00001CFD =        7421. bytes (REL,CON)
+_DATA                  0000C0A0    00001D28 =        7464. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
@@ -461,61 +469,65 @@ _DATA                  0000C0A0    00001CFD =        7421. bytes (REL,CON)
      0000C0B1  _g_osc_va |    0000C0CD  _g_osc_ra |    0000C0E9  _g_sonic 
      0000C115  _g_objs   |    0000C2F5  _g_lost_r |    0000C345  _g_projs 
      0000C39D  _g_pops   |    0000C3B9  _g_obj_ta |    0000C3F9  _g_ram_vs
-     0000C48B  _g_ram_ac |    0000C4A8  _c2_ok0   |    0000C4A9  _c2_ok1  
-     0000C4AA  _c2_oy0   |    0000C4AB  _c2_oy1   |    0000C4AC  _c2_base 
-     0000C4AD  _c2_ncols |    0000C4AE  _c2_attr  |    0000C4AF  _c2_cx   
-     0000C739  _g_ss_dma |    0000C754  _g_ring_d |    0000C758  _g_ring_d
-     0000DD91  _g_stand_ |    0000DD93  .int_0x50
+     0000C48B  _g_ram_ac |    0000C4A8  _g_sfx_vo |    0000C4C0  _g_sfx_mi
+     0000C4D0  _c2_ok0   |    0000C4D1  _c2_ok1   |    0000C4D2  _c2_oy0  
+     0000C4D3  _c2_oy1   |    0000C4D4  _c2_base  |    0000C4D5  _c2_ncols
+     0000C4D6  _c2_attr  |    0000C4D7  _c2_cx    |    0000C761  _g_ss_dma
+     0000C77C  _g_ring_d |    0000C780  _g_ring_d |    0000DDB9  _g_stand_
+     0000DDBE  .int_0x50
 ASxxxx Linker V03.00/V05.40 + sdld,  page 29.
 Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_INITIALIZED           0000DD9D    000000BC =         188. bytes (REL,CON)
+_INITIALIZED           0000DDC8    000000BE =         190. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     0000DD9D  _g_game_m |    0000DD9E  _g_next_m |    0000DD9F  _g_mode_i
-     0000DDA0  _g_frame_ |    0000DDA2  _g_invinc |    0000DDA3  _g_cur_ac
-     0000DDA4  _g_cur_ss |    0000DDA5  _g_demo_m |    0000DDA6  _g_demo_t
-     0000DDA8  _g_demo_p |    0000DDAA  _g_demo_b |    0000DDAB  _g_demo_b
-     0000DDAC  _g_joy    |    0000DDAD  _g_joy_pr |    0000DDAE  _g_joy_pr
-     0000DDAF  _g_paused |    0000DDB0  _g_debug_ |    0000DDB1  _g_cheats
-     0000DDB2  _g_debug_ |    0000DDB3  _g_debug_ |    0000DDB4  _g_button
-     0000DDB5  _g_pal_cy |    0000DDB7  _g_anim_t |    0000DDB9  _g_dac_dr
-     0000DDBB  _g_rev_mo |    0000DDBC  _g_jp_cre |    0000DDBD  _g_dyn_le
-     0000DDBF  _g_dyn_ri |    0000DDC1  _g_dyn_to |    0000DDC3  _g_dyn_bo
-     0000DDC5  _g_osc_di |    0000DDC7  _g_cam_x  |    0000DDC9  _g_cam_y 
-     0000DDCB  _g_score  |    0000DDCF  _g_high_s |    0000DDD3  _g_score_
-     0000DDD4  _g_rings  |    0000DDD6  _g_lives  |    0000DDD7  _g_contin
-     0000DDD8  _g_emeral |    0000DDD9  _g_unlock |    0000DDDA  _g_ss_got
-     0000DDDB  _g_level_ |    0000DDDD  _g_level_ |    0000DDDE  _g_hud_di
-     0000DDDF  _g_next_r |    0000DDE0  _g_checkp |    0000DDE1  _g_checkp
-     0000DDE2  _g_checkp |    0000DDE4  _g_checkp |    0000DDE6  _g_signpo
-     0000DDE7  _g_act_cl |    0000DDE8  _g_time_b |    0000DDEA  _g_ring_b
-     0000DDEC  _g_boss_a |    0000DDED  _g_boss_d |    0000DDEE  _g_syz_bl
-     0000DDF0  _g_water_ |    0000DDF2  _g_oam_ne |    0000DDF4  _g_cur_bg
-     0000DDF5  _g_cur_sf |    0000DDF6  _g_sound_ |    0000DDF8  _g_sound_
-     0000DE0B  _g_sega_p |    0000DE19  _g_ring_l |    0000DE1B  _g_hud_pe
-     0000DE28  _g_ring_f |    0000DE29  _g_ss_rot |    0000DE45  _g_decor_
-     0000DE52  _g_sfx_ow |    0000DE53  _g_sfx_pt |    0000DE55  _g_sfx_pr
-     0000DE58  __map_til
+     0000DDC8  _g_game_m |    0000DDC9  _g_next_m |    0000DDCA  _g_mode_i
+     0000DDCB  _g_frame_ |    0000DDCD  _g_invinc |    0000DDCE  _g_cur_ac
+     0000DDCF  _g_cur_ss |    0000DDD0  _g_demo_m |    0000DDD1  _g_demo_t
+     0000DDD3  _g_demo_p |    0000DDD5  _g_demo_b |    0000DDD6  _g_demo_b
+     0000DDD7  _g_joy    |    0000DDD8  _g_joy_pr |    0000DDD9  _g_joy_pr
+     0000DDDA  _g_paused |    0000DDDB  _g_debug_ |    0000DDDC  _g_cheats
+     0000DDDD  _g_debug_ |    0000DDDE  _g_debug_ |    0000DDDF  _g_button
+     0000DDE0  _g_pal_cy |    0000DDE2  _g_anim_t |    0000DDE4  _g_dac_dr
+     0000DDE6  _g_rev_mo |    0000DDE7  _g_jp_cre |    0000DDE8  _g_dyn_le
+     0000DDEA  _g_dyn_ri |    0000DDEC  _g_dyn_to |    0000DDEE  _g_dyn_bo
+     0000DDF0  _g_osc_di |    0000DDF2  _g_cam_x  |    0000DDF4  _g_cam_y 
+     0000DDF6  _g_score  |    0000DDFA  _g_high_s |    0000DDFE  _g_score_
+     0000DDFF  _g_rings  |    0000DE01  _g_lives  |    0000DE02  _g_contin
+     0000DE03  _g_emeral |    0000DE04  _g_unlock |    0000DE05  _g_ss_got
+     0000DE06  _g_level_ |    0000DE08  _g_level_ |    0000DE09  _g_hud_di
+     0000DE0A  _g_next_r |    0000DE0B  _g_checkp |    0000DE0C  _g_checkp
+     0000DE0D  _g_checkp |    0000DE0F  _g_checkp |    0000DE11  _g_signpo
+     0000DE12  _g_act_cl |    0000DE13  _g_time_b |    0000DE15  _g_ring_b
+     0000DE17  _g_boss_a |    0000DE18  _g_boss_d |    0000DE19  _g_syz_bl
+     0000DE1B  _g_water_ |    0000DE1D  _g_oam_ne |    0000DE1F  _g_cur_bg
+     0000DE20  _g_cur_sf |    0000DE21  _g_sound_ |    0000DE23  _g_sound_
+     0000DE27  _g_bgm_ba |    0000DE2D  _g_sfx_ow |    0000DE2E  _g_pcm_sf
+     0000DE2F  _g_ch3_re |    0000DE30  _g_ch1_du |    0000DE31  _g_ch1_en
+     0000DE32  _g_ch2_du |    0000DE33  _g_ch2_en |    0000DE34  _g_ch3_wa
+     0000DE3D  _g_sega_p |    0000DE4B  _g_ring_l |    0000DE4D  _g_hud_pe
+     0000DE5A  _g_ring_f |    0000DE5B  _g_ss_rot |    0000DE77  _g_decor_
+     0000DE85  __map_til
 ASxxxx Linker V03.00/V05.40 + sdld,  page 30.
 Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_HRAM12                00000000    00000003 =           3. bytes (ABS,CON)
+_HRAM                  0000FF80    00000013 =          19. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     0000FF90  __current |    0000FF91  __vbl_don |    0000FF92  __shadow_
+     0000FF80  .refresh_ |    0000FF90  __current |    0000FF91  __vbl_don
+     0000FF92  __shadow_
 ASxxxx Linker V03.00/V05.40 + sdld,  page 31.
 Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_CODE_1                00014000    00002C4D =       11341. bytes (REL,CON)
+_CODE_1                00014000    00002C20 =       11296. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
@@ -661,14 +673,14 @@ Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_CODE_8                00084000    0000218D =        8589. bytes (REL,CON)
+_CODE_8                00084000    00001340 =        4928. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     00084038  _sfx_star |    00084122  _sfx_tick |    0008427A  _g_chunk_
-     0008447A  _g_visual |    0008499C  _g_acts   |    00084BE0  _g_screen
-     00084CBB  _g_specia |    00084CE5  _g_songs  |    00084E11  _sfx_gb_o
-     00084E73  _sfx_gb_b
+     00084000  _bgm_inst |    00084024  _g_ch3_wa |    00084064  _bgm_cmd_
+     00084197  _sfx_pcm_ |    00084683  _g_chunk_ |    00084883  _g_visual
+     00084DA5  _g_acts   |    00084FE9  _g_screen |    000850C4  _g_specia
+     000850EE  _g_songs  |    0008521A  _sfx_pcm_
 ASxxxx Linker V03.00/V05.40 + sdld,  page 44.
 Hexadecimal  [32-Bits]
 
@@ -1401,11 +1413,11 @@ Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
-_CODE_76               004C4000    0000387E =       14462. bytes (REL,CON)
+_CODE_76               004C4000    00001C0C =        7180. bytes (REL,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-     004C4000  _mus_81   |    004C5C72  _mus_82   |    004C6B2F  _mus_83  
+     004C4000  _mus_82   |    004C4EBD  _mus_83  
 ASxxxx Linker V03.00/V05.40 + sdld,  page 114.
 Hexadecimal  [32-Bits]
 
@@ -1952,231 +1964,594 @@ Hexadecimal  [32-Bits]
 
 Area                       Addr        Size        Decimal Bytes (Attributes)
 --------------------       ----        ----        ------- ----- ------------
+_CODE_141              008D4000    0000124B =        4683. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     008D4000  _mus_81  
+ASxxxx Linker V03.00/V05.40 + sdld,  page 159.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_128              00804000    00003DB0 =       15792. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00804000  _sfx_pcm_ |    00807000  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 160.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_129              00814000    00003E00 =       15872. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00814000  _sfx_pcm_ |    00817000  _sfx_pcm_ |    00817CD0  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 161.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_130              00824000    00003CB0 =       15536. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00824000  _sfx_pcm_ |    00827000  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 162.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_131              00834000    00003D90 =       15760. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00834000  _sfx_pcm_ |    008358A0  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 163.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_132              00844000    00003E50 =       15952. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00844000  _sfx_pcm_ |    008463E0  _sfx_pcm_ |    008466B0  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 164.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_133              00854000    00003CE0 =       15584. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00854000  _sfx_pcm_ |    00855F50  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 165.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_134              00864000    00003E30 =       15920. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00864000  _sfx_pcm_ |    00865BF0  _sfx_pcm_ |    00866240  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 166.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_135              00874000    00003E80 =       16000. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00874000  _sfx_pcm_ |    00875B50  _sfx_pcm_ |    00876330  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 167.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_136              00884000    00003E20 =       15904. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00884000  _sfx_pcm_ |    00884820  _sfx_pcm_ |    00885730  _sfx_pcm_
+     00886CA0  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 168.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_137              00894000    00003E60 =       15968. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     00894000  _sfx_pcm_ |    00894BE0  _sfx_pcm_ |    00895720  _sfx_pcm_
+     00896300  _sfx_pcm_ |    00896F60  _sfx_pcm_ |    008979F0  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 169.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_138              008A4000    00003D40 =       15680. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     008A4000  _sfx_pcm_ |    008A4820  _sfx_pcm_ |    008A5040  _sfx_pcm_
+     008A59B0  _sfx_pcm_ |    008A5F70  _sfx_pcm_ |    008A6870  _sfx_pcm_
+     008A7300  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 170.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
+_CODE_139              008B4000    000039B0 =       14768. bytes (REL,CON)
+
+        Value  Global            Value  Global            Value  Global    
+        -----  ------            -----  ------            -----  ------    
+     008B4000  _sfx_pcm_ |    008B47A0  _sfx_pcm_ |    008B4C00  _sfx_pcm_
+     008B4FA0  _sfx_pcm_ |    008B5450  _sfx_pcm_ |    008B5690  _sfx_pcm_
+     008B5B40  _sfx_pcm_ |    008B5FA0  _sfx_pcm_ |    008B6410  _sfx_pcm_
+     008B6B20  _sfx_pcm_ |    008B6F40  _sfx_pcm_ |    008B76E0  _sfx_pcm_
+ASxxxx Linker V03.00/V05.40 + sdld,  page 171.
+Hexadecimal  [32-Bits]
+
+Area                       Addr        Size        Decimal Bytes (Attributes)
+--------------------       ----        ----        ------- ----- ------------
 _HEADER_TIM0           00000000    00000008 =           8. bytes (ABS,CON)
 
         Value  Global            Value  Global            Value  Global    
         -----  ------            -----  ------            -----  ------    
-ASxxxx Linker V03.00/V05.40 + sdld,  page 159.
+ASxxxx Linker V03.00/V05.40 + sdld,  page 172.
 
 Files Linked                              [ module(s) ]
 
-/opt/gbdk/lib/gb/crt0.o                   [ Runtime ]
-obj/src_main.o                            [ main ]
-obj/src_physics.o                         [ physics ]
-obj/src_objects.o                         [ objects ]
-obj/src_screens_and_ss.o                  [ screens_and_ss ]
-obj/src_bosses_and_gimmicks.o             [ bosses_and_gimmicks ]
-obj/src_dle_osc_sram.o                    [ dle_osc_sram ]
-obj/src_ghz_objects.o                     [ ghz_objects ]
-obj/src_zp_mz.o                           [ zp_mz ]
-obj/src_zp_syz_slz.o                      [ zp_syz_slz ]
-obj/src_zp_lz_sbz.o                       [ zp_lz_sbz ]
-obj/src_zp_mz2.o                          [ zp_mz2 ]
-obj/src_zp_sbz.o                          [ zp_sbz ]
-obj/src_decor_apply.o                     [ decor_apply ]
-obj/src_title.o                           [ title ]
-obj/src_title_isr.o                       [ title_isr ]
-obj/src_sfx_player.o                      [ sfx_player ]
-obj/gen_bank_004_common.o                 [ bank_004_common ]
-obj/gen_bank_005_physics.o                [ bank_005_physics ]
-obj/gen_bank_006_sonic0.o                 [ bank_006_sonic0 ]
-obj/gen_bank_007_sonic1.o                 [ bank_007_sonic1 ]
-obj/gen_bank_008_tables.o                 [ bank_008_tables ]
-obj/gen_bank_009_sonic2.o                 [ bank_009_sonic2 ]
-obj/gen_bank_011.o                        [ bank_011 ]
-obj/gen_bank_012.o                        [ bank_012 ]
-obj/gen_bank_013.o                        [ bank_013 ]
-obj/gen_bank_014.o                        [ bank_014 ]
-obj/gen_bank_015.o                        [ bank_015 ]
-obj/gen_bank_016.o                        [ bank_016 ]
-obj/gen_bank_017.o                        [ bank_017 ]
-obj/gen_bank_018.o                        [ bank_018 ]
-obj/gen_bank_019.o                        [ bank_019 ]
-obj/gen_bank_020.o                        [ bank_020 ]
-obj/gen_bank_021.o                        [ bank_021 ]
-obj/gen_bank_022.o                        [ bank_022 ]
-obj/gen_bank_023.o                        [ bank_023 ]
-obj/gen_bank_024.o                        [ bank_024 ]
-obj/gen_bank_025.o                        [ bank_025 ]
-obj/gen_bank_026.o                        [ bank_026 ]
-obj/gen_bank_027.o                        [ bank_027 ]
-obj/gen_bank_028.o                        [ bank_028 ]
-obj/gen_bank_029.o                        [ bank_029 ]
-obj/gen_bank_030.o                        [ bank_030 ]
-obj/gen_bank_031.o                        [ bank_031 ]
-obj/gen_bank_032.o                        [ bank_032 ]
-obj/gen_bank_033.o                        [ bank_033 ]
-obj/gen_bank_034.o                        [ bank_034 ]
-obj/gen_bank_035.o                        [ bank_035 ]
-obj/gen_bank_036.o                        [ bank_036 ]
-obj/gen_bank_037.o                        [ bank_037 ]
-obj/gen_bank_038.o                        [ bank_038 ]
-obj/gen_bank_039.o                        [ bank_039 ]
-obj/gen_bank_040.o                        [ bank_040 ]
-obj/gen_bank_041.o                        [ bank_041 ]
-obj/gen_bank_042.o                        [ bank_042 ]
-obj/gen_bank_043.o                        [ bank_043 ]
-obj/gen_bank_044.o                        [ bank_044 ]
-obj/gen_bank_045.o                        [ bank_045 ]
-obj/gen_bank_046.o                        [ bank_046 ]
-obj/gen_bank_047.o                        [ bank_047 ]
-obj/gen_bank_048.o                        [ bank_048 ]
-obj/gen_bank_049.o                        [ bank_049 ]
-obj/gen_bank_050.o                        [ bank_050 ]
-obj/gen_bank_051.o                        [ bank_051 ]
-obj/gen_bank_052.o                        [ bank_052 ]
-obj/gen_bank_053.o                        [ bank_053 ]
-obj/gen_bank_054.o                        [ bank_054 ]
-obj/gen_bank_055.o                        [ bank_055 ]
-obj/gen_bank_056.o                        [ bank_056 ]
-obj/gen_bank_057.o                        [ bank_057 ]
-obj/gen_bank_058.o                        [ bank_058 ]
-obj/gen_bank_059.o                        [ bank_059 ]
-obj/gen_bank_060.o                        [ bank_060 ]
-obj/gen_bank_061.o                        [ bank_061 ]
-obj/gen_bank_062.o                        [ bank_062 ]
-obj/gen_bank_063.o                        [ bank_063 ]
-obj/gen_bank_064.o                        [ bank_064 ]
-obj/gen_bank_065.o                        [ bank_065 ]
-obj/gen_bank_066.o                        [ bank_066 ]
-obj/gen_bank_067.o                        [ bank_067 ]
-obj/gen_bank_068.o                        [ bank_068 ]
-obj/gen_bank_069.o                        [ bank_069 ]
-obj/gen_bank_070.o                        [ bank_070 ]
-obj/gen_bank_071.o                        [ bank_071 ]
-obj/gen_bank_072.o                        [ bank_072 ]
-obj/gen_bank_073.o                        [ bank_073 ]
-obj/gen_bank_074.o                        [ bank_074 ]
-obj/gen_bank_075.o                        [ bank_075 ]
-obj/gen_bank_076.o                        [ bank_076 ]
-obj/gen_bank_077.o                        [ bank_077 ]
-obj/gen_bank_078.o                        [ bank_078 ]
-obj/gen_bank_079.o                        [ bank_079 ]
-obj/gen_bank_080.o                        [ bank_080 ]
-obj/gen_bank_081.o                        [ bank_081 ]
-obj/gen_bank_082.o                        [ bank_082 ]
-obj/gen_bank_083.o                        [ bank_083 ]
-obj/gen_bank_084.o                        [ bank_084 ]
-obj/gen_bank_085.o                        [ bank_085 ]
-obj/gen_bank_086.o                        [ bank_086 ]
-obj/gen_bank_087.o                        [ bank_087 ]
-obj/gen_bank_088.o                        [ bank_088 ]
-obj/gen_bank_089.o                        [ bank_089 ]
-obj/gen_bank_090.o                        [ bank_090 ]
-obj/gen_bank_091.o                        [ bank_091 ]
-obj/gen_bank_092.o                        [ bank_092 ]
-obj/gen_bank_093.o                        [ bank_093 ]
-obj/gen_bank_094.o                        [ bank_094 ]
-obj/gen_bank_095.o                        [ bank_095 ]
-obj/gen_bank_096.o                        [ bank_096 ]
-obj/gen_bank_097.o                        [ bank_097 ]
-obj/gen_bank_098.o                        [ bank_098 ]
-obj/gen_bank_099.o                        [ bank_099 ]
-obj/gen_bank_100.o                        [ bank_100 ]
-obj/gen_bank_101.o                        [ bank_101 ]
-obj/gen_bank_102.o                        [ bank_102 ]
-obj/gen_bank_103.o                        [ bank_103 ]
-obj/gen_bank_104.o                        [ bank_104 ]
-obj/gen_bank_105.o                        [ bank_105 ]
-obj/gen_bank_106.o                        [ bank_106 ]
-obj/gen_bank_107.o                        [ bank_107 ]
-obj/gen_bank_108.o                        [ bank_108 ]
-obj/gen_bank_109.o                        [ bank_109 ]
-obj/gen_bank_110.o                        [ bank_110 ]
-obj/gen_bank_111.o                        [ bank_111 ]
-obj/gen_bank_112.o                        [ bank_112 ]
-obj/gen_bank_113.o                        [ bank_113 ]
-obj/gen_bank_114.o                        [ bank_114 ]
-obj/gen_bank_115.o                        [ bank_115 ]
-obj/gen_bank_116.o                        [ bank_116 ]
-obj/gen_bank_117.o                        [ bank_117 ]
-obj/gen_bank_118.o                        [ bank_118 ]
-obj/gen_bank_119.o                        [ bank_119 ]
-obj/gen_bank_120.o                        [ bank_120 ]
-obj/gen_bank_124_supplement.o             [ bank_124_supplement ]
-obj/gen_bank_125_supplement.o             [ bank_125_supplement ]
-obj/gen_decor.o                           [ decor ]
-obj/gen_sfx_gb.o                          [ sfx_gb ]
-obj/gen_title_b007.o                      [ title_b007 ]
-obj/gen_title_b011.o                      [ title_b011 ]
-obj/gen_title_b012.o                      [ title_b012 ]
-obj/gen_title_b013.o                      [ title_b013 ]
-obj/gen_title_b014.o                      [ title_b014 ]
-obj/gen_title_b015.o                      [ title_b015 ]
-obj/gen_title_b016.o                      [ title_b016 ]
-obj/gen_title_b017.o                      [ title_b017 ]
-obj/gen_title_b018.o                      [ title_b018 ]
-obj/gen_title_b019.o                      [ title_b019 ]
-obj/gen_title_b020.o                      [ title_b020 ]
-obj/gen_title_b021.o                      [ title_b021 ]
-obj/gen_title_b022.o                      [ title_b022 ]
-obj/gen_title_b023.o                      [ title_b023 ]
-obj/gen_title_b024.o                      [ title_b024 ]
-obj/gen_title_b025.o                      [ title_b025 ]
-obj/gen_title_b026.o                      [ title_b026 ]
-obj/gen_title_b027.o                      [ title_b027 ]
-obj/gen_title_b028.o                      [ title_b028 ]
-obj/gen_title_b029.o                      [ title_b029 ]
-obj/gen_title_b030.o                      [ title_b030 ]
-obj/gen_title_b031.o                      [ title_b031 ]
-obj/gen_title_b032.o                      [ title_b032 ]
-obj/gen_title_b033.o                      [ title_b033 ]
-obj/gen_title_b034.o                      [ title_b034 ]
-obj/gen_title_b035.o                      [ title_b035 ]
-obj/gen_title_b036.o                      [ title_b036 ]
-obj/gen_title_b037.o                      [ title_b037 ]
-obj/gen_title_b038.o                      [ title_b038 ]
-obj/gen_title_b039.o                      [ title_b039 ]
-obj/gen_title_b040.o                      [ title_b040 ]
-obj/gen_title_b041.o                      [ title_b041 ]
-obj/gen_title_b042.o                      [ title_b042 ]
-obj/gen_title_b043.o                      [ title_b043 ]
-obj/gen_title_b044.o                      [ title_b044 ]
-obj/gen_title_b045.o                      [ title_b045 ]
-obj/gen_title_b046.o                      [ title_b046 ]
-obj/gen_title_b047.o                      [ title_b047 ]
-obj/gen_title_b049.o                      [ title_b049 ]
-obj/gen_title_b051.o                      [ title_b051 ]
-obj/gen_title_b053.o                      [ title_b053 ]
-obj/gen_title_b055.o                      [ title_b055 ]
-obj/gen_title_b057.o                      [ title_b057 ]
-obj/gen_title_b059.o                      [ title_b059 ]
-obj/gen_title_b120.o                      [ title_b120 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/crt0.o
+                                          [ Runtime ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_main.o
+                                          [ main ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_physics.o
+                                          [ physics ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_objects.o
+                                          [ objects ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_screens_and_ss.o
+                                          [ screens_and_ss ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_bosses_and_gimmicks.o
+                                          [ bosses_and_gimmicks ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_dle_osc_sram.o
+                                          [ dle_osc_sram ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_ghz_objects.o
+                                          [ ghz_objects ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_zp_mz.o
+                                          [ zp_mz ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_zp_syz_slz.o
+                                          [ zp_syz_slz ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_zp_lz_sbz.o
+                                          [ zp_lz_sbz ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_zp_mz2.o
+                                          [ zp_mz2 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_zp_sbz.o
+                                          [ zp_sbz ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_decor_apply.o
+                                          [ decor_apply ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_title.o
+                                          [ title ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_title_isr.o
+                                          [ title_isr ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\src_sfx_player.o
+                                          [ sfx_player ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_004_common.o
+                                          [ bank_004_common ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_005_physics.o
+                                          [ bank_005_physics ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_006_sonic0.o
+                                          [ bank_006_sonic0 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_007_sonic1.o
+                                          [ bank_007_sonic1 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_008_tables.o
+                                          [ bank_008_tables ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_009_sonic2.o
+                                          [ bank_009_sonic2 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_011.o
+                                          [ bank_011 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_012.o
+                                          [ bank_012 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_013.o
+                                          [ bank_013 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_014.o
+                                          [ bank_014 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_015.o
+                                          [ bank_015 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_016.o
+                                          [ bank_016 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_017.o
+                                          [ bank_017 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_018.o
+                                          [ bank_018 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_019.o
+                                          [ bank_019 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_020.o
+                                          [ bank_020 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_021.o
+                                          [ bank_021 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_022.o
+                                          [ bank_022 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_023.o
+                                          [ bank_023 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_024.o
+                                          [ bank_024 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_025.o
+                                          [ bank_025 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_026.o
+                                          [ bank_026 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_027.o
+                                          [ bank_027 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_028.o
+                                          [ bank_028 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_029.o
+                                          [ bank_029 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_030.o
+                                          [ bank_030 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_031.o
+                                          [ bank_031 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_032.o
+                                          [ bank_032 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_033.o
+                                          [ bank_033 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_034.o
+                                          [ bank_034 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_035.o
+                                          [ bank_035 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_036.o
+                                          [ bank_036 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_037.o
+                                          [ bank_037 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_038.o
+                                          [ bank_038 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_039.o
+                                          [ bank_039 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_040.o
+                                          [ bank_040 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_041.o
+                                          [ bank_041 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_042.o
+                                          [ bank_042 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_043.o
+                                          [ bank_043 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_044.o
+                                          [ bank_044 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_045.o
+                                          [ bank_045 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_046.o
+                                          [ bank_046 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_047.o
+                                          [ bank_047 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_048.o
+                                          [ bank_048 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_049.o
+                                          [ bank_049 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_050.o
+                                          [ bank_050 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_051.o
+                                          [ bank_051 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_052.o
+                                          [ bank_052 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_053.o
+                                          [ bank_053 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_054.o
+                                          [ bank_054 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_055.o
+                                          [ bank_055 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_056.o
+                                          [ bank_056 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_057.o
+                                          [ bank_057 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_058.o
+                                          [ bank_058 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_059.o
+                                          [ bank_059 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_060.o
+                                          [ bank_060 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_061.o
+                                          [ bank_061 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_062.o
+                                          [ bank_062 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_063.o
+                                          [ bank_063 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_064.o
+                                          [ bank_064 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_065.o
+                                          [ bank_065 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_066.o
+                                          [ bank_066 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_067.o
+                                          [ bank_067 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_068.o
+                                          [ bank_068 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_069.o
+                                          [ bank_069 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_070.o
+                                          [ bank_070 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_071.o
+                                          [ bank_071 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_072.o
+                                          [ bank_072 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_073.o
+                                          [ bank_073 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_074.o
+                                          [ bank_074 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_075.o
+                                          [ bank_075 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_076.o
+                                          [ bank_076 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_077.o
+                                          [ bank_077 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_078.o
+                                          [ bank_078 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_079.o
+                                          [ bank_079 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_080.o
+                                          [ bank_080 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_081.o
+                                          [ bank_081 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_082.o
+                                          [ bank_082 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_083.o
+                                          [ bank_083 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_084.o
+                                          [ bank_084 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_085.o
+                                          [ bank_085 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_086.o
+                                          [ bank_086 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_087.o
+                                          [ bank_087 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_088.o
+                                          [ bank_088 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_089.o
+                                          [ bank_089 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_090.o
+                                          [ bank_090 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_091.o
+                                          [ bank_091 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_092.o
+                                          [ bank_092 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_093.o
+                                          [ bank_093 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_094.o
+                                          [ bank_094 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_095.o
+                                          [ bank_095 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_096.o
+                                          [ bank_096 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_097.o
+                                          [ bank_097 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_098.o
+                                          [ bank_098 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_099.o
+                                          [ bank_099 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_100.o
+                                          [ bank_100 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_101.o
+                                          [ bank_101 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_102.o
+                                          [ bank_102 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_103.o
+                                          [ bank_103 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_104.o
+                                          [ bank_104 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_105.o
+                                          [ bank_105 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_106.o
+                                          [ bank_106 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_107.o
+                                          [ bank_107 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_108.o
+                                          [ bank_108 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_109.o
+                                          [ bank_109 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_110.o
+                                          [ bank_110 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_111.o
+                                          [ bank_111 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_112.o
+                                          [ bank_112 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_113.o
+                                          [ bank_113 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_114.o
+                                          [ bank_114 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_115.o
+                                          [ bank_115 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_116.o
+                                          [ bank_116 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_117.o
+                                          [ bank_117 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_118.o
+                                          [ bank_118 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_119.o
+                                          [ bank_119 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_120.o
+                                          [ bank_120 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_124_supplement.o
+                                          [ bank_124_supplement ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_125_supplement.o
+                                          [ bank_125_supplement ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_bank_141_ghz_bgm.o
+                                          [ bank_141_ghz_bgm ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_decor.o
+                                          [ decor ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b128.o
+                                          [ sfx_pcm_b128 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b129.o
+                                          [ sfx_pcm_b129 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b130.o
+                                          [ sfx_pcm_b130 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b131.o
+                                          [ sfx_pcm_b131 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b132.o
+                                          [ sfx_pcm_b132 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b133.o
+                                          [ sfx_pcm_b133 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b134.o
+                                          [ sfx_pcm_b134 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b135.o
+                                          [ sfx_pcm_b135 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b136.o
+                                          [ sfx_pcm_b136 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b137.o
+                                          [ sfx_pcm_b137 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b138.o
+                                          [ sfx_pcm_b138 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_b139.o
+                                          [ sfx_pcm_b139 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_sfx_pcm_table.o
+                                          [ sfx_pcm_table ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b007.o
+                                          [ title_b007 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b011.o
+                                          [ title_b011 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b012.o
+                                          [ title_b012 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b013.o
+                                          [ title_b013 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b014.o
+                                          [ title_b014 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b015.o
+                                          [ title_b015 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b016.o
+                                          [ title_b016 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b017.o
+                                          [ title_b017 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b018.o
+                                          [ title_b018 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b019.o
+                                          [ title_b019 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b020.o
+                                          [ title_b020 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b021.o
+                                          [ title_b021 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b022.o
+                                          [ title_b022 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b023.o
+                                          [ title_b023 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b024.o
+                                          [ title_b024 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b025.o
+                                          [ title_b025 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b026.o
+                                          [ title_b026 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b027.o
+                                          [ title_b027 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b028.o
+                                          [ title_b028 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b029.o
+                                          [ title_b029 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b030.o
+                                          [ title_b030 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b031.o
+                                          [ title_b031 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b032.o
+                                          [ title_b032 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b033.o
+                                          [ title_b033 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b034.o
+                                          [ title_b034 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b035.o
+                                          [ title_b035 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b036.o
+                                          [ title_b036 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b037.o
+                                          [ title_b037 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b038.o
+                                          [ title_b038 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b039.o
+                                          [ title_b039 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b040.o
+                                          [ title_b040 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b041.o
+                                          [ title_b041 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b042.o
+                                          [ title_b042 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b043.o
+                                          [ title_b043 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b044.o
+                                          [ title_b044 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b045.o
+                                          [ title_b045 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b046.o
+                                          [ title_b046 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b047.o
+                                          [ title_b047 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b049.o
+                                          [ title_b049 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b051.o
+                                          [ title_b051 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b053.o
+                                          [ title_b053 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b055.o
+                                          [ title_b055 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b057.o
+                                          [ title_b057 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b059.o
+                                          [ title_b059 ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\obj\gen_title_b120.o
+                                          [ title_b120 ]
 
 
 Libraries Linked                          [ object file ]
 
-/opt/gbdk/lib/sm83/sm83.lib               [ div.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ sfr.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ cgb_palettes.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ tim.o ]
-/opt/gbdk/lib/sm83/sm83.lib               [ mul.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ set_wi_t.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ set_data.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ tim_common.o ]
-/opt/gbdk/lib/sm83/sm83.lib               [ _modulong.o ]
-/opt/gbdk/lib/sm83/sm83.lib               [ _divslong.o ]
-/opt/gbdk/lib/sm83/sm83.lib               [ _divulong.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ pad.o ]
-/opt/gbdk/lib/sm83/sm83.lib               [ memcpy.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ ___sdcc_bcall_ehl.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ cgb.o ]
-/opt/gbdk/lib/sm83/sm83.lib               [ _mullong.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ set_bk_t.o ]
-/opt/gbdk/lib/gb/gb.lib                   [ set_xy_t.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/sm83/sm83.lib
+                                          [ div.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ sfr.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ cgb_palettes.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ tim.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/sm83/sm83.lib
+                                          [ mul.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ set_wi_t.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ set_data.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ tim_common.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/sm83/sm83.lib
+                                          [ _modulong.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/sm83/sm83.lib
+                                          [ _divslong.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/sm83/sm83.lib
+                                          [ _divulong.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ pad.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/sm83/sm83.lib
+                                          [ memcpy.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ ___sdcc_bcall_ehl.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ cgb.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/sm83/sm83.lib
+                                          [ _mullong.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ set_bk_t.o ]
+C:\Users\Cadu\.gemini\antigravity\scratch\sonic-md-gbc\tools\gbdk\lib/gb/gb.lib
+                                          [ set_xy_t.o ]
 
-ASxxxx Linker V03.00/V05.40 + sdld,  page 160.
+ASxxxx Linker V03.00/V05.40 + sdld,  page 173.
 
 User Base Address Definitions
 
 _DATA=0xC0A0
 _CODE=0x0200
-ASxxxx Linker V03.00/V05.40 + sdld,  page 161.
+_HRAM=0xFF80
+ASxxxx Linker V03.00/V05.40 + sdld,  page 174.
 
 User Global Definitions
 
 _shadow_OAM=0xC000
 .STACK=0xE000
-.refresh_OAM=0xFF80
 
 

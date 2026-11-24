@@ -553,7 +553,7 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
             spawn_enemy_projectile(o->x - 6, o->y + 8, -0x180, -0x200, PROJ_DEBRIS);
             spawn_enemy_projectile(o->x + 6, o->y + 8,  0x180, -0x200, PROJ_DEBRIS);
             spawn_score_popup(o->x, o->y, 0);
-            hw_play_sfx(SFX_SMASH);
+            hw_play_sfx(SFX_WALLSMASH);
             g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
             o->active = 0;
             return 1;

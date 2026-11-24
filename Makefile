@@ -8,7 +8,7 @@ ROM_DIR  := rom
 ROM_OUT  := sonic.gbc
 
 CFLAGS   := -msm83:gb -Wf--max-allocs-per-node -Wf1500 -Iinclude -Isrc -Igenerated
-LDFLAGS  := -msm83:gb -Wm-yC -Wm-ynSONIC1GBC -Wl-yt0x1B -Wl-yo128 -Wl-ya4 -Wl-j -Wl-m
+LDFLAGS  := -msm83:gb -Wm-yC -Wm-ynSONIC1GBC -Wl-yt0x1B -Wl-yo256 -Wl-ya4 -Wl-j -Wl-m
 
 ENGINE_SRCS := src/main.c src/physics.c src/objects.c src/screens_and_ss.c src/bosses_and_gimmicks.c src/dle_osc_sram.c src/ghz_objects.c src/zp_mz.c src/zp_syz_slz.c src/zp_lz_sbz.c src/zp_mz2.c src/zp_sbz.c src/decor_apply.c src/title.c src/title_isr.c src/sfx_player.c
 GEN_SRCS    := $(sort $(wildcard generated/*.c))
@@ -26,9 +26,9 @@ assets:
 	$(PYTHON) tools/convert_all.py
 	$(PYTHON) tools/build_complete_supplement.py
 	$(PYTHON) tools/title_screen.py
-	$(PYTHON) tools/sfx_gbc.py
+	$(PYTHON) tools/sfx_pcm.py
 
-$(OBJ_DIR)/src_%.o: src/%.c src/engine.h src/props_common.h src/zp_common.h generated/assets.h generated/supplement.h generated/ghz_props.h generated/ghz_pals.h generated/zp_mz.h generated/zp_syz.h generated/zp_slz.h generated/zp_lz.h generated/zp_sbz.h generated/zp_pals.h generated/decor.h generated/title_data.h src/title_isr.h src/sfx_player.h generated/sfx_gb.h
+$(OBJ_DIR)/src_%.o: src/%.c src/engine.h src/props_common.h src/zp_common.h generated/assets.h generated/supplement.h generated/ghz_props.h generated/ghz_pals.h generated/zp_mz.h generated/zp_syz.h generated/zp_slz.h generated/zp_lz.h generated/zp_sbz.h generated/zp_pals.h generated/decor.h generated/title_data.h src/title_isr.h src/sfx_player.h generated/sfx_pcm.h
 	@mkdir -p $(OBJ_DIR)
 	@if [ -d "$(CURDIR)/tools/gbdk" ]; then chmod -R +x "$(CURDIR)/tools/gbdk"; fi
 	$(LCC) $(CFLAGS) -c -o $@ $<

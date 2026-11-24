@@ -192,21 +192,168 @@ volatile uint16_t g_sound_isr_ticks = 0;
 
 static volatile uint8_t s_audio_lock = 0;
 static uint8_t s_paused_muted = 0;
-static uint8_t s_bgm_bank = 0;
+volatile uint8_t g_bgm_bank = 0;
 static const uint8_t *s_bgm_base = 0;
 static const uint8_t *s_bgm_ptr = 0;
 static uint8_t s_bgm_wait = 0;
-/* Sound effects ($A1..$D0): src/sfx_player.c (bank 8, next to its data). g_sfx_own = GB channels lent to the
- * current SFX stream (bit0 CH1, bit1 CH2, bit3 CH4); the music skips them. */
-/* The music's current CH2 note (period lo / hi with its volume bits; 0 = rest) and its age in frames, kept while
- * CH2 is lent to a sound effect or the jump so the held note can be picked up again when the channel returns. */
-static uint8_t s_ch2_lo = 0;
-static uint8_t s_ch2_hi = 0;
-static uint8_t s_ch2_age = 0;
+/* Layered PCM sound effects ($A0..$D0): mixed in real time onto CH3 Wave RAM (src/sfx_player.c + TIM ISR).
+ * CH1, CH2, and CH4 stay dedicated to BGM without interruption. */
+#include "../generated/sfx_pcm.h"
+#include "sfx_player.h"
+
+uint8_t g_sfx_own = 0;
+volatile uint8_t g_pcm_sfx_active = 0;
+volatile uint8_t g_ch3_restore_bass = 0;
+SfxPcmVoice g_sfx_voices[SFX_MAX_VOICES];
+uint8_t g_sfx_mix_buf[16];
+
+uint8_t g_ch1_duty = 0x80U;
+uint8_t g_ch1_env = 0x04U;
+uint8_t g_ch2_duty = 0x40U;
+uint8_t g_ch2_env = 0x04U;
+uint8_t g_ch3_wave_idx = 1U;
+
 static uint8_t s_dac_drum_kind = 0;
 static uint8_t s_dac_drum_pkt = 0;
 static uint8_t s_bass_dirty = 0;
 static uint16_t s_ch3_bass_per = 0;
+static uint8_t s_ch3_bass_lo = 0;
+static uint8_t s_ch3_bass_hi = 0;
+static uint8_t s_ch3_bass_vol = 0x20U;
+
+static void pcm_mix16(uint8_t op, const uint8_t *src) __naked {
+    (void)op; (void)src;
+    __asm
+    ld   h, d
+    ld   l, e
+    ld   de, #_g_sfx_mix_buf
+    ld   b, #16
+    or   a, a
+    jr   z, 1$
+    dec  a
+    jr   z, 2$
+    dec  a
+    jr   z, 3$
+4$:
+    ld   a, (de)
+    add  a, (hl)
+    srl  a
+    and  a, #0x77
+    ld   (de), a
+    inc  hl
+    inc  de
+    dec  b
+    jr   nz, 4$
+    ret
+1$:
+    ld   a, (hl+)
+    ld   (de), a
+    inc  de
+    dec  b
+    jr   nz, 1$
+    ret
+2$:
+    ld   a, (hl+)
+    add  a, a
+    ld   (de), a
+    inc  de
+    dec  b
+    jr   nz, 2$
+    ret
+3$:
+    ld   a, (de)
+    add  a, (hl)
+    ld   (de), a
+    inc  hl
+    inc  de
+    dec  b
+    jr   nz, 3$
+    ret
+    __endasm;
+}
+
+static void pcm_blit_wave_ram(void) __naked {
+    __asm
+    xor  a, a
+    ldh  (_NR30_REG + 0), a
+    ld   hl, #_g_sfx_mix_buf
+    ld   bc, #0x1030
+1$:
+    ld   a, (hl+)
+    ldh  (c), a
+    inc  c
+    dec  b
+    jr   nz, 1$
+    ld   a, #0x80
+    ldh  (_NR30_REG + 0), a
+    ld   a, #0x20
+    ldh  (_NR32_REG + 0), a
+    xor  a, a
+    ldh  (_NR33_REG + 0), a
+    ld   a, #0x87
+    ldh  (_NR34_REG + 0), a
+    ret
+    __endasm;
+}
+
+void sfx_pcm_stop_b0(void) {
+    CRITICAL {
+        g_sfx_voices[0].active = 0;
+        g_sfx_voices[1].active = 0;
+        g_sfx_voices[2].active = 0;
+        g_pcm_sfx_active = 0;
+        if (!g_sega_pcm_playing) {
+            TAC_REG = 0x00;
+            NR32_REG = 0x00;
+            g_ch3_restore_bass = 1;
+        }
+    }
+}
+
+void sfx_pcm_tim_tick(void) {
+    SfxPcmVoice *v;
+    uint8_t i, active_n = 0, idx = 0, rem = 0;
+
+    if (g_paused && g_game_mode == GM_LEVEL) {
+        NR32_REG = 0x00;
+        return;
+    }
+
+    v = g_sfx_voices;
+    for (i = SFX_MAX_VOICES; i; i--, v++) {
+        if (v->active) active_n++;
+    }
+
+    if (!active_n) {
+        TAC_REG = 0x00;
+        NR32_REG = 0x00;
+        g_pcm_sfx_active = 0;
+        g_ch3_restore_bass = 1;
+        return;
+    }
+
+    v = g_sfx_voices;
+    for (i = SFX_MAX_VOICES; i; i--, v++) {
+        uint8_t op;
+        if (!v->active) continue;
+        *(volatile uint8_t *)0x2000 = v->bank;
+        op = (active_n == 1U) ? 1U : ((idx == 0U) ? 0U : ((active_n == 3U && idx == 1U) ? 3U : 2U));
+        pcm_mix16(op, v->ptr);
+        idx++;
+        v->ptr += 16;
+        if (--v->blocks == 0U) {
+            v->active = 0;
+        } else {
+            rem++;
+        }
+    }
+    *(volatile uint8_t *)0x2000 = CURRENT_BANK;
+
+    pcm_blit_wave_ram();
+
+    /* Keep g_pcm_sfx_active non-zero for one final 3.9 ms block so VBlank lets it finish cleanly. */
+    g_pcm_sfx_active = rem ? rem : 1U;
+}
 
 static void play_wave_drum_packet(uint8_t kind, uint8_t pkt) {
     uint8_t prev = CURRENT_BANK;
@@ -244,14 +391,20 @@ static void start_bgm_unlocked(uint8_t bgm_id) {
     g_cur_bgm = bgm_id;
     s_ch3_bass_per = 0;
     s_dac_drum_kind = 0;
-    hw_install_bass_wave();
+    g_ch1_duty = 0x80U;
+    g_ch1_env = 0x04U;
+    g_ch2_duty = 0x40U;
+    g_ch2_env = 0x04U;
+    g_ch3_wave_idx = 1U;
+    s_ch3_bass_vol = 0x20U;
+    if (!g_pcm_sfx_active) hw_install_bass_wave();
+    else g_ch3_restore_bass = 1;
     SWITCH_ROM(8);
     sd = g_songs[bgm_id - 0x81];
-    s_bgm_bank = sd.bank;
+    g_bgm_bank = sd.bank;
     s_bgm_base = sd.stream;
     s_bgm_ptr = sd.stream;
     s_bgm_wait = 0;
-    s_ch2_hi = 0;
     g_sound_events++;
     SWITCH_ROM(prev);
 }
@@ -262,43 +415,13 @@ void hw_play_bgm(uint8_t bgm_id) {
     s_audio_lock = 0;
 }
 
-/* Jump SFX: generated from the original `SndA0 - Jump.asm` by `tools/jump_sfx.py` (see `generated/sfx_jump.h`).
- * The SMPS track is one PSG1 channel (voice 0) at header transposition -12: note F4 for 5 frames, then Bb4 for 21 frames;
- * `smpsModSet 2, 1, -8, 101` rises the pitch after a 2-frame wait, restarting for each note;
- * the PSG voice 0 envelope sets the volume per frame. Played on CH2; CH1 stays with the music. */
-#include "../generated/sfx_jump.h"
-#include "../generated/sfx_gb.h"
-#include "sfx_player.h"
-static uint8_t s_jump_t = 0xFF;   /* 0xFF = inactive */
-
-static uint8_t jump_playing(void) {
-    return (uint8_t)(s_jump_t != 0xFF);
-}
-
-static void jump_tick(void) {
-    if (s_jump_t == 0xFF) return;
-    if (s_jump_t >= JUMP_SFX_FRAMES) {
-        NR22_REG = 0x00;                       /* DAC off: silence */
-        s_jump_t = 0xFF;
-        return;
-    }
-    NR21_REG = 0x80;                           /* 50% duty */
-    NR22_REG = (uint8_t)(jump_sfx_frames[s_jump_t][2] << 4);
-    NR23_REG = jump_sfx_frames[s_jump_t][0];
-    NR24_REG = (uint8_t)(0x80 | (jump_sfx_frames[s_jump_t][1] & 0x07));   /* retrigger so the new volume applies */
-    s_jump_t++;
-}
-
 void hw_play_sfx(uint8_t sfx_id) {
     uint8_t prev;
-    if (sfx_id == SFX_JUMP) {                  /* see `jump_tick`; PSG1 on the MD, plays over other SFX */
-        s_jump_t = 0;
-        return;
-    }
+    if (g_sega_pcm_playing) return;
     s_audio_lock = 1;
     prev = CURRENT_BANK;
-    SWITCH_ROM(SFX_GB_BANK);
-    sfx_start_b8(sfx_id, jump_playing());
+    SWITCH_ROM(SFX_PCM_TABLE_BANK);
+    sfx_pcm_start_b8(sfx_id);
     SWITCH_ROM(prev);
     s_audio_lock = 0;
 }
@@ -307,12 +430,12 @@ void hw_sound_tick(void) {
     uint8_t prev = CURRENT_BANK;
 
     /* 1. Step 4-channel Concert-Pitch SMPS BGM Stream */
-    if (s_bgm_ptr != 0 && s_bgm_bank != 0) {
+    if (s_bgm_ptr != 0 && g_bgm_bank != 0) {
         if (s_bgm_wait > 0) {
             s_bgm_wait--;
         } else {
             uint8_t op;
-            SWITCH_ROM(s_bgm_bank);
+            SWITCH_ROM(g_bgm_bank);
             op = *s_bgm_ptr++;
             if (op == 0x00) {                        /* end of stream: `00 lo hi` = loop back to byte offset hi:lo */
                 uint8_t llo = *s_bgm_ptr++;
@@ -331,19 +454,17 @@ void hw_sound_tick(void) {
             if (op >= 1 && op <= 0x7F) {
                 s_bgm_wait = op - 1;
             } else if (op & 0x80) {
-                if (op & 1) { /* CH1 Warm 50% Lead Melody */
+                if (op & 1) { /* CH1 Expressive Lead Pulse */
                     uint8_t lo = *s_bgm_ptr++;
                     uint8_t hi = *s_bgm_ptr++;
                     uint16_t per = lo | ((uint16_t)(hi & 7) << 8);
-                    if (g_sfx_own & 1) {
-                        /* channel lent to a sound effect */
-                    } else if (per == 0) {
+                    if (per == 0) {
                         NR12_REG = 0x00;
                     } else if (hi & 0x80) {
                         uint8_t vol = (hi >> 3) & 0x0F;
                         NR10_REG = 0x00;
-                        NR11_REG = 0x80;
-                        NR12_REG = (uint8_t)((vol << 4) | 0x04);
+                        NR11_REG = g_ch1_duty;
+                        NR12_REG = (uint8_t)((vol << 4) | g_ch1_env);
                         NR13_REG = lo;
                         NR14_REG = 0x80 | (hi & 0x07);
                     } else {
@@ -351,118 +472,105 @@ void hw_sound_tick(void) {
                         NR14_REG = (hi & 0x07);
                     }
                 }
-                if (op & 2) { /* CH2 Balanced 25% Harmony / Counter-Melody */
-                    uint8_t lo = *s_bgm_ptr++;
-                    uint8_t hi = *s_bgm_ptr++;
-                    if (hi & 0x80) {
-                        s_ch2_hi = hi;
-                        s_ch2_age = 0;
-                    } else {
-                        s_ch2_hi = (uint8_t)((s_ch2_hi & 0xF8) | (hi & 7));
-                    }
-                    s_ch2_lo = lo;
-                    if ((lo | (hi & 7)) == 0) s_ch2_hi = 0;
-                    if (!(g_sfx_own & 2) && !jump_playing()) {
-                        uint16_t per = lo | ((uint16_t)(hi & 7) << 8);
-                        if (per == 0) {
-                            NR22_REG = 0x00;
-                        } else if (hi & 0x80) {
-                            uint8_t vol = (hi >> 3) & 0x0F;
-                            NR21_REG = 0x40;
-                            NR22_REG = (uint8_t)((vol << 4) | 0x04);
-                            NR23_REG = lo;
-                            NR24_REG = 0x80 | (hi & 0x07);
-                        } else {
-                            NR23_REG = lo;
-                            NR24_REG = (hi & 0x07);
-                        }
-                    }
-                }
-                if (op & 4) { /* CH3 Warm Rounded Wave-RAM Bass */
+                if (op & 2) { /* CH2 Chord Arpeggiator / Counter-Melody Pulse */
                     uint8_t lo = *s_bgm_ptr++;
                     uint8_t hi = *s_bgm_ptr++;
                     uint16_t per = lo | ((uint16_t)(hi & 7) << 8);
-                    s_ch3_bass_per = per;
-                    if (s_bass_dirty) {
-                        s_bass_dirty = 0;
-                        s_dac_drum_kind = 0;
-                        hw_install_bass_wave();
-                        SWITCH_ROM(s_bgm_bank);
-                    }
                     if (per == 0) {
-                        NR32_REG = 0x00;
+                        NR22_REG = 0x00;
+                    } else if (hi & 0x80) {
+                        uint8_t vol = (hi >> 3) & 0x0F;
+                        NR21_REG = g_ch2_duty;
+                        NR22_REG = (uint8_t)((vol << 4) | g_ch2_env);
+                        NR23_REG = lo;
+                        NR24_REG = 0x80 | (hi & 0x07);
                     } else {
-                        NR30_REG = 0x80;
-                        NR32_REG = 0x20;
-                        NR33_REG = lo;
-                        NR34_REG = ((hi & 0x80) ? 0x80 : 0x00) | (hi & 0x07);
+                        NR23_REG = lo;
+                        NR24_REG = (hi & 0x07);
                     }
                 }
-                if (op & 8) { /* CH4 Warm Non-Screechy Analog Percussion + Optional Sub-Bass Transient */
-                    uint8_t drum = *s_bgm_ptr++;
-                    if (drum == 5) {
-                        /* Soft brushed closed hi-hat (low LFSR clock + short 15 ms length gate) */
-                        if (!(g_sfx_own & 8)) { NR41_REG = 0x3C; NR42_REG = 0x21; NR43_REG = 0x43; NR44_REG = 0xC0; }
-                    } else {
-                        if (s_ch3_bass_per == 0) {
-                            s_dac_drum_kind = drum ? drum : 1;
-                            s_dac_drum_pkt = 0;
-                            play_wave_drum_packet(s_dac_drum_kind, 0);
-                            SWITCH_ROM(s_bgm_bank);
-                        } else {
-                            g_dac_drum_packets++;
+                if (op & 4) { /* CH3 Expressive Wave-RAM Bass / Chord Wave */
+                    uint8_t lo = *s_bgm_ptr++;
+                    uint8_t hi = *s_bgm_ptr++;
+                    uint16_t per = lo | ((uint16_t)(hi & 7) << 8);
+                    uint8_t vol3 = (uint8_t)((hi & 0x60U) ? (hi & 0x60U) : 0x20U);
+                    s_ch3_bass_per = per;
+                    s_ch3_bass_lo = lo;
+                    s_ch3_bass_hi = (uint8_t)(hi & 0x07);
+                    s_ch3_bass_vol = vol3;
+                    if (!g_pcm_sfx_active) {
+                        if (s_bass_dirty) {
+                            s_bass_dirty = 0;
+                            s_dac_drum_kind = 0;
+                            hw_install_bass_wave();
+                            SWITCH_ROM(g_bgm_bank);
                         }
-                        if (g_sfx_own & 8) {    /* noise channel lent to a sound effect */
-                        } else if (drum == 1) { /* Warm Punchy Kick (`1.1 kHz` LFSR thump) */
-                            NR41_REG = 0x36; NR42_REG = 0x61; NR43_REG = 0x57; NR44_REG = 0xC0;
-                        } else if (drum == 2) { /* Warm Crisp Snare (`3.2 kHz` body, zero white hiss) */
-                            NR41_REG = 0x34; NR42_REG = 0x51; NR43_REG = 0x44; NR44_REG = 0xC0;
-                        } else if (drum == 3) { /* Warm High Timpani */
-                            NR41_REG = 0x34; NR42_REG = 0x51; NR43_REG = 0x55; NR44_REG = 0xC0;
-                        } else {                /* Warm Low Timpani */
-                            NR41_REG = 0x34; NR42_REG = 0x51; NR43_REG = 0x65; NR44_REG = 0xC0;
+                        if (per == 0) {
+                            NR32_REG = 0x00;
+                        } else {
+                            NR30_REG = 0x80;
+                            NR32_REG = vol3;
+                            NR33_REG = lo;
+                            NR34_REG = ((hi & 0x80) ? 0x80 : 0x00) | (hi & 0x07);
                         }
                     }
+                }
+                if (op & 8) { /* CH4 Percussion + Timbre/Wave Commands (Bank 8) */
+                    uint8_t cmd = *s_bgm_ptr++;
+                    uint8_t wkind;
+                    SWITCH_ROM(SFX_PCM_TABLE_BANK);
+                    wkind = bgm_cmd_b8(cmd, (uint8_t)(s_ch3_bass_per == 0 && !g_pcm_sfx_active));
+                    if (wkind) {
+                        s_dac_drum_kind = wkind;
+                        s_dac_drum_pkt = 0;
+                        play_wave_drum_packet(wkind, 0);
+                    }
+                    SWITCH_ROM(g_bgm_bank);
                 }
                 g_sound_events++;
+                /* Read the wait byte on the same tick as its command so song tempo matches the SMPS data. */
+                op = *s_bgm_ptr;
+                if (op >= 1 && op <= 0x7F) {
+                    s_bgm_ptr++;
+                    s_bgm_wait = op - 1;
+                }
             }
         }
     }
 
-    /* Brief 2-frame low sub-bass drum transient when CH3 bass is idle */
+    /* Brief 2-frame low sub-bass drum transient when CH3 bass and PCM SFX are idle */
     if (s_dac_drum_kind != 0) {
-        s_dac_drum_pkt++;
-        if (s_dac_drum_pkt < 2 && s_ch3_bass_per == 0) {
-            play_wave_drum_packet(s_dac_drum_kind, s_dac_drum_pkt);
-        } else {
+        if (g_pcm_sfx_active) {
             s_dac_drum_kind = 0;
-            if (s_bass_dirty && s_ch3_bass_per == 0) {
-                NR32_REG = 0x00;
+        } else {
+            s_dac_drum_pkt++;
+            if (s_dac_drum_pkt < 2 && s_ch3_bass_per == 0) {
+                play_wave_drum_packet(s_dac_drum_kind, s_dac_drum_pkt);
+            } else {
+                s_dac_drum_kind = 0;
+                if (s_bass_dirty && s_ch3_bass_per == 0) {
+                    NR32_REG = 0x00;
+                }
             }
         }
     }
 
-    /* 2. Sound effect stream (tools/sfx_gbc.py, src/sfx_player.c) */
-    {
-        uint8_t ch2_busy = (uint8_t)((g_sfx_own & 2) || jump_playing());
-        if (g_sfx_own) {
-            SWITCH_ROM(SFX_GB_BANK);
-            sfx_tick_b8(jump_playing());
-        }
-        jump_tick();
-        if (s_ch2_age != 0xFF) s_ch2_age++;
-        if (ch2_busy && !(g_sfx_own & 2) && !jump_playing() && s_ch2_hi) {
-            /* CH2 is back: resume the music's held note at the volume its decay (step every 4/64 s) has reached */
-            uint8_t vol = (uint8_t)((s_ch2_hi >> 3) & 0x0F);
-            uint8_t fall = (uint8_t)(s_ch2_age >> 2);
-            if (vol > fall) {
-                NR21_REG = 0x40;
-                NR22_REG = (uint8_t)(((vol - fall) << 4) | 0x04);
-                NR23_REG = s_ch2_lo;
-                NR24_REG = (uint8_t)(0x80 | (s_ch2_hi & 0x07));
-            }
+    /* Restore CH3 Wave-RAM bass once all layered PCM SFX finish */
+    if (!g_pcm_sfx_active && g_ch3_restore_bass) {
+        g_ch3_restore_bass = 0;
+        s_bass_dirty = 0;
+        s_dac_drum_kind = 0;
+        hw_install_bass_wave();
+        if (g_bgm_bank != 0 && s_ch3_bass_per != 0) {
+            NR30_REG = 0x80;
+            NR32_REG = s_ch3_bass_vol;
+            NR33_REG = s_ch3_bass_lo;
+            NR34_REG = (uint8_t)(0x80 | s_ch3_bass_hi);
+        } else {
+            NR32_REG = 0x00;
         }
     }
+
     SWITCH_ROM(prev);
 }
 
@@ -486,19 +594,11 @@ const uint16_t g_default_obj_pals[32] = {
     0x0000, RGB8(12, 48, 16),   RGB8(44, 212, 64),  RGB8(244, 252, 224)
 };
 
-/* Warm Rounded Fundamental Synth-Bass 32-Sample Waveform for CGB Wave RAM ($FF30..$FF3F) */
-static const uint8_t s_bass_wave[16] = {
-    0x8B, 0xDF, 0xFE, 0xDC, 0xB9, 0x87, 0x54, 0x32,
-    0x10, 0x01, 0x12, 0x34, 0x56, 0x78, 0x89, 0x8A
-};
-
 void hw_install_bass_wave(void) {
-    uint8_t i;
-    NR30_REG = 0x00;
-    for (i = 0; i < 16; i++) {
-        ((volatile uint8_t *)0xFF30)[i] = s_bass_wave[i];
-    }
-    NR30_REG = 0x80;
+    uint8_t prev = CURRENT_BANK;
+    SWITCH_ROM(SFX_PCM_TABLE_BANK);
+    bgm_install_wave_b8();
+    SWITCH_ROM(prev);
 }
 
 volatile uint8_t g_sega_pcm_playing = 0;
@@ -522,8 +622,6 @@ void hw_stop_sega_chant(void) {
 }
 
 void hw_start_sega_chant(void) {
-    volatile uint8_t *w = (volatile uint8_t *)0xFF30U;
-    uint8_t i;
     s_sega_idx = 0;
     s_sega_sub = 0;
     s_sega_shift = 0;
@@ -537,7 +635,7 @@ void hw_start_sega_chant(void) {
     NR50_REG = 0x77;
     NR51_REG = 0x44;
     NR30_REG = 0x00;
-    for (i = 0; i < 16U; i++) w[i] = 0xFFU;
+    safe_set_bytes((void *)0xFF30U, 0xFFU, 16U);
     NR32_REG = 0x00;
     NR30_REG = 0x80;
     NR33_REG = 0x00U;
@@ -551,7 +649,15 @@ void hw_start_sega_chant(void) {
 
 void hw_sega_pcm_tim_isr(void) {
     uint8_t prev;
-    if (!g_sega_pcm_playing || g_game_mode != GM_SEGA) {
+    if (!g_sega_pcm_playing) {
+        if (g_pcm_sfx_active) {
+            sfx_pcm_tim_tick();
+        } else {
+            TAC_REG = 0x00;
+        }
+        return;
+    }
+    if (g_game_mode != GM_SEGA) {
         hw_stop_sega_chant();
         return;
     }

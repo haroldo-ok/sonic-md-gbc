@@ -55,7 +55,7 @@ static void mz_stomper(ActiveObj *o) {
             if (cur >= mx || cur < spd) {
                 cur = mx;
                 o->vy = 0;
-                hw_play_sfx(SFX_SMASH);
+                hw_play_sfx(SFX_CHAINSTOMP);
             }
         }
     } else {
@@ -81,7 +81,7 @@ static void mz_stomper(ActiveObj *o) {
                     o->vy = 0;
                     o->hp = 1;
                     o->timer = 60;
-                    hw_play_sfx(SFX_SMASH);
+                    hw_play_sfx(SFX_CHAINSTOMP);
                 }
             }
         }

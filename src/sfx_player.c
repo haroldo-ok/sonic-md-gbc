@@ -1,143 +1,195 @@
 #pragma bank 8
-/* Sound effects $A1..$D0 (the jump $A0 is `jump_tick` in main.c), played from the streams tools/sfx_gbc.py builds
- * from the s1disasm SFX sources (generated/sfx_gb.c, same bank). Stream format: see tools/sfx_gbc.py.
- *
- * Driver behaviour kept from `s1.sounddriver.asm`:
- *   - CycleSoundQueue: an SFX whose SoundPriorities entry is below the current v_sndprio is ignored; entries with
- *     bit 7 set play without changing it; it is cleared when the SFX stops;
- *   - Sound_PlaySFX: the ring sound alternates between the right ($B5) and left ($CE) speakers, and the push
- *     sound ($A7) does not restart until its smpsClearPush has run.
- * These functions are not BANKED: main.c maps SFX_GB_BANK and calls them directly. */
+/* 3-voice real-time layered PCM SFX slot allocator + Bank 8 expressive BGM wave/timbre/drum helpers.
+ * All Sonic 1 SFX ($A0..$D0) mix together onto CGB Channel 3 (Wave RAM at 8,192 Hz) without stealing
+ * CH1, CH2, or CH4 from the music driver. */
 #include "engine.h"
 #include "sfx_player.h"
-#include "../generated/sfx_gb.h"
+#include "../generated/sfx_pcm.h"
 
-uint8_t g_sfx_own = 0;
-const uint8_t *g_sfx_ptr = 0;
-uint8_t g_sfx_prio = 0;
-static uint8_t s_wait = 0;
-static uint8_t s_flags = 0;        /* bit0: ring speaker (v_ring_speaker), bit1: push playing (f_push_playing) */
+/* 4 selectable 32-sample CH3 Wave RAM timbres (Bank 8):
+ *   0 (0x10): Punchy FM Slap Bass (fundamental + 2nd..4th harmonics)
+ *   1 (0x11): Warm Classic Bass (default for all standard SMPS songs)
+ *   2 (0x12): Major Triad Chord Wave (octave + 5th + major 3rd)
+ *   3 (0x13): Bright Synth / Brass Wave */
+const uint8_t g_ch3_waves[4][16] = {
+    { 0xFF, 0xFE, 0xDD, 0xCE, 0xFF, 0xEC, 0xBA, 0x87,
+      0x64, 0x21, 0x00, 0x01, 0x22, 0x10, 0x00, 0x03 },
+    { 0xAC, 0xEF, 0xFF, 0xFF, 0xFF, 0xFE, 0xDC, 0xA8,
+      0x53, 0x10, 0x00, 0x00, 0x00, 0x01, 0x24, 0x68 },
+    { 0x8D, 0xFE, 0xB9, 0x88, 0x75, 0x32, 0x48, 0xAA,
+      0x85, 0x57, 0xBD, 0xCA, 0x87, 0x76, 0x41, 0x02 },
+    { 0x8D, 0xFE, 0xDB, 0xBB, 0xAA, 0x99, 0x99, 0x88,
+      0x87, 0x76, 0x66, 0x65, 0x54, 0x44, 0x21, 0x02 }
+};
 
-/* Give channels back to the music: silence them and restore their panning. */
-static void release(uint8_t keep, uint8_t jump_playing) {
-    uint8_t drop = (uint8_t)(g_sfx_own & ~keep);
-    if (drop & 1) { NR12_REG = 0x00; NR51_REG |= 0x11; }
-    if ((drop & 2) && !jump_playing) { NR22_REG = 0x00; NR51_REG |= 0x22; }
-    if (drop & 8) { NR42_REG = 0x00; NR51_REG |= 0x88; }
-    g_sfx_own = (uint8_t)(g_sfx_own & keep);
+void bgm_install_wave_b8(void) {
+    NR30_REG = 0x00;
+    memcpy((void *)0xFF30, g_ch3_waves[g_ch3_wave_idx & 3U], 16);
+    NR30_REG = 0x80;
 }
 
-void sfx_start_b8(uint8_t sfx_id, uint8_t jump_playing) {
-    uint16_t off;
-    const uint8_t *h;
-    uint8_t prio;
-    if (sfx_id < 0xA1 || sfx_id > 0xD0) return;
-    off = sfx_gb_offsets[sfx_id - 0xA0];
-    if (off == 0xFFFFU) return;
-    h = &sfx_gb_blob[off];
-    prio = h[1];
-    if (prio < g_sfx_prio) return;
+uint8_t bgm_cmd_b8(uint8_t cmd, uint8_t can_wave_drum) {
+    if (cmd == 5U) {
+        /* Crisp closed hi-hat */
+        NR41_REG = 0x3EU; NR42_REG = 0x41U; NR43_REG = 0x32U; NR44_REG = 0xC0U;
+        return 0;
+    }
+    if (cmd == 6U) {
+        /* Open hi-hat / crash accent */
+        NR41_REG = 0x2CU; NR42_REG = 0x62U; NR43_REG = 0x33U; NR44_REG = 0xC0U;
+        return 0;
+    }
+    if (cmd == 7U) {
+        /* Soft rimshot / ghost snare */
+        NR41_REG = 0x3AU; NR42_REG = 0x51U; NR43_REG = 0x43U; NR44_REG = 0xC0U;
+        return 0;
+    }
+    if (cmd >= 1U && cmd <= 4U) {
+        if (cmd == 1U) {
+            NR41_REG = 0x38U; NR42_REG = 0xA1U; NR43_REG = 0x56U; NR44_REG = 0xC0U;
+        } else if (cmd == 2U) {
+            NR41_REG = 0x32U; NR42_REG = 0x92U; NR43_REG = 0x44U; NR44_REG = 0xC0U;
+        } else if (cmd == 3U) {
+            NR41_REG = 0x34U; NR42_REG = 0x82U; NR43_REG = 0x54U; NR44_REG = 0xC0U;
+        } else {
+            NR41_REG = 0x34U; NR42_REG = 0x82U; NR43_REG = 0x64U; NR44_REG = 0xC0U;
+        }
+        if (can_wave_drum) return cmd;
+        g_dac_drum_packets++;
+        return 0;
+    }
+    if (cmd >= 0x10U && cmd <= 0x13U) {
+        g_ch3_wave_idx = (uint8_t)(cmd & 3U);
+        if (!g_pcm_sfx_active) bgm_install_wave_b8();
+        else g_ch3_restore_bass = 1;
+        return 0;
+    }
+    if (cmd >= 0x20U && cmd <= 0x2FU) {
+        g_ch1_duty = (uint8_t)((cmd & 0x0CU) << 4);
+        g_ch1_env = (uint8_t)((cmd & 0x03U) << 1);
+        return 0;
+    }
+    if (cmd >= 0x30U && cmd <= 0x3FU) {
+        g_ch2_duty = (uint8_t)((cmd & 0x0CU) << 4);
+        g_ch2_env = (uint8_t)((cmd & 0x03U) << 1);
+        return 0;
+    }
+    return 0;
+}
+
+static uint8_t s_ring_toggle = 0;
+static uint8_t s_voice_age[SFX_MAX_VOICES];
+
+static uint8_t is_single_instance_sfx(uint8_t sfx_id) {
+    switch (sfx_id) {
+        case SFX_JUMP:
+        case SFX_SKID:
+        case SFX_ROLL:
+        case SFX_CHAIN:
+        case SFX_SAW:
+        case SFX_ELECTRIC:
+        case SFX_FLAMETHROW:
+        case SFX_SPIKESMOVE:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+void sfx_pcm_start_b8(uint8_t sfx_id) {
+    const SfxPcmDesc *d;
+    SfxPcmVoice *slot = 0;
+    uint8_t slot_idx = 0xFFU;
+    uint8_t i;
+    uint8_t cnt = 0;
+
+    if (sfx_id < SFX_PCM_FIRST || sfx_id > SFX_PCM_LAST) return;
     if (sfx_id == SFX_RING) {
-        if (!(s_flags & 1)) {
-            sfx_id = 0xCE;
-            h = &sfx_gb_blob[sfx_gb_offsets[0xCE - 0xA0]];
-        }
-        s_flags ^= 1;
+        if (!s_ring_toggle) sfx_id = 0xCE;
+        s_ring_toggle ^= 1U;
     }
-    if (sfx_id == SFX_PUSH) {
-        if (s_flags & 2) return;
-        s_flags |= 2;
-    } else {
-        s_flags &= (uint8_t)~2;
-    }
-    if (!(prio & 0x80)) g_sfx_prio = prio;
-    release(h[0], jump_playing);
-    g_sfx_own = h[0];
-    g_sfx_ptr = h + 2;
-    s_wait = 0;
-    g_cur_sfx = sfx_id;
-    g_sound_events++;
-}
 
-void sfx_tick_b8(uint8_t jump_playing) {
-    const uint8_t *p = g_sfx_ptr;
-    uint8_t m, c, lo, env, duty, v;
-    if (p == 0) return;
-    if (s_wait) {
-        s_wait--;
-        return;
-    }
-    m = *p++;
-    if (m == 0) {                              /* end: smpsStop clears the SFX priority */
-        release(0, jump_playing);
-        g_sfx_ptr = 0;
-        g_sfx_prio = 0;
-        s_flags &= (uint8_t)~2;
-        return;
-    }
-    if (m != 0x80) {
-        if (m & 1) {                           /* CH1 tone */
-            c = *p++;
-            if (c & 0x40) {
-                NR12_REG = 0x00;
-            } else {
-                lo = *p++;
-                if (c & 0x80) {
-                    env = *p++;
-                    duty = *p++;
-                    NR10_REG = 0x00;
-                    NR11_REG = duty;
-                    NR12_REG = env;
-                    NR13_REG = lo;
-                    NR14_REG = (uint8_t)(0x80 | (c & 7));
-                } else {
-                    NR13_REG = lo;
-                    NR14_REG = (uint8_t)(c & 7);
+    d = &sfx_pcm_table[sfx_id - SFX_PCM_FIRST];
+    if (d->bank == 0U || d->blocks == 0U || d->data == 0) return;
+
+    CRITICAL {
+        uint8_t blocked = 0;
+        if (sfx_id == SFX_PUSH) {
+            for (i = 0; i < SFX_MAX_VOICES; i++) {
+                if (g_sfx_voices[i].active && g_sfx_voices[i].sfx_id == SFX_PUSH) {
+                    blocked = 1;
+                    break;
                 }
             }
         }
-        if (m & 2) {                           /* CH2 tone (the jump keeps CH2 while it plays) */
-            c = *p++;
-            if (c & 0x40) {
-                if (!jump_playing) NR22_REG = 0x00;
-            } else {
-                lo = *p++;
-                if (c & 0x80) {
-                    env = *p++;
-                    duty = *p++;
-                    if (!jump_playing) {
-                        NR21_REG = duty;
-                        NR22_REG = env;
-                        NR23_REG = lo;
-                        NR24_REG = (uint8_t)(0x80 | (c & 7));
+        if (!blocked) {
+            if (is_single_instance_sfx(sfx_id)) {
+                for (i = 0; i < SFX_MAX_VOICES; i++) {
+                    if (g_sfx_voices[i].active && g_sfx_voices[i].sfx_id == sfx_id) {
+                        slot_idx = i;
+                        break;
                     }
-                } else if (!jump_playing) {
-                    NR23_REG = lo;
-                    NR24_REG = (uint8_t)(c & 7);
+                }
+            }
+
+            if (slot_idx == 0xFFU) {
+                for (i = 0; i < SFX_MAX_VOICES; i++) {
+                    if (!g_sfx_voices[i].active) {
+                        slot_idx = i;
+                        break;
+                    }
+                }
+            }
+
+            if (slot_idx == 0xFFU) {
+                uint8_t vidx = 0;
+                for (i = 1; i < SFX_MAX_VOICES; i++) {
+                    SfxPcmVoice *v = &g_sfx_voices[i];
+                    SfxPcmVoice *vic = &g_sfx_voices[vidx];
+                    if (v->prio < vic->prio ||
+                        (v->prio == vic->prio && (s_voice_age[i] > s_voice_age[vidx] ||
+                         (s_voice_age[i] == s_voice_age[vidx] && v->blocks < vic->blocks)))) {
+                        vidx = i;
+                    }
+                }
+                if ((d->prio & 0x80U) || d->prio >= g_sfx_voices[vidx].prio) {
+                    slot_idx = vidx;
+                }
+            }
+
+            if (slot_idx != 0xFFU) {
+                for (i = 0; i < SFX_MAX_VOICES; i++) {
+                    if (g_sfx_voices[i].active && s_voice_age[i] < 255U) {
+                        s_voice_age[i]++;
+                    }
+                }
+                slot = &g_sfx_voices[slot_idx];
+                slot->bank = d->bank;
+                slot->ptr = d->data;
+                slot->blocks = d->blocks;
+                slot->prio = d->prio;
+                slot->sfx_id = sfx_id;
+                slot->active = 1;
+                s_voice_age[slot_idx] = 0;
+
+                for (i = 0; i < SFX_MAX_VOICES; i++) {
+                    if (g_sfx_voices[i].active) cnt++;
+                }
+                g_pcm_sfx_active = cnt;
+                g_ch3_restore_bass = 0;
+                NR51_REG |= 0x44U;
+                if (!(TAC_REG & 0x04U) && !g_sega_pcm_playing) {
+                    /* CGB Double Speed: TAC=0x04 clocks TIMA at 8,192 Hz -> TMA=224 gives exact 256 Hz Wave reloads. */
+                    TMA_REG = 224U;
+                    TIMA_REG = 255U;
+                    TAC_REG = 0x04U;
                 }
             }
         }
-        if (m & 8) {                           /* CH4 noise / 7-bit buzz */
-            c = *p++;
-            if (c & 0x40) {
-                NR42_REG = 0x00;
-            } else {
-                if (c & 1) NR43_REG = *p++;
-                if (c & 0x80) {
-                    NR41_REG = 0x00;
-                    NR42_REG = *p++;
-                    NR44_REG = 0x80;
-                }
-            }
-        }
-        if (m & 0x10) {                        /* smpsPan: replace the panning bits of the channels named */
-            v = *p++;
-            if (v & 0x11) NR51_REG = (uint8_t)((NR51_REG & ~0x11) | (v & 0x11));
-            if (v & 0x22) NR51_REG = (uint8_t)((NR51_REG & ~0x22) | (v & 0x22));
-            if (v & 0x88) NR51_REG = (uint8_t)((NR51_REG & ~0x88) | (v & 0x88));
-        }
-        if (m & 0x20) s_flags &= (uint8_t)~2;  /* smpsClearPush */
     }
-    s_wait = (uint8_t)(*p++ - 1);
-    g_sfx_ptr = p;
+
+    if (slot) {
+        g_cur_sfx = sfx_id;
+        g_sound_events++;
+    }
 }

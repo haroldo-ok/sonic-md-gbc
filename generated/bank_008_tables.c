@@ -879,7 +879,7 @@ const SpecialStageDesc g_special_stages[NUM_SPECIAL_STAGES] = {
 };
 
 const SongDesc g_songs[NUM_SONGS] = {
-    { 76, mus_81 },
+    { 141, mus_81 },
     { 76, mus_82 },
     { 76, mus_83 },
     { 77, mus_84 },
