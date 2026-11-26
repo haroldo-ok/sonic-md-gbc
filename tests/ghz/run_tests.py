@@ -10,6 +10,12 @@ def check(name, ok, info=""):
 # ---------------- GHZ1 bridge (1192, 904): 12 logs, walk range x in [1192-104, 1192+88) -------------------
 g = GT(rom, noi, 0)
 g.warm(1192, 904 - 60)
+# The Chopper under this bridge leaps up through it (`2B Badnik - Chopper.asm`). These checks are about the bridge,
+# so park it: its leap restarts from base_y, moved far below the level.
+for i in range(24):
+    o = g.obj(i)
+    if o["active"] and o["id"] == 0x2B:
+        g.w16(g.GO + i * 20 + 11, 4000); g.w16(g.GO + i * 20 + 7, 4000)
 g.tick(40, shot=True)
 st = g.stand
 check("bridge: lands (stand set)", st != 0 and g.on_ground == 1, f"stand={st:#x} y={g.y} og={g.on_ground}")
@@ -36,7 +42,7 @@ xs = []
 g.tick(60, shot=True)
 st = g.stand
 check("plat1: stand set", st != 0 and g.on_ground == 1, f"stand={st:#x} x={g.x} y={g.y}")
-x_a = g.x; ob = g.find(0x18, near=4640)
+x_a = g.x; ob = g.find(0x18, near=g.x)   # the platform under Sonic (at full oscillator speed it has left x=4640)
 for k in range(30):
     g.tick(2)
     xs.append((g.x, ob and g.obj(ob[1])["x"]))

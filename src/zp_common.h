@@ -11,7 +11,9 @@ static uint8_t zp_near(ActiveObj *o, int16_t hw, int16_t hh) {
     int16_t dx = g_sonic.x - o->x, dy = g_sonic.y - o->y;
     if (dx < 0) dx = -dx;
     if (dy < 0) dy = -dy;
-    return (uint8_t)(dx < hw + 8 && dy < hh + 12);
+    /* `ReactToItem`: Sonic's box is 8 px either side and obHeight - 3 above / below (16 standing, 11 rolling). With
+       12 a Sonic standing on the lava surface stayed 1 px clear of the lava tags and was never burnt. */
+    return (uint8_t)(dx < hw + 8 && dy < hh + (g_sonic.rolling ? 11 : 16));
 }
 
 static void zp_hurt(ActiveObj *o, int16_t hw, int16_t hh) {

@@ -92,7 +92,7 @@ void add_score_points(uint16_t pts) BANKED {
     g_hud_dirty = 1;
 }
 
-/* Authentic `_inc/Oscillatory Routines.asm` (`OscillateNumInit` & `OscillateNumDo` — 2x delta every 2nd frame) */
+/* `_inc/Oscillatory Routines.asm` (`OscillateNumInit` & `OscillateNumDo`, stepped every frame from physics.c) */
 
 void osc_reset(void) BANKED {
     uint8_t i;

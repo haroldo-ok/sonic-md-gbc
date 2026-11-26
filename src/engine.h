@@ -83,6 +83,7 @@ void *safe_set_bytes(void *dst, uint8_t val, uint16_t n);
 #define SFX_BREAK        0xC1   /* sfx_BreakItem: badnik / monitor puff (`27 Explosions.asm`) */
 #define SFX_ROLL         0xBE
 #define SFX_SPIKESMOVE   0xB6
+#define SFX_CONTINUE     0xBF
 #define SFX_SSGLASS      0xBA
 #define SFX_CHAINSTOMP   0xBD
 
@@ -161,6 +162,7 @@ void *safe_set_bytes(void *dst, uint8_t val, uint16_t n);
 #define PROJ_DEBRIS      5
 #define PROJ_SPLASH      6
 #define PROJ_ANIMAL_HOP  7
+#define PROJ_ARC         8   /* energy ball under `ObjectFall` gravity ($38): Crabmeat */
 
 typedef struct {
     int32_t x_sub;       /* 24.8 world X (bytes 0..3) */
@@ -403,6 +405,7 @@ void ghz_object(ActiveObj *o, int16_t sx, int16_t sy) BANKED;
 /* Bank 123: MZ/SYZ/LZ/SLZ/SBZ interactive props (`src/zp_zones.c`); returns 1 when handled. */
 uint8_t zp_object(ActiveObj *o) BANKED;
 void spikes_object(ActiveObj *o) BANKED;   /* src/spikes.c (bank 9) */
+void prison_object(ActiveObj *o) BANKED;   /* src/prison.c (bank 9) */
 void physics_land_on_object(void) BANKED;
 
 /* Bank 2: Level Objects & All 16 Sonic 1 Badnik AIs (`src/objects.c`) */

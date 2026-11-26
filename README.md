@@ -8,6 +8,30 @@ Every single one of the **`946 / 946` non-`.git` files** in `s1disasm` is hashed
 
 ## Summary of Latest Engineering Improvements
 
+### 0000000. Player Reports, Round 2 (2026-11-24)
+
+- **Extra life at 100 and 200 rings** (`CollectRing` / `Pow_ChkRings`), with the 1-up music instead of the ring sound. This applies to stage rings, scattered rings, ring and S monitors, and special stage rings. `g_next_ring_life` (previously unused) holds the `v_lifecount` flags and is cleared on ring loss. Rings cap at 999. In the special stage, 50 rings give one continue with the continue sound (`$BF`, was the continue-screen music).
+- **Oscillators at full speed.** `osc_step_all` ran on every 2nd frame; the comment promised a doubled step to compensate, but there was none. Every oscillator-driven object therefore moved at half speed: swinging platforms (the "too slow" MZ plank), GHZ/SYZ/SLZ platforms, MZ/LZ blocks, grass platforms and the LZ water bob. Oscillator `$1A` now has the original's 256-frame period (was 512).
+- **Badniks ported** (`src/badniks.c`, bank 9):
+  - Moto Bug and Crabmeat follow the floor every frame and turn at ledges and walls (they used to walk off and hover).
+  - A Crabmeat that turned right no longer freezes (`$80 >> 8` was 0), and its two balls now arc under gravity (new `PROJ_ARC`).
+  - The Buzz Bomber stops and fires once when it passes within 96 px of Sonic, instead of on a global timer.
+  - Choppers leap from their spawn height. They now also run while below the screen, so the GHZ1/GHZ2 Choppers under the bridges actually jump. They used to wait off-screen forever, so the "robot fish" never appeared. GHZ3 has no Choppers in the original.
+- **Boss defeat and Egg Prison** (`src/prison.c`, bank 9):
+  - A beaten act 3 boss explodes, sags, recovers and flies off right (`BossDefeated` / `BGHZ_Recover` / `BGHZ_Escape`), and the zone music returns. It used to turn into a second, floating capsule at Sonic's height that opened on touch.
+  - The real Egg Prison from the object list is solid. Sonic must land on the button on top, which presses it, sets off one second of explosions, opens the capsule, releases animals and ends the act.
+- **Lava hurts again.** Zone hazards used a Sonic box 12 px tall (half-height); `ReactToItem` uses obHeight - 3 (16 standing, 11 rolling). Sonic standing on the MZ lava surface was 1 px clear of the lava tags and was never burnt. He now loses his rings, or dies with none.
+- **Ring colours.** BG rings were hard-wired to palette 3: gold in GHZ, purple in MZ, green in SLZ, grey in SBZ. Each zone now uses its sky-matched palette closest to the ring's orange and gold. MZ, LZ and SYZ get gold rings; SLZ and SBZ2/3 have no gold BG palette and keep the least-bad one. That needs the palette solver to reserve a ring palette.
+- **Tests:** the GHZ suite parks the bridge's Chopper during the bridge checks, keeps Sonic invulnerable while `warm()` walks the camera in, and tracks the platform under Sonic, since it now moves at full speed.
+- **Checked, unchanged:** the shield sound plays (verified in the emulator), and every SFX constant matches the disassembly.
+- **Still to do:**
+  - Caterkiller: drawn as one sprite, needs segment art.
+  - Boss sprites.
+  - Special stage: no rotation.
+  - Final Zone.
+  - Chaos emeralds, which depend on the special stage.
+  - Platforms vanishing: needs a specific case.
+
 ### 000000. Player Reports: Spikes, Marble Zone Swing, Monitors (2026-11-22)
 
 - **Spikes rebuilt** (`src/spikes.c`, bank 9), a port of `36 Spikes.asm`. They used to be a single 16x16 sprite with a fixed hurt box that hurt from any side and was not solid: Sonic walked into them, fell through them while flashing, and every layout looked the same. Now:

@@ -196,6 +196,7 @@ void sonic_hurt_or_kill(uint8_t instant_kill) BANKED {
             g_lost_rings[i].timer = 180;
         }
         g_rings = 0;
+        g_next_ring_life = 0;          /* `RLoss_Count`: clears the 100 / 200 ring extra-life flags */
         g_hud_dirty = 1;
         g_sonic.invuln = 120;
         g_sonic.ysp = -0x400;
@@ -917,10 +918,10 @@ void physics_update_level(void) BANKED {
     }
     sonic_loops_and_tunnels_update();
 
-    /* Global 16-Channel Oscillators (`OscillateNumDo` — 2x-stepped every 2nd frame for identical platform speed at 50% bank cost) */
-    if ((g_frame_counter & 1) == 0) {
-        osc_step_all();
-    }
+    /* Global oscillators (`OscillateNumDo`), every frame as in the original. They used to step on every 2nd frame
+       only (the "2x step" the comment promised was never there), so every oscillating platform, swing, block and the
+       LZ water level moved at half speed: the $1A swing oscillator had a 512-frame period instead of 256. */
+    osc_step_all();
 
     /* Bottom Pit Check using Dynamic Boundary (`g_dyn_bottom_bound + 256`) so S-Tunnels NEVER kill Sonic! */
     if (g_sonic.y > g_dyn_bottom_bound + 256) {

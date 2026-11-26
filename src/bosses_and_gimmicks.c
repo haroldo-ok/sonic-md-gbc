@@ -194,6 +194,8 @@ void projectiles_and_popups_update(void) BANKED {
                     p->vy = -0x2C0; /* Classic Ball Hog / SLZ Seesaw bomb bounce! */
                 }
             }
+        } else if (p->kind == PROJ_ARC) {
+            p->vy += 0x38;
         } else if (p->kind == PROJ_FIREBALL) {
             uint8_t ang = 0;
             int16_t d = hw_floor_distance(p->x, p->y + 6, &ang);
@@ -309,6 +311,43 @@ void boss_check_and_update(uint8_t sonic_spinning) BANKED {
 }
 
 /* Returns `1` if `o->id` was handled as a Boss or Zone Gimmick, `0` otherwise */
+/* Boss after its last hit (`BossDefeated` + `BGHZ_Recover` + `BGHZ_Escape`), counting in `hp`:
+     BOSS_ST_EXPLODE  179 frames of explosions around the ship, `sfx_Bomb` every 8 frames
+     BOSS_ST_RECOVER  sags for 38 frames ($18 gravity), rises, the zone music returns at +$30
+     BOSS_ST_ESCAPE   flies right at 4 px/frame and up $40/frame until off screen. */
+#define BOSS_ST_EXPLODE 0x70U
+#define BOSS_ST_RECOVER 0x71U
+#define BOSS_ST_ESCAPE  0x72U
+static void boss_defeated_step(ActiveObj *o, int16_t sx, int16_t sy) {
+    if (o->state == BOSS_ST_EXPLODE) {
+        if ((o->hp & 7) == 0) hw_play_sfx(SFX_BOMB);
+        hw_put_sprite16(sx - 16 + (int16_t)((g_frame_counter * 11U) & 31U), sy - 12 + (int16_t)((g_frame_counter * 7U) & 23U),
+                        SPR_TILE_EXPLODE + ((g_frame_counter & 4) ? 4 : 0), 1);
+        if (o->hp == 0) {
+            o->state = BOSS_ST_RECOVER;
+            o->hp = 0;
+            o->vy = 0;
+        } else {
+            o->hp--;
+        }
+    } else if (o->state == BOSS_ST_RECOVER) {
+        o->hp++;
+        if (o->hp < 38) o->vy += 0x18;
+        else if (o->hp == 38) o->vy = 0;
+        else if (o->hp < 38 + 0x30) o->vy -= 8;
+        else if (o->hp == 38 + 0x30) { o->vy = 0; hw_play_bgm(g_ram_act.music_id); }
+        else if (o->hp >= 38 + 0x38) { o->state = BOSS_ST_ESCAPE; o->hp = 0; }
+        o->y += o->vy >> 8;
+    } else {
+        o->x += 4;
+        if ((++o->hp & 3) == 0) o->y -= 1;
+        if (sx > 200) { o->active = 0; return; }
+    }
+    sx = (o->x - g_cam_x) >> 1;
+    sy = (o->y - g_cam_y) >> 1;
+    hw_put_sprite_cols2rows(sx - 16, sy - 8, ZSPR_BOSS, 4u, 0x08 | 1 | 0x20);
+}
+
 uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t sonic_spinning) BANKED {
     uint8_t id = o->id;
 
@@ -398,6 +437,12 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
             return 1;
         }
 
+        /* --- Defeated (`BGHZ_Explode` / `BGHZ_Recover` / `BGHZ_Escape`, shared by the act 3 bosses) --- */
+        if (o->state >= BOSS_ST_EXPLODE) {
+            boss_defeated_step(o, sx, sy);
+            return 1;
+        }
+
         /* --- Zone Act 3 Boss Movement Patterns (`GHZ3`, `MZ3`, `SYZ3`, `LZ3`, `SLZ3`) --- */
         if (g_cur_act == 8) {
             /* SYZ3 (`Obj75`): Track Sonic horizontally, then dive straight down with floor spike! */
@@ -469,13 +514,13 @@ uint8_t gimmick_handle_object(ActiveObj *o, int16_t sx, int16_t sy, uint8_t soni
                 if (g_sonic.ysp > -0x300) g_sonic.ysp = -0x380;
                 hw_play_sfx(SFX_HITBOSS);
                 if (o->hp == 0) {
+                    /* `BossDefeated`: explode in place, then escape (the Egg Prison is a separate object) */
                     g_boss_defeated = 1;
                     g_score += 1000;
                     g_hud_dirty = 1;
-                    hw_play_bgm(g_ram_act.music_id);
-                    o->id = 0x3E; /* Spawn Prison Capsule directly in arena! */
-                    o->y = g_sonic.y;
-                    o->state = 0;
+                    o->state = BOSS_ST_EXPLODE;
+                    o->hp = 179;                  /* counter for the defeated phases (`timer` is the hit flash) */
+                    o->vy = 0;
                     return 1;
                 }
             } else {

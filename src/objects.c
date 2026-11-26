@@ -1,5 +1,6 @@
 #pragma bank 2
 #include "engine.h"
+#include "badniks.h"
 #include <stddef.h>
 #include <string.h>
 
@@ -14,6 +15,25 @@ static uint8_t box_overlap(int16_t ax, int16_t ay, int16_t aw, int16_t ah,
 
 /* ids implemented in `zp_object()` (bitmap, 1 bit per object id) */
 static const uint8_t k_zp_ids[16] = { 0x00, 0x18, 0x6C, 0x11, 0x00, 0x84, 0x0F, 0x10, 0xC0, 0x50, 0xDE, 0x7F, 0xFE, 0xFF, 0x07, 0x00 };
+
+/* `CollectRing` / `Pow_ChkRings`: rings cap at 999; reaching 100 and then 200 rings each give one extra life with the
+   1-up music instead of the ring sound. `g_next_ring_life` holds the `v_lifecount` flags (bit 1 = 100, bit 2 = 200),
+   cleared whenever the rings are (level start, ring loss). */
+static void rings_add(uint8_t n) {
+    uint8_t bit = 0;
+    g_rings += n;
+    if (g_rings > 999) g_rings = 999;
+    g_hud_dirty = 1;
+    if (g_rings >= 100 && !(g_next_ring_life & 2)) bit = 2;
+    else if (g_rings >= 200 && !(g_next_ring_life & 4)) bit = 4;
+    if (bit) {
+        g_next_ring_life |= bit;
+        if (g_lives < 99) g_lives++;
+        hw_play_bgm(BGM_EXTRALIFE);
+    } else {
+        hw_play_sfx(SFX_RING);
+    }
+}
 
 /* Pending power-up from a broken monitor (`Pow_Checks` runs when the rising icon stops). */
 static uint8_t s_pow_sub = 0;
@@ -40,7 +60,7 @@ static void monitor_reward(uint8_t sub) {
         }
         hw_play_bgm(BGM_INVINC);
     } else if (sub == 0x07) {
-        g_rings += 50;
+        rings_add(50);
         g_sonic.shield = 1;
         g_sonic.shoes = 1200;
         __critical {
@@ -50,10 +70,8 @@ static void monitor_reward(uint8_t sub) {
         g_hud_dirty = 1;
         hw_play_bgm(BGM_INVINC);
     } else {
-        g_rings += 10;
         g_score += 100;
-        g_hud_dirty = 1;
-        hw_play_sfx(SFX_RING);
+        rings_add(10);
     }
 }
 
@@ -281,6 +299,11 @@ static void hw_queue_bkg_ring(int16_t world_x, int16_t world_y) {
     ring_build_cells(k, 1);
 }
 
+/* BG palette for rings per visual set: the sky-matched palette whose colours 1 / 3 are closest to the ring's orange
+   edge / gold body (the ring tiles use only those two). Palette 3 was hard-wired; it is gold in GHZ but purple in MZ,
+   green in SLZ, grey in SBZ. SLZ and SBZ2/3 have no gold palette at all; they get the least-bad one. */
+static const uint8_t k_ring_bg_pal[9] = { 3, 2, 1, 2, 1, 3, 0, 0, 3 };
+
 /* Remove the overlay tile (if still ours) at BG cell `pos`. */
 static void ring_clear_cell(uint16_t pos) {
     volatile uint8_t *p = RING_VRAM(pos);
@@ -312,7 +335,7 @@ static void ring_draw_cell(uint16_t cell) {
         }
         VBK_REG = 1;
         while (STAT_REG & STATF_BUSY) {}
-        *p = 0x0BU; /* Bank 1, palette 3: sky-matched zero + warm ring colors */
+        *p = (uint8_t)(0x08U | k_ring_bg_pal[g_ram_act.vset_idx]); /* bank 1 + the zone's ring palette */
         VBK_REG = 0;
     }
 }
@@ -629,9 +652,23 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
     uint8_t spr = badnik_sprite_and_pal(id, &pal);
     uint8_t spike_top = (id == 0x50 || id == 0x5F || id == 0x60);
     uint8_t anim_off = ((g_frame_counter >> 3) & 1) ? 4 : 0;
+    uint8_t ported = badnik_ghz_step(o, id);
     int16_t sx, sy;
 
-    if (id == 0x2B) {
+    if (ported != BADNIK_NOT_MINE) {
+        if (ported == BADNIK_FIRE) {
+            if (id == 0x22) {
+                /* `Buzz_Action_Fire`: missile from the stinger, diagonally down the way the Buzz Bomber faces */
+                int16_t r = (o->state & 0x80) ? 1 : -1;
+                spawn_enemy_projectile(o->x + r * 0x14, o->y + 0x1C, r * 0x200, 0x200, PROJ_ENERGY);
+            } else {
+                /* `Crab_Action_Fire`: one ball from each claw, arcing up and out */
+                spawn_enemy_projectile(o->x - 16, o->y, -0x100, -0x400, PROJ_ARC);
+                spawn_enemy_projectile(o->x + 16, o->y, 0x100, -0x400, PROJ_ARC);
+            }
+            hw_play_sfx(SFX_FIREBALL);
+        }
+    } else if (id == 0x2B) {
         /* Chopper: Leap vertically out of GHZ river under bridges! */
         o->y += (o->vy >> 8);
         o->vy += 22;
@@ -785,17 +822,16 @@ static void update_single_badnik(ActiveObj *o, uint8_t id, uint8_t sonic_spinnin
         }
     }
 
-    hw_put_sprite16(sx, sy, spr + anim_off, 0x08 | pal | (o->vx > 0 ? 0x20 : 0));
+    hw_put_sprite16(sx, sy, spr + anim_off, 0x08 | pal |
+                    ((ported != BADNIK_NOT_MINE) ? ((o->state & 0x80) ? 0x20 : 0) : (o->vx > 0 ? 0x20 : 0)));
 }
 
 /* Stage ring (`0x25`, not exploding): same checks, in the same order, as the generic `step_one_active_obj`
    path, but without its large prologue/stack frame. Rings are the majority of active objects. */
 /* Ring collected / ring that needs the full queue path: the rare cases of `step_ring_obj`. */
 static void ring_collect(ActiveObj *o) {
-    g_rings++;
     g_score += 10;
-    g_hud_dirty = 1;
-    hw_play_sfx(SFX_RING);
+    rings_add(1);
     g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
     o->active = 0;
 }
@@ -1057,7 +1093,7 @@ static uint8_t s_pf_id;
  *   dx = o->x - g_cam_x;
  *   if ((uint16_t)(dx + 160) > 640 && id not in {3D,3E,0D,7C}) { o->active = 0; return 0; }
  *   s_obj_sx = dx >> 1; s_obj_sy = (o->y - g_cam_y) >> 1;
- *   if (((uint16_t)(sx + 20) > 200 || (uint16_t)(sy + 24) > 176) && id not in {3D,7A,71,85,0D,3E,4B,7D}) return 0;
+ *   if (((uint16_t)(sx + 20) > 200 || (uint16_t)(sy + 24) > 176) && id not in {3D,7A,71,85,0D,3E,4B,7D,11,18,1A,2B}) return 0;
  *   return 1;
  * ActiveObj layout: active +0, id +1, x +5, y +7. sdcccall(1): o in DE, result in A. */
 typedef char active_obj_layout_check[(offsetof(ActiveObj, id) == 1U && offsetof(ActiveObj, x) == 5U &&
@@ -1172,6 +1208,8 @@ static uint8_t obj_prefilter(ActiveObj *o) __naked {
     jr   z, 731$
     cp   a, #0x1A
     jr   z, 731$
+    cp   a, #0x2B               ; Chopper: waits under the water below the screen, then leaps into view
+    jr   z, 731$
     xor  a, a
     ret
 731$:
@@ -1208,10 +1246,8 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
             if (rdx > -18 && rdx < 18) {
                 int16_t rdy = g_sonic.y - o->y;
                 if (rdy > -24 && rdy < 24) {
-                    g_rings++;
                     g_score += 10;
-                    g_hud_dirty = 1;
-                    hw_play_sfx(SFX_RING);
+                    rings_add(1);
                     g_obj_taken[o->spawn_slot >> 3] |= (uint8_t)(1 << (o->spawn_slot & 7));
                     o->active = 0;
                     return 0;
@@ -1464,37 +1500,9 @@ static uint8_t step_one_active_obj(ActiveObj *o, uint8_t sonic_spinning) {
         return 0;
         }
 
-        /* --- EGG PRISON CAPSULE (`0x3E` — Golden 24x16 Capsule + Separate Red Release Button `122`!) --- */
+        /* --- EGG PRISON (`0x3E` body / button: `src/prison.c`, bank 9) --- */
         if (id == 0x3E) {
-            if (!o->state && g_boss_defeated &&
-                box_overlap(g_sonic.x, g_sonic.y, 16, 24, o->x, o->y, 24, 28)) {
-                o->state = 1;
-                o->timer = 90;
-                if (g_sonic.ysp > 0) g_sonic.ysp = -0x380;
-                hw_play_sfx(SFX_BREAK);
-            }
-            if (o->state == 1) {
-                if ((o->timer & 7) == 0) {
-                    spawn_enemy_projectile(o->x, o->y - 8, (o->timer & 8) ? 0x1C0 : -0x1C0, -0x380, PROJ_ANIMAL_HOP);
-                }
-                if (--o->timer == 0) {
-                    g_act_clear_done = 1;
-                    g_next_mode = GM_ACT_CLEAR;
-        return 1;
-                }
-            }
-            if (o->subtype != 0) {
-                hw_put_sprite8(sx - 8, sy - 4 + (o->state ? 2 : 0), ZSPR_CAPSULE + 6, 0x08 | 1);
-                hw_put_sprite8(sx,     sy - 4 + (o->state ? 2 : 0), ZSPR_CAPSULE + 7, 0x08 | 1);
-            } else {
-                hw_put_sprite8(sx - 8, sy - 14 + (o->state ? 3 : 0), ZSPR_CAPSULE + 6, 0x08 | 1);
-                hw_put_sprite8(sx,     sy - 14 + (o->state ? 3 : 0), ZSPR_CAPSULE + 7, 0x08 | 1);
-                if (o->state) {
-                    hw_put_sprite16(sx, sy, ZSPR_CAPSULE + 8, 0x08 | 2);
-                } else {
-                    hw_put_sprite_cols2rows(sx - 12, sy - 8, ZSPR_CAPSULE, 3u, 0x08 | 2);
-                }
-            }
+            prison_object(o);
         return 0;
         }
 
@@ -1584,9 +1592,7 @@ void objects_update_and_draw(void) BANKED {
             }
             if (!g_sonic.dead && r->timer < 156 && box_overlap(sonic_x, sonic_y, 10, 16, r->x, r->y, 8, 8)) {
                 r->active = 0;
-                g_rings++;
-                g_hud_dirty = 1;
-                hw_play_sfx(SFX_RING);
+                rings_add(1);
                 continue;
             }
             sx = (r->x - cam_x) >> 1;

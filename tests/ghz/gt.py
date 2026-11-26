@@ -26,14 +26,19 @@ class GT:
         self.w32(self.GS, x << 8); self.w32(self.GS+4, y << 8); self.w16(self.GS+8, x); self.w16(self.GS+10, y)
         for o in (12, 14, 16): self.w16(self.GS+o, 0)
     def warm(self, x, y):
+        # Sonic is invulnerable while the camera is walked in (badniks now attack: a Buzz Bomber fires at a Sonic
+        # within 96 px), and is vulnerable again once placed.
         xs = list(range(max(x - 900, 100), x, 100)) + [x]
         for xx in xs:
             for _ in range(8):
+                self.pb.memory[self.GS + 28] = 120
                 self.place(xx, max(y - 120, 16))
                 self.w16(self.syms["_g_cam_x"], max(xx - 80, 0)); self.w16(self.syms["_g_cam_y"], max(y - 200, 0))
                 self.tick(2)
         for _ in range(6):
+            self.pb.memory[self.GS + 28] = 120
             self.place(x, max(y - 120, 16)); self.tick(2)
+        self.pb.memory[self.GS + 28] = 0
         self.place(x, y)
     @property
     def x(self): return self.r16(self.GS+8)

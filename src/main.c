@@ -164,7 +164,7 @@ uint8_t g_ss_got_emerald = 0;
 uint16_t g_level_frames = 0;
 uint8_t g_level_sec_div = 0;
 uint8_t g_hud_dirty = 1;
-uint8_t g_next_ring_life = 1;
+uint8_t g_next_ring_life = 0;   /* `v_lifecount`: bit 1 = 100-ring life given, bit 2 = 200 */
 
 uint8_t g_checkpoint_active = 0;
 uint8_t g_checkpoint_act = 0;
@@ -1523,7 +1523,7 @@ void hw_load_act(uint8_t act_idx) {
         g_level_sec_div = 0;
     }
     g_rings = 0;
-    g_next_ring_life = 1;
+    g_next_ring_life = 0;
     g_signpost_passed = 0;
     g_act_clear_done = 0;
     g_boss_active = 0;

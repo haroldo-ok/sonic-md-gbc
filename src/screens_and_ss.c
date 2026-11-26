@@ -269,6 +269,7 @@ void screens_init_mode(uint8_t mode) BANKED {
             if (s_ss_ram[mi] >= 76U) s_ss_ram[mi] = 1U;
         }
         g_rings = 0;
+        g_next_ring_life = 0;
         g_ss_got_emerald = 0;
         g_ss_rot_angle = 0;
         s_ss_rot_spd = 56;
@@ -704,12 +705,22 @@ void screens_update_mode(uint8_t mode) BANKED {
         hit = s_ss_ram[((uint16_t)cy << 6) | cx];
         if (hit == 0x3A) {
             s_ss_ram[((uint16_t)cy << 6) | cx] = 0;
-            g_rings++;
+            /* `SonicSS_GetContinue`: `CollectRing` (100 / 200 ring lives), then one continue at 50 rings */
             g_score += 10;
             g_hud_dirty = 1;
-            if (g_rings == 50) {
+            if (g_rings < 999) g_rings++;
+            if (g_rings >= 100 && !(g_next_ring_life & 2)) {
+                g_next_ring_life |= 2;
+                if (g_lives < 99) g_lives++;
+                hw_play_bgm(BGM_EXTRALIFE);
+            } else if (g_rings >= 200 && !(g_next_ring_life & 4)) {
+                g_next_ring_life |= 4;
+                if (g_lives < 99) g_lives++;
+                hw_play_bgm(BGM_EXTRALIFE);
+            } else if (g_rings >= 50 && !(g_next_ring_life & 1)) {
+                g_next_ring_life |= 1;
                 g_continues++;
-                hw_play_bgm(BGM_CONTINUE);
+                hw_play_sfx(SFX_CONTINUE);
             } else {
                 hw_play_sfx(SFX_RING);
             }
